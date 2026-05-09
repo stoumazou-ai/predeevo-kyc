@@ -1,0 +1,2410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predeevo — Client KYC Verification</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ── SUPABASE CONFIG ──
+const SUPABASE_URL = 'https://dnvmprywxeuzhjumtnpm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudm1wcnl3eGV1emhqdW10bnBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNDY5MjMsImV4cCI6MjA5MzkyMjkyM30.hAHkY1se2EZ834TIEEpger-cNG3EQIhWYs31CPzXH7w';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentAppId = null;      // UUID of current draft in Supabase
+let currentRef = null;        // KYC-2026-XXXX reference
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1C75BC;--blue-dark:#155d96;
+  --blue-light:#E8F3FC;--blue-pale:#F0F7FD;--blue-border:#9DCBEE;
+  --teal:#1D9E75;--teal-light:#E1F5EE;--teal-border:#9FE1CB;
+  --red:#C0392B;--red-light:#FDEDEC;--red-border:#F1A89D;
+  --amber:#D4820A;--amber-light:#FEF3E2;--amber-border:#F5C168;
+  --text:#1A2332;--muted:#5A6478;--subtle:#8A96A8;
+  --border:0.5px solid rgba(0,0,0,.1);
+  --surface:#F5F6F8;--card:#FFFFFF;
+}
+body{font-family:'Manrope',sans-serif;color:var(--text);background:var(--surface);min-height:100vh;font-weight:400}
+.wrap{max-width:640px;margin:0 auto;padding:24px 16px 60px}
+
+/* HEADER */
+.hdr{background:var(--blue);border-radius:14px;padding:24px 28px;margin-bottom:22px}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.hdr-secure{font-size:10px;color:rgba(255,255,255,.55);font-weight:500;display:flex;align-items:center;gap:4px}
+.logo-white{height:24px;width:auto}
+.hdr h1{color:white;font-size:18px;font-weight:700;margin-bottom:4px;letter-spacing:-.3px}
+.hdr-sub{color:rgba(255,255,255,.65);font-size:12px;line-height:1.6}
+.prog-bar{background:rgba(255,255,255,.2);border-radius:3px;height:3px;margin-top:16px;overflow:hidden}
+.prog-fill{background:white;height:100%;border-radius:3px;transition:width .4s}
+.step-lbls{display:flex;margin-top:7px}
+.slbl{flex:1;font-size:8px;color:rgba(255,255,255,.38);text-align:center;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.slbl.active{color:white}.slbl.done{color:rgba(255,255,255,.55)}
+
+/* CARDS */
+.card{background:var(--card);border:var(--border);border-radius:12px;padding:20px 22px;margin-bottom:14px}
+.card-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title i{font-size:16px;color:var(--blue)}
+.info-btn{width:18px;height:18px;border-radius:50%;background:var(--blue-light);border:0.5px solid var(--blue-border);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:var(--blue);font-weight:700;flex-shrink:0;font-style:normal;line-height:1}
+.info-btn:hover{background:var(--blue);color:white}
+
+/* FORMS */
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.fg:last-child{margin-bottom:0}
+.lbl{font-size:11px;color:var(--muted);font-weight:600}
+.lbl .req{color:var(--red);margin-left:2px}
+.lbl .hint{font-size:10px;color:var(--subtle);font-weight:400;margin-left:4px}
+input,select,textarea{border:0.5px solid rgba(0,0,0,.14);border-radius:8px;padding:9px 11px;font-size:13px;font-family:'Manrope',sans-serif;color:var(--text);background:var(--card);width:100%;transition:border-color .13s;font-weight:400}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(28,117,188,.1)}
+textarea{min-height:80px;resize:vertical}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.full{grid-column:1/-1}
+.phone-row{display:grid;grid-template-columns:130px 1fr;gap:8px}
+hr{border:none;border-top:0.5px solid rgba(0,0,0,.07);margin:14px 0}
+.sec-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;padding-bottom:6px;border-bottom:0.5px solid rgba(0,0,0,.07)}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%238A96A8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+
+/* SEARCHABLE COUNTRY */
+.sw{position:relative}
+.sw input{width:100%}
+.dropdown{position:absolute;top:calc(100% + 2px);left:0;right:0;background:var(--card);border:0.5px solid var(--blue-border);border-radius:8px;max-height:200px;overflow-y:auto;z-index:100;display:none;box-shadow:0 4px 20px rgba(0,0,0,.12)}
+.dropdown.open{display:block}
+.dd-item{padding:8px 11px;font-size:13px;cursor:pointer;color:var(--text)}
+.dd-item:hover{background:var(--blue-pale);color:var(--blue)}
+.dd-empty{padding:10px 11px;font-size:12px;color:var(--subtle)}
+
+/* BOXES */
+.info-box{background:var(--blue-light);border:0.5px solid var(--blue-border);border-radius:9px;padding:10px 13px;font-size:12px;color:var(--blue);margin-bottom:14px;display:flex;gap:8px;align-items:flex-start;line-height:1.55}
+.warn-box{background:var(--amber-light);border:0.5px solid var(--amber-border);border-radius:9px;padding:10px 13px;font-size:12px;color:var(--amber);margin-bottom:14px;display:flex;gap:8px;align-items:flex-start;line-height:1.55}
+.alert-box{background:var(--red-light);border:0.5px solid var(--red-border);border-radius:9px;padding:10px 13px;font-size:12px;color:var(--red);margin-bottom:14px;display:flex;gap:8px;align-items:flex-start;line-height:1.55}
+.success-box{background:var(--teal-light);border:0.5px solid var(--teal-border);border-radius:9px;padding:10px 13px;font-size:12px;color:var(--teal);margin-bottom:14px;display:flex;gap:8px;align-items:flex-start;line-height:1.55}
+
+/* STEPS */
+.step{display:none}.step.active{display:block}
+.btn-row{display:flex;align-items:center;justify-content:space-between;margin-top:16px}
+.btn-back{background:none;border:none;font-size:13px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'Manrope',sans-serif;font-weight:500}
+.btn-back:hover{color:var(--text)}
+.btn{border:0.5px solid rgba(0,0,0,.13);background:transparent;padding:10px 20px;border-radius:9px;font-size:13px;cursor:pointer;color:var(--text);font-family:'Manrope',sans-serif;font-weight:600;transition:all .13s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--surface)}
+.btn-blue{background:var(--blue);color:white;border-color:var(--blue)}
+.btn-blue:hover{background:var(--blue-dark)}
+.btn-blue:disabled{opacity:.4;cursor:not-allowed}
+.btn-sm{padding:7px 13px;font-size:12px}
+.step-count{font-size:11px;color:var(--subtle);font-weight:600}
+.cond{display:none}.cond.show{display:block}
+
+/* SERVICE GRID */
+.svc-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px}
+.svc-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border:0.5px solid rgba(0,0,0,.1);border-radius:8px;cursor:pointer;transition:all .13s;background:var(--surface)}
+.svc-item:hover{border-color:var(--blue-border);background:var(--blue-pale)}
+.svc-item.on{border-color:var(--blue);background:var(--blue-pale)}
+.svc-item input[type=checkbox]{width:14px;height:14px;accent-color:var(--blue);flex-shrink:0;pointer-events:none}
+.svc-label{font-size:12px;font-weight:500}
+
+/* RADIO OPTS */
+.r-opt{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:0.5px solid rgba(0,0,0,.1);border-radius:10px;cursor:pointer;transition:all .13s;background:var(--surface);margin-bottom:8px}
+.r-opt:last-child{margin-bottom:0}
+.r-opt:hover{border-color:var(--blue-border);background:var(--blue-pale)}
+.r-opt.on{border-color:var(--blue);background:var(--blue-pale)}
+.r-opt input[type=radio]{margin-top:3px;accent-color:var(--blue);flex-shrink:0}
+.r-title{font-size:13px;font-weight:600;color:var(--text)}
+.r-sub{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5}
+
+/* QUESTIONNAIRE */
+.q-item{border:0.5px solid rgba(0,0,0,.1);border-radius:10px;margin-bottom:10px;overflow:hidden}
+.q-row{display:flex;align-items:stretch}
+.q-text{flex:1;padding:12px 14px}
+.q-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;color:var(--text)}
+.q-question{font-size:12px;color:var(--muted);line-height:1.5}
+.q-buttons{display:flex;flex-direction:column;border-left:0.5px solid rgba(0,0,0,.08);flex-shrink:0;min-width:64px}
+.qb{flex:1;padding:0 14px;font-size:11px;font-weight:700;cursor:pointer;background:none;border:none;font-family:'Manrope',sans-serif;color:var(--subtle);transition:all .13s;display:flex;align-items:center;justify-content:center;gap:4px}
+.qb:first-child{border-bottom:0.5px solid rgba(0,0,0,.08)}
+.qb:hover{background:var(--blue-pale);color:var(--blue)}
+.qb.sel-no{background:var(--teal-light);color:var(--teal)}
+.qb.sel-yes{background:var(--red-light);color:var(--red)}
+.q-expand{display:none;padding:10px 14px;border-top:0.5px solid rgba(0,0,0,.07);background:var(--red-light)}
+.q-expand.show{display:block}
+.q-expand textarea{font-size:12px;min-height:56px;background:white}
+
+/* DOCUMENTS */
+.doc-row{display:flex;align-items:center;gap:10px;padding:11px 13px;border:0.5px solid rgba(0,0,0,.1);border-radius:9px;margin-bottom:8px;cursor:pointer;transition:all .13s}
+.doc-row:hover{border-color:var(--blue-border);background:var(--blue-pale)}
+.doc-row.done{border-color:var(--teal);background:rgba(29,158,117,.04)}
+.doc-row.locked{cursor:default;border-color:var(--teal);background:rgba(29,158,117,.04)}
+.doc-icon{width:34px;height:34px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;color:var(--muted)}
+.doc-icon.done{background:var(--teal-light);color:var(--teal)}
+.doc-info{flex:1}.doc-name{font-size:13px;font-weight:600;color:var(--text)}
+.doc-desc{font-size:11px;color:var(--muted);margin-top:1px}
+.doc-st{font-size:10px;font-weight:700;white-space:nowrap}
+.ds-req{color:var(--amber)}.ds-done{color:var(--teal)}.ds-opt{color:var(--subtle)}
+
+/* WEALTH */
+.wealth-row{display:grid;grid-template-columns:1fr 140px 34px;gap:8px;align-items:end;margin-bottom:8px}
+.wealth-total{background:var(--blue);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.wt-lbl{font-size:11px;color:rgba(255,255,255,.7);font-weight:600}
+.wt-val{font-size:15px;font-weight:700;color:white}
+
+/* VERIFICATION */
+.vs-row{display:flex;gap:12px;padding:13px;border:0.5px solid rgba(0,0,0,.08);border-radius:10px;margin-bottom:10px;background:var(--surface)}
+.vs-row.act{border-color:var(--blue-border);background:var(--blue-pale)}
+.vs-row.done{border-color:var(--teal-border);background:var(--teal-light)}
+.vs-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.vsi-pend{background:var(--surface);color:var(--subtle)}
+.vsi-act{background:var(--blue-light);color:var(--blue)}
+.vsi-done{background:var(--teal-light);color:var(--teal)}
+.vs-title{font-size:12px;font-weight:700;margin-bottom:2px}
+.vs-desc{font-size:11px;color:var(--muted);line-height:1.5}
+.vs-tag{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:5px}
+.vst-w{background:var(--surface);color:var(--subtle)}
+.vst-a{background:var(--blue-light);color:var(--blue)}
+.vst-d{background:var(--teal-light);color:var(--teal)}
+.vr-box{background:var(--blue);border-radius:10px;padding:14px;margin-top:12px;display:flex;align-items:center;gap:14px}
+.vr-num{font-size:28px;font-weight:700;color:white;line-height:1}
+.vr-lbl{font-size:10px;color:rgba(255,255,255,.6);margin-top:2px}
+.vr-bars{flex:1}.vr-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.vr-bar-lbl{font-size:10px;color:rgba(255,255,255,.65);width:76px;font-weight:500;flex-shrink:0}
+.vr-track{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.2);overflow:hidden}
+.vr-fill{height:100%;border-radius:2px;background:white;transition:width .6s}
+.spinner{width:32px;height:32px;border:3px solid var(--blue-light);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* SIGNATURE */
+.sig-opt{border:0.5px solid rgba(0,0,0,.12);border-radius:10px;padding:0;margin-bottom:10px;cursor:pointer;transition:all .13s;background:var(--surface);overflow:hidden}
+.sig-opt:hover{border-color:var(--blue-border);background:var(--blue-pale)}
+.sig-opt.on{border-color:var(--blue);background:var(--blue-pale)}
+.sig-hd{display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:flex-start;padding:14px 16px}
+.sig-hd input[type=radio]{margin-top:3px;accent-color:var(--blue);width:16px;height:16px;flex-shrink:0}
+.sig-title{font-size:13px;font-weight:600;color:var(--text);line-height:1.35;display:block}
+.sig-sub{font-size:11px;color:var(--muted);line-height:1.55;margin-top:4px;display:block}
+.sig-detail{display:none;padding:14px 16px;border-top:0.5px solid rgba(0,0,0,.08);background:var(--card)}
+.sig-detail.show{display:block}
+.eidas-box{display:flex;align-items:flex-start;gap:9px;background:var(--blue-light);border:0.5px solid var(--blue-border);border-radius:9px;padding:11px 13px;margin-bottom:12px}
+.eidas-box i{font-size:18px;color:var(--blue);flex-shrink:0;margin-top:1px}
+.eidas-title{font-size:12px;font-weight:700;color:var(--blue)}
+.eidas-sub{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5}
+.upload-zone{border:1.5px dashed rgba(0,0,0,.13);border-radius:8px;padding:18px;text-align:center;cursor:pointer;background:var(--surface)}
+.upload-zone:hover{border-color:var(--blue-border);background:var(--blue-pale)}
+
+/* CONSENT */
+.consent-scroll{font-size:11px;color:var(--muted);line-height:1.7;background:var(--surface);border:var(--border);border-radius:9px;padding:14px;max-height:200px;overflow-y:auto;margin-bottom:12px}
+
+/* DECLARATIONS */
+.decl{display:flex;align-items:flex-start;gap:9px;padding:11px 13px;border:0.5px solid rgba(0,0,0,.07);border-radius:8px;margin-bottom:7px;background:var(--surface)}
+.decl input[type=checkbox]{margin-top:2px;accent-color:var(--blue);flex-shrink:0;width:14px;height:14px}
+.decl-txt{font-size:12px;line-height:1.55;color:var(--muted)}
+.decl-txt strong{color:var(--text);font-weight:600}
+
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(26,35,50,.5);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal{background:var(--card);border-radius:14px;width:100%;max-width:520px;max-height:86vh;overflow-y:auto;padding:24px;border:var(--border)}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal-title{font-size:14px;font-weight:700;color:var(--text)}
+.modal-x{background:none;border:none;cursor:pointer;color:var(--muted);font-size:19px;padding:2px}
+
+/* SUCCESS */
+.success-wrap{text-align:center;padding:28px 16px}
+.success-icon{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:26px;background:var(--teal-light);color:var(--teal)}
+.ref-box{background:var(--surface);border-radius:8px;padding:12px 22px;display:inline-block;margin-top:14px;border:var(--border)}
+.ref-lbl{font-size:10px;color:var(--muted);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.ref-num{font-size:15px;font-weight:700;color:var(--text);font-family:monospace}
+
+/* ── TOOLTIP / FIELD HINTS ── */
+.field-wrap{position:relative}
+.field-hint{display:none;position:absolute;bottom:calc(100% + 6px);left:0;right:0;background:#1A2332;color:white;font-size:11px;line-height:1.5;padding:8px 11px;border-radius:8px;z-index:50;font-family:'Manrope',sans-serif;font-weight:400;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.field-hint::after{content:'';position:absolute;top:100%;left:14px;border:5px solid transparent;border-top-color:#1A2332}
+.field-wrap:focus-within .field-hint{display:block}
+.field-example{font-size:11px;color:var(--subtle);margin-top:3px;font-style:italic}
+
+
+
+/* ── UBO COLLAPSIBLE IDENTITY CARDS ── */
+.ubo-id-card{border:0.5px solid var(--blue-border);border-radius:12px;overflow:hidden;margin-bottom:12px;transition:box-shadow .2s}
+.ubo-id-card:hover{box-shadow:0 2px 12px rgba(28,117,188,.12)}
+.ubo-id-trigger{background:var(--blue);padding:14px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
+.ubo-id-trigger:hover{background:var(--blue-dark)}
+.ubo-id-name{font-size:14px;font-weight:700;color:white;display:flex;align-items:center;gap:8px}
+.ubo-id-meta{font-size:10px;color:rgba(255,255,255,.65);margin-top:2px}
+.ubo-id-badge{display:flex;align-items:center;gap:6px}
+.ubo-id-chevron{font-size:16px;color:rgba(255,255,255,.7);transition:transform .2s}
+.ubo-id-chevron.open{transform:rotate(180deg)}
+.ubo-id-status{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px}
+.ubo-status-empty{background:rgba(255,255,255,.15);color:rgba(255,255,255,.8)}
+.ubo-status-partial{background:var(--amber-light);color:var(--amber)}
+.ubo-status-complete{background:var(--teal-light);color:var(--teal)}
+.ubo-id-body{display:none;background:var(--card)}
+.ubo-id-body.open{display:block}
+.ubo-id-actions{padding:14px 18px;border-bottom:0.5px solid rgba(0,0,0,.07);background:var(--blue-pale);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ubo-send-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:0.5px solid var(--blue-border);border-radius:8px;background:var(--card);font-size:12px;font-weight:600;color:var(--blue);cursor:pointer;font-family:Manrope,sans-serif;transition:all .13s}
+.ubo-send-btn:hover{background:var(--blue-light)}
+.ubo-send-btn.sent{background:var(--teal-light);border-color:var(--teal-border);color:var(--teal);cursor:default}
+.ubo-id-form{padding:16px 18px}
+/* ── VALIDATION ── */
+.field-error{border-color:var(--red) !important;background:var(--red-light) !important}
+.field-error:focus{box-shadow:0 0 0 3px rgba(192,57,43,.15) !important}
+.validation-banner{background:var(--red-light);border:0.5px solid var(--red-border);border-radius:10px;padding:13px 16px;margin-bottom:16px;display:none}
+.validation-banner.show{display:block}
+.validation-banner-title{font-size:13px;font-weight:700;color:var(--red);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.validation-list{list-style:none;padding:0;margin:0}
+.validation-list li{font-size:12px;color:var(--red);padding:3px 0;display:flex;align-items:center;gap:6px}
+.validation-list li::before{content:"→";font-weight:700}
+.req-asterisk{color:var(--red)}
+/* ── RESUME BANNER ── */
+.resume-banner{background:var(--amber-light);border:0.5px solid var(--amber-border);border-radius:10px;padding:13px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.resume-banner i{font-size:20px;color:var(--amber);flex-shrink:0}
+.resume-title{font-size:13px;font-weight:700;color:var(--text)}
+.resume-sub{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* ── STEP SAVE INDICATOR ── */
+.save-indicator{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--teal);font-weight:600;opacity:0;transition:opacity .3s}
+.save-indicator.show{opacity:1}
+.save-dot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+
+/* ── SOF ROW ── */
+.sof-row{display:grid;grid-template-columns:1fr 150px 34px;gap:8px;align-items:end;margin-bottom:8px}
+.sof-total{background:var(--blue);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.sof-total-lbl{font-size:11px;color:rgba(255,255,255,.7);font-weight:600}
+.sof-total-val{font-size:15px;font-weight:700;color:white}
+
+/* ── UBO CARDS ── */
+.ubo-card{border:0.5px solid rgba(0,0,0,.1);border-radius:10px;overflow:hidden;margin-bottom:10px}
+.ubo-card-hd{background:var(--blue);padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.ubo-card-name{font-size:12px;font-weight:700;color:white}
+.ubo-card-pct{font-size:11px;color:rgba(255,255,255,.7);font-weight:500}
+.ubo-card-body{padding:14px;background:var(--surface)}
+.ubo-pct-bar{height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:4px;overflow:hidden}
+.ubo-pct-fill{height:100%;background:white;border-radius:2px;transition:width .3s}
+.pct-warning{font-size:11px;color:var(--red);font-weight:600;margin-top:6px;display:none}
+
+/* ── UBO STEP (Step 2 UBO sub-forms) ── */
+.ubo-identity-card{border:0.5px solid var(--blue-border);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.ubo-identity-hd{background:var(--blue);padding:12px 18px;display:flex;align-items:center;justify-content:space-between}
+.ubo-identity-title{font-size:13px;font-weight:700;color:white}
+.ubo-identity-badge{font-size:10px;background:rgba(255,255,255,.2);color:white;padding:2px 8px;border-radius:10px;font-weight:600}
+.ubo-identity-body{padding:16px 18px;background:var(--card)}
+.ubo-send-link{display:flex;align-items:center;gap:8px;background:var(--blue-pale);border:0.5px solid var(--blue-border);border-radius:8px;padding:10px 13px;margin-bottom:12px;cursor:pointer;transition:all .13s}
+.ubo-send-link:hover{background:var(--blue-light)}
+.ubo-send-link i{font-size:16px;color:var(--blue);flex-shrink:0}
+.ubo-send-link-title{font-size:12px;font-weight:600;color:var(--blue)}
+.ubo-send-link-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.ubo-link-sent{font-size:11px;color:var(--teal);font-weight:600;display:flex;align-items:center;gap:5px;margin-top:6px;display:none}
+.ubo-manual-toggle{font-size:12px;color:var(--blue);font-weight:600;cursor:pointer;background:none;border:none;font-family:'Manrope',sans-serif;padding:0;display:flex;align-items:center;gap:4px;margin-bottom:10px}
+.ubo-manual-form{display:none}
+.ubo-manual-form.show{display:block}
+
+/* ── PROGRESS STEPS COMPLETE ── */
+.step-complete-badge{display:inline-flex;align-items:center;gap:4px;background:var(--teal-light);border:0.5px solid var(--teal-border);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--teal);margin-left:8px}
+
+/* ── ENGAGEMENT ALWAYS VISIBLE ── */
+.engagement-section{margin-top:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- RESUME BANNER — shown if saved progress exists -->
+<div class="resume-banner" id="resume-banner" style="display:none">
+  <i class="ti ti-clock-hour-4"></i>
+  <div style="flex:1">
+    <div class="resume-title">You have a saved application</div>
+    <div class="resume-sub">You previously started a KYC application. Would you like to continue where you left off?</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0">
+    <button class="btn btn-blue btn-sm" onclick="resumeForm()">Resume</button>
+    <button class="btn btn-sm" onclick="clearSave()">Start fresh</button>
+  </div>
+</div>
+
+
+<!-- HEADER — real Predeevo logo from uploaded SVG, white version -->
+<div class="hdr">
+  <div class="hdr-top">
+    <img src="https://predeevo.com/wp-content/uploads/2026/02/logo-1.png" class="logo-white" alt="Predeevo">
+    <span class="hdr-secure"><i class="ti ti-lock" style="font-size:12px"></i>Secure · Encrypted</span>
+  </div>
+  <h1>Client KYC verification</h1>
+  <p class="hdr-sub">Completing this form fulfils your Know Your Client requirements under Cyprus AML Law 188(I)/2007. All information is encrypted and processed in strict confidence.</p>
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:14.28%"></div></div>
+  <div class="step-lbls">
+    <span class="slbl active" id="sl1">Services</span>
+    <span class="slbl" id="sl2">Identity</span>
+    <span class="slbl" id="sl3">Verify</span>
+    <span class="slbl" id="sl4">Documents</span>
+    <span class="slbl" id="sl5">Questionnaire</span>
+    <span class="slbl" id="sl6">Consent</span>
+    <span class="slbl" id="sl7">Sign</span>
+  </div>
+</div>
+
+<!-- ══ STEP 1 — SERVICES ══ -->
+<div class="step active" id="s1">
+
+  
+  <div class="validation-banner" id="val-banner-s1">
+    <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following required fields before continuing:</div>
+    <ul class="validation-list" id="val-list-s1"></ul>
+  </div>
+<div class="card">
+    <div class="card-title"><i class="ti ti-door-enter"></i>Introduction</div>
+    <div class="fgrid">
+      <div class="fg"><label class="lbl">Was Predeevo introduced to you by someone? <span class="req">*</span></label>
+        <select onchange="document.getElementById('intro-by').style.display=this.value==='yes'?'block':'none'">
+          <option value="no">No</option>
+          <option value="yes">Yes — please specify below</option>
+        </select>
+      </div>
+      <div class="fg" id="intro-by" style="display:none"><label class="lbl">Introduced by <span class="req">*</span></label><input placeholder="Name of person or firm who introduced Predeevo"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-briefcase"></i>Services requested <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:4px">— select all that apply</span></div>
+    <div class="info-box" style="margin-bottom:12px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Select all services you require. For services involving a company or entity, an engagement details form will appear below for you to complete.</div>
+    <div class="svc-grid">
+      <label class="svc-item" onclick="svcT(this,'audit')"><input type="checkbox" value="audit"><span class="svc-label">Audit &amp; assurance</span></label>
+      <label class="svc-item" onclick="svcT(this,'accounting')"><input type="checkbox" value="accounting"><span class="svc-label">Accounting &amp; bookkeeping</span></label>
+      <label class="svc-item" onclick="svcT(this,'tax')"><input type="checkbox" value="tax"><span class="svc-label">Tax advisory &amp; compliance</span></label>
+      <label class="svc-item" onclick="svcT(this,'payroll')"><input type="checkbox" value="payroll"><span class="svc-label">Payroll services</span></label>
+      <label class="svc-item" onclick="svcT(this,'incorp')"><input type="checkbox" value="incorp"><span class="svc-label">Company incorporation</span></label>
+      <label class="svc-item" onclick="svcT(this,'admin')"><input type="checkbox" value="admin"><span class="svc-label">Company administration</span></label>
+      <label class="svc-item" onclick="svcT(this,'director')"><input type="checkbox" value="director"><span class="svc-label">Director / nominee</span></label>
+      <label class="svc-item" onclick="svcT(this,'trust')"><input type="checkbox" value="trust"><span class="svc-label">Trust &amp; foundation</span></label>
+      <label class="svc-item" onclick="svcT(this,'reg')"><input type="checkbox" value="reg"><span class="svc-label">Registered office</span></label>
+      <label class="svc-item" style="grid-column:1/-1" onclick="svcT(this,'other')"><input type="checkbox" value="other"><span class="svc-label">Other (describe below)</span></label>
+    </div>
+    <div class="cond" id="other-svc" style="display:none"><div class="fg" style="margin-bottom:0"><label class="lbl">Describe other services</label><input placeholder="Other services required"></div></div>
+  </div>
+
+  <!-- SINGLE combined engagement card -->
+  <div class="card" id="engagement-card" style="display:block">
+    <div class="card-title"><i class="ti ti-file-description"></i>Engagement details</div>
+    <div class="info-box" style="margin-bottom:16px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>The following information is required based on your selected services, per Appendix A.1 of Predeevo's AML Manual. Please complete all fields marked with <span style="color:var(--red);font-weight:700">*</span>.</div>
+
+    <!-- ── NEW COMPANY INCORPORATION ── -->
+    <div id="incorp-f" style="display:none">
+      <div class="sec-lbl" style="color:var(--blue);border-color:var(--blue-border)">Company incorporation</div>
+
+      <div class="fgrid">
+        <div class="fg full"><label class="lbl">Proposed company name <span class="req">*</span></label><input placeholder="Preferred name for the new company" id="incorp-company-name" oninput="saveProgress()"></div>
+        <div class="fg full"><label class="lbl">Alternative proposed name <span class="hint">(if preferred name unavailable)</span></label><input placeholder="Second choice name"></div>
+        <div class="fg"><label class="lbl">Type of company <span class="req">*</span></label>
+          <select>
+            <option value="">Select...</option>
+            <option>Private Limited Company (Ltd)</option>
+            <option>Public Limited Company (Plc)</option>
+            <option>Partnership</option>
+            <option>Branch of foreign company</option>
+            <option>Holding company</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="fg"><label class="lbl">Country of incorporation <span class="req">*</span></label>
+          <div class="sw"><input class="si" placeholder="Type to search country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden"><div class="dropdown"></div></div>
+        </div>
+        <div class="fg full"><label class="lbl">Principal business activities <span class="req">*</span></label>
+          <textarea placeholder="Describe the main business activities, products/services offered, target markets and countries of operation" id="incorp-activities"></textarea>
+        </div>
+        <div class="fg full"><label class="lbl">Economic rationale and purpose <span class="req">*</span></label>
+          <textarea placeholder="Why is this company being incorporated? Why this jurisdiction? What commercial or economic purpose does it serve?"></textarea>
+        </div>
+        <div class="fg full"><label class="lbl">Source of funds for the company <span class="req">*</span></label>
+          <textarea placeholder="Where will the company's operating funds come from? (e.g. capital injection from shareholders, bank loans, trading income)"></textarea>
+        </div>
+      </div><!-- close fgrid -->
+      <div style="margin-top:14px">
+        <div class="sec-lbl" style="color:var(--blue);border-color:var(--blue-border)">Source of funds</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.55">Declare each source of funds that will flow into this company. Enter numerical values in EUR.</p>
+        <div id="sof-rows">
+          <div class="sof-row">
+            <div class="fg" style="margin-bottom:0">
+              <label class="lbl">Source</label>
+              <select class="sof-type" onchange="calcSOF()">
+                <option value="">Select source...</option>
+                <option>Employment income / salary</option>
+                <option>Business trading income / revenues</option>
+                <option>Share capital injection from shareholders</option>
+                <option>Director loans</option>
+                <option>Bank financing / loans</option>
+                <option>Sale of property or assets</option>
+                <option>Investment returns / dividends</option>
+                <option>Intercompany transfers / group funding</option>
+                <option>Grant or government funding</option>
+                <option>Third party investor funding</option>
+                <option>Inheritance or gift</option>
+                <option>Cryptocurrency liquidation</option>
+                <option>Other (describe below)</option>
+              </select>
+            </div>
+            <div class="fg" style="margin-bottom:0">
+              <label class="lbl">Amount (EUR)</label>
+              <input type="number" class="sof-val" placeholder="0" oninput="calcSOF()" min="0" step="1" step="1">
+            </div>
+            <div style="padding-bottom:1px">
+              <button type="button" onclick="this.closest('.sof-row').remove();calcSOF()" style="width:34px;height:40px;border:0.5px solid var(--red-border);border-radius:8px;background:var(--red-light);color:var(--red);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">×</button>
+            </div>
+          </div>
+        </div>
+        <div id="sof-other" style="display:none;margin-bottom:8px">
+          <div class="fg" style="margin-bottom:0"><label class="lbl">Describe other source of funds</label><textarea placeholder="Full details of this source of funds including origin, amounts and supporting documentation"></textarea></div>
+        </div>
+        <div class="sof-total" style="margin-bottom:8px">
+          <span class="sof-total-lbl">Total (EUR)</span>
+          <span class="sof-total-val" id="sof-total">0</span>
+        </div>
+        <button type="button" class="btn btn-sm" onclick="addSOF()"><i class="ti ti-plus" style="font-size:12px"></i>Add another source</button>
+      </div>
+      <div class="fgrid">
+        <div class="fg"><label class="lbl">Expected turnover Year 1 (EUR) <span class="req">*</span></label>
+          <input type="number" min="0" step="1000" placeholder="e.g. 250000" id="incorp-turnover-y1" oninput="saveProgress()">
+          <div class="field-example">Enter the full amount in EUR — e.g. 250000 for €250,000</div>
+        </div>
+        <div class="fg"><label class="lbl">Expected turnover Year 2 (EUR)</label>
+          <input type="number" min="0" step="1000" placeholder="e.g. 500000" oninput="saveProgress()">
+          <div class="field-example">Projected second-year turnover (estimated)</div>
+        </div>
+        <div class="fg"><label class="lbl">Share capital (EUR) <span class="req">*</span></label><input placeholder="e.g. €1,000"></div>
+        <div class="fg"><label class="lbl">Number of employees expected</label>
+          <select>
+            <option value="">Select...</option>
+            <option>0 (holding / dormant)</option>
+            <option>1–5</option>
+            <option>6–20</option>
+            <option>21–50</option>
+            <option>Over 50</option>
+          </select>
+        </div>
+        <div class="fg"><label class="lbl">Expected countries of operation <span class="req">*</span></label>
+          <input placeholder="e.g. Cyprus, Greece, UAE">
+        </div>
+
+      </div>
+
+      <hr>
+      <div class="sec-lbl">Proposed shareholders</div>
+      <div class="info-box" style="margin-bottom:10px"><i class="ti ti-info-circle" style="font-size:13px;flex-shrink:0;margin-top:1px"></i>List all proposed shareholders. Any shareholder holding <strong>more than 25%</strong> is automatically a UBO under Cyprus AML Law and full KYC will be collected for them in the next step. If no single shareholder exceeds 25%, or if top shareholders are tied, you will be asked to designate a controlling person.</div>
+
+      <div style="background:var(--surface);border-radius:8px;padding:10px 13px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:11px;font-weight:600;color:var(--muted)">Total shareholding declared <span style="font-weight:400;color:var(--subtle)">(must reach 100%)</span></span>
+        <span style="font-size:13px;font-weight:700" id="ubo-pct-total">0%</span>
+      </div>
+      <div id="ubo-pct-incomplete" style="display:block;margin-bottom:8px">
+        <div class="info-box" style="margin-bottom:0"><i class="ti ti-lock" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>All shareholders must be disclosed. Add shareholders until total reaches 100% to proceed.</div>
+      </div>
+      <div id="ubo-pct-complete" style="display:none;margin-bottom:8px">
+        <div class="success-box" style="margin-bottom:0"><i class="ti ti-circle-check" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>All shareholders disclosed — 100% accounted for.</div>
+      </div>
+      <div id="ubo-pct-warn" style="display:none;margin-bottom:8px">
+        <div class="alert-box" style="margin-bottom:0"><i class="ti ti-alert-triangle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Total shareholding exceeds 100%. Please review the percentages.</div>
+      </div>
+
+      <div id="ubo-list">
+        <div class="ubo-block" style="border:0.5px solid rgba(0,0,0,.1);border-radius:9px;padding:13px;margin-bottom:10px;background:var(--surface)" data-ubo-idx="1">
+          <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue);display:flex;justify-content:space-between;align-items:center">
+            Shareholder 1
+            <span class="ubo-auto-ubo" style="display:none;font-size:10px;font-weight:700;color:var(--teal);background:var(--teal-light);padding:2px 8px;border-radius:10px"><i class="ti ti-shield-check" style="font-size:10px"></i> Auto-UBO &gt;25%</span>
+          </div>
+          <div class="fgrid">
+            <div class="fg full"><label class="lbl">Full legal name <span class="req">*</span></label>
+              <input class="ubo-name" placeholder="Full legal name as on passport" oninput="calcUBOPct()">
+            </div>
+            <div class="fg"><label class="lbl">Shareholding % <span class="req">*</span></label>
+              <input type="number" class="ubo-pct" min="0.01" max="100" step="0.01" placeholder="e.g. 50" oninput="calcUBOPct()">
+            </div>
+            <div class="fg"><label class="lbl">Type of shareholding</label>
+              <select><option value="">Select...</option><option>Ordinary shares</option><option>Preference shares</option><option>Indirect holding (through another entity)</option><option>Control through other means</option></select>
+            </div>
+            <div class="fg"><label class="lbl">Nationality <span class="req">*</span></label>
+              <div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden"><div class="dropdown"></div></div>
+            </div>
+            <div class="fg"><label class="lbl">Is this shareholder also the applicant?</label>
+              <select class="ubo-is-applicant" onchange="enforceOneApplicant(this,'ubo-list','ubo-is-applicant');calcUBOPct()"><option value="yes">Yes — this is me</option><option value="no">No — another person</option></select>
+            </div>
+            <div class="fg"><label class="lbl">Email <span class="hint">(for KYC link if separate person)</span></label>
+              <input type="email" class="ubo-email" placeholder="shareholder@email.com">
+            </div>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-sm" onclick="addUBO()" id="add-ubo-btn" style="margin-bottom:10px"><i class="ti ti-plus" style="font-size:12px"></i>Add another shareholder</button>
+
+      <!-- UBO determination result — auto-calculated -->
+      <div id="ubo-determination" style="display:none;margin-top:4px;border:0.5px solid rgba(0,0,0,.1);border-radius:10px;overflow:hidden">
+        <div style="background:var(--blue);padding:10px 14px">
+          <div style="font-size:12px;font-weight:700;color:white">UBO determination</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.65);margin-top:1px">Based on the shareholding percentages entered above</div>
+        </div>
+        <div style="padding:12px 14px;background:var(--surface)">
+          <div id="ubo-auto-list" style="margin-bottom:10px"></div>
+          <!-- Controlling person designation — shown for Rule 2 (no one >25%) or Rule 3 (tied top shareholders) -->
+          <div id="controlling-person-wrap" style="display:none">
+            <div class="warn-box" style="margin-bottom:10px" id="controlling-person-reason">
+              <i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>
+              <span id="controlling-reason-text"></span>
+            </div>
+            <div class="fg" style="margin-bottom:0">
+              <label class="lbl">Designate the controlling person <span class="req">*</span></label>
+              <select id="controlling-person-select">
+                <option value="">Select from shareholders listed above...</option>
+              </select>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px;font-weight:400">This person will be treated as the UBO and full KYC will be collected for them in the next step.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <hr>
+    </div>
+
+    <!-- ── EXISTING ENTITY (admin / director / trust / reg office) ── -->
+    <div id="entity-f">
+      <div class="sec-lbl" style="color:var(--blue);border-color:var(--blue-border)">Existing company / entity profile</div>
+      <div class="fgrid">
+        <div class="fg full"><label class="lbl">Full registered name <span class="req">*</span></label><input placeholder="Full legal name as registered"></div>
+        <div class="fg"><label class="lbl">Country of registration <span class="req">*</span></label>
+          <div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden"><div class="dropdown"></div></div>
+        </div>
+        <div class="fg"><label class="lbl">Registration / company number <span class="req">*</span></label><input placeholder="e.g. HE 123456"></div>
+        <div class="fg"><label class="lbl">Date of incorporation</label><input type="date"></div>
+        <div class="fg full"><label class="lbl">Principal business activities <span class="req">*</span></label>
+          <textarea placeholder="Describe the entity's main activities, products/services, markets and countries of operation" id="entity-activities"></textarea>
+        </div>
+        <div class="fg full"><label class="lbl">Economic rationale for engaging Predeevo <span class="req">*</span></label>
+          <textarea placeholder="Why is the entity engaging Predeevo for these services? What is the business purpose and expected benefit?"></textarea>
+        </div>
+        <div class="fg"><label class="lbl">Last year annual turnover (EUR) <span class="req">*</span></label>
+          <input type="number" min="0" step="1000" placeholder="e.g. 1500000" oninput="saveProgress()">
+          <div class="field-example">Most recent full financial year — enter full amount in EUR</div>
+        </div>
+        <div class="fg"><label class="lbl">Current year projected turnover (EUR)</label>
+          <input type="number" min="0" step="1000" placeholder="e.g. 2000000" oninput="saveProgress()">
+        </div>
+        <div class="fg"><label class="lbl">Number of employees</label>
+          <select>
+            <option value="">Select...</option>
+            <option>0 (holding / dormant)</option>
+            <option>1–5</option>
+            <option>6–20</option>
+            <option>21–50</option>
+            <option>Over 50</option>
+          </select>
+        </div>
+        <div class="fg full"><label class="lbl">Countries of operation</label><input placeholder="List the main countries where the entity operates"></div>
+        <div class="fg full"><label class="lbl">Source of funds / income of the entity</label>
+          <textarea placeholder="Describe how the entity generates income or receives funds"></textarea>
+        </div>
+
+
+      </div>
+      <hr>
+      <div class="sec-lbl">Shareholders</div>
+      <div class="info-box" style="margin-bottom:10px"><i class="ti ti-info-circle" style="font-size:13px;flex-shrink:0;margin-top:1px"></i>List all shareholders of this entity. Any shareholder holding <strong>more than 25%</strong> is automatically a UBO and full KYC will be collected for them in the next step. If no single shareholder exceeds 25% or top shareholders are tied, you will designate a controlling person.</div>
+
+      <div style="background:var(--surface);border-radius:8px;padding:10px 13px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:11px;font-weight:600;color:var(--muted)">Total shareholding declared <span style="font-weight:400;color:var(--subtle)">(must reach 100%)</span></span>
+        <span style="font-size:13px;font-weight:700" id="entity-pct-total">0%</span>
+      </div>
+      <div id="entity-pct-incomplete" style="display:block;margin-bottom:8px">
+        <div class="info-box" style="margin-bottom:0"><i class="ti ti-lock" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>All shareholders must be disclosed. Add shareholders until total reaches 100% to proceed.</div>
+      </div>
+      <div id="entity-pct-complete" style="display:none;margin-bottom:8px">
+        <div class="success-box" style="margin-bottom:0"><i class="ti ti-circle-check" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>All shareholders disclosed — 100% accounted for.</div>
+      </div>
+      <div id="entity-pct-warn" style="display:none;margin-bottom:8px">
+        <div class="alert-box" style="margin-bottom:0"><i class="ti ti-alert-triangle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Total shareholding exceeds 100%. Please review the percentages.</div>
+      </div>
+
+      <div id="entity-ubo-list">
+        <div class="entity-ubo-block" style="border:0.5px solid rgba(0,0,0,.1);border-radius:9px;padding:13px;margin-bottom:10px;background:var(--surface)">
+          <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue);display:flex;justify-content:space-between;align-items:center">
+            Shareholder 1
+            <span class="entity-auto-ubo" style="display:none;font-size:10px;font-weight:700;color:var(--teal);background:var(--teal-light);padding:2px 8px;border-radius:10px"><i class="ti ti-shield-check" style="font-size:10px"></i> Auto-UBO &gt;25%</span>
+          </div>
+          <div class="fgrid">
+            <div class="fg full"><label class="lbl">Full legal name <span class="req">*</span></label>
+              <input class="entity-ubo-name" placeholder="Full legal name as on passport" oninput="calcEntityPct()">
+            </div>
+            <div class="fg"><label class="lbl">Shareholding %</label>
+              <input type="number" class="entity-ubo-pct" min="0.01" max="100" step="0.01" placeholder="e.g. 50" oninput="calcEntityPct()">
+            </div>
+            <div class="fg"><label class="lbl">Type of shareholding</label>
+              <select><option value="">Select...</option><option>Ordinary shares</option><option>Preference shares</option><option>Indirect holding (through another entity)</option><option>Control through other means</option></select>
+            </div>
+            <div class="fg"><label class="lbl">Nationality</label>
+              <div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden"><div class="dropdown"></div></div>
+            </div>
+            <div class="fg"><label class="lbl">Is this shareholder also the applicant?</label>
+              <select class="entity-ubo-is-applicant" onchange="enforceOneApplicant(this,'entity-ubo-list','entity-ubo-is-applicant');calcEntityPct()"><option value="yes">Yes — this is me</option><option value="no">No — another person</option></select>
+            </div>
+            <div class="fg"><label class="lbl">Email <span class="hint">(for KYC link if separate person)</span></label>
+              <input type="email" class="entity-ubo-email" placeholder="shareholder@email.com">
+            </div>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-sm" onclick="addEntityUBO()" style="margin-bottom:10px"><i class="ti ti-plus" style="font-size:12px"></i>Add another shareholder</button>
+
+      <!-- Entity UBO determination -->
+      <div id="entity-ubo-determination" style="display:none;border:0.5px solid rgba(0,0,0,.1);border-radius:10px;overflow:hidden;margin-top:4px">
+        <div style="background:var(--blue);padding:10px 14px">
+          <div style="font-size:12px;font-weight:700;color:white">UBO determination</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.65);margin-top:1px">Based on the shareholding percentages entered above</div>
+        </div>
+        <div style="padding:12px 14px;background:var(--surface)">
+          <div id="entity-ubo-auto-list" style="margin-bottom:10px"></div>
+          <div id="entity-controlling-wrap" style="display:none">
+            <div class="warn-box" style="margin-bottom:10px">
+              <i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>
+              <span id="entity-controlling-reason-text"></span>
+            </div>
+            <div class="fg" style="margin-bottom:0">
+              <label class="lbl">Designate the controlling person <span class="req">*</span></label>
+              <select id="entity-controlling-select">
+                <option value="">Select from shareholders listed above...</option>
+              </select>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">This person will be treated as the UBO and full KYC will be collected in the next step.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <span class="step-count">Step 1 of 7</span>
+    <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
+    <button class="btn btn-blue" onclick="validateAndProceed(1,2)">Continue <i class="ti ti-arrow-right"></i></button>
+  </div>
+</div>
+
+<!-- ══ STEP 2 — IDENTITY ══ -->
+<div class="step" id="s2">
+
+  <div class="validation-banner" id="val-banner-s2">
+    <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following required fields before continuing:</div>
+    <ul class="validation-list" id="val-list-s2"></ul>
+  </div>
+
+  <!-- UBO IDENTITY COLLECTION — dynamically populated from Step 1 -->
+  <div id="ubo-identity-section" style="display:none">
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title"><i class="ti ti-users"></i>Identity collection</div>
+      <div class="info-box" style="margin-bottom:0"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>The following persons require full KYC based on their shareholding declared in Step 1. Your details are pre-filled — click your name to review. Click other names to open and complete their identity form.</div>
+    </div>
+    <div id="ubo-identity-cards">
+      <!-- populated dynamically by renderUBOIdentityCards() -->
+    </div>
+  </div>
+
+  <!-- Shown if applicant is the sole UBO -->
+  <div id="no-ubo-section" style="display:none">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-circle-check" style="color:var(--teal)"></i>Identity confirmed</div>
+      <div class="success-box" style="margin-bottom:0"><i class="ti ti-circle-check" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>You are the sole qualifying UBO. Your identity will be verified in the next step.</div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-back" onclick="gs(1)"><i class="ti ti-arrow-left"></i> Back</button>
+    <span class="step-count">Step 2 of 7</span>
+    <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
+    <button class="btn btn-blue" onclick="validateAndProceed(2,3)">Continue <i class="ti ti-arrow-right"></i></button>
+  </div>
+</div>
+<!-- ══ STEP 3 — VERIFICATION ══ -->
+<div class="step" id="s3">
+  <div class="card">
+    <div class="card-title"><i class="ti ti-fingerprint"></i>Identity verification — applicant only</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">This step verifies <strong>your identity only</strong> as the applicant. Other UBOs or shareholders listed in Step 2 will complete their own biometric verification via their individual KYC links. Please have your passport or national ID ready — this takes under 2 minutes.</p>
+    <div class="alert-box"><i class="ti ti-shield" style="font-size:14px;flex-shrink:0;margin-top:1px"></i><strong>Biometric data consent (GDPR Art. 9).</strong> Facial recognition is special category data. Your biometric data is processed solely for identity verification and deleted immediately after the check is complete.</div>
+    <div style="border:0.5px solid var(--blue-border);border-radius:9px;padding:12px 14px;background:var(--blue-pale);margin-bottom:14px">
+      <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer">
+        <input type="checkbox" id="bio-c" style="width:15px;height:15px;accent-color:var(--blue);margin-top:2px;flex-shrink:0">
+        <span style="font-size:12px;font-weight:500;color:var(--text)">I consent to biometric processing for AML identity verification under GDPR Art. 9(2)(a).</span>
+      </label>
+    </div>
+    <div id="vsteps">
+      <div class="vs-row act" id="vs1"><div class="vs-icon vsi-act"><i class="ti ti-id-badge-2"></i></div><div><div class="vs-title">Document scan</div><div class="vs-desc">Photograph your passport or national ID. All four corners visible, no glare.</div><div class="vs-tag vst-a"><i class="ti ti-upload" style="font-size:10px"></i>Ready to upload</div></div></div>
+      <div class="vs-row" id="vs2"><div class="vs-icon vsi-pend"><i class="ti ti-camera-selfie"></i></div><div><div class="vs-title">Liveness check &amp; selfie</div><div class="vs-desc">Follow on-screen prompts. Your face is matched to your document photograph.</div><div class="vs-tag vst-w">Waiting</div></div></div>
+      <div class="vs-row" id="vs3"><div class="vs-icon vsi-pend"><i class="ti ti-world-search"></i></div><div><div class="vs-title">AML screening</div><div class="vs-desc">Checked against PEP lists, global sanctions databases, and adverse media.</div><div class="vs-tag vst-w">Waiting</div></div></div>
+    </div>
+    <div id="v-running" style="display:none;text-align:center;padding:18px 0"><div class="spinner"></div><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Verifying identity...</div><div style="font-size:11px;color:var(--muted)">Please keep this window open. Usually 10–30 seconds.</div></div>
+    <div id="v-result" style="display:none">
+      <div class="vr-box"><div><div class="vr-num">98%</div><div class="vr-lbl">Match score</div></div><div class="vr-bars"><div class="vr-bar-row"><span class="vr-bar-lbl">Document</span><div class="vr-track"><div class="vr-fill" style="width:100%"></div></div></div><div class="vr-bar-row"><span class="vr-bar-lbl">Face match</span><div class="vr-track"><div class="vr-fill" style="width:98%"></div></div></div><div class="vr-bar-row"><span class="vr-bar-lbl">Liveness</span><div class="vr-track"><div class="vr-fill" style="width:100%"></div></div></div><div class="vr-bar-row"><span class="vr-bar-lbl">AML screen</span><div class="vr-track"><div class="vr-fill" style="width:100%"></div></div></div></div></div>
+      <div class="success-box" style="margin-top:10px;margin-bottom:0"><i class="ti ti-circle-check" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Identity verified · Document authentic · Face matched · AML clear. Ref: <strong style="font-family:monospace">SUM-2026-AB7F291</strong></div>
+    </div>
+    <button class="btn btn-blue" style="width:100%;justify-content:center;margin-top:14px" id="v-btn" onclick="runV()"><i class="ti ti-fingerprint" style="font-size:14px"></i>Start verification</button>
+    <div style="text-align:center;margin-top:8px;font-size:10px;color:var(--subtle)">Powered by Sumsub · eIDAS compliant · GDPR Art. 9 · Biometric data deleted after verification</div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-back" onclick="gs(2)"><i class="ti ti-arrow-left"></i> Back</button>
+    <span class="step-count">Step 3 of 7</span>
+    <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
+    <button class="btn btn-blue" id="v-next" onclick="gs(4)" disabled style="opacity:.4;cursor:not-allowed">Continue <i class="ti ti-arrow-right"></i></button>
+  </div>
+</div>
+
+<!-- ══ STEP 4 — DOCUMENTS ══ -->
+<div class="step" id="s4">
+  
+  <div class="validation-banner" id="val-banner-s4">
+    <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following required fields before continuing:</div>
+    <ul class="validation-list" id="val-list-s4"></ul>
+  </div>
+<div class="card">
+    <div class="card-title"><i class="ti ti-folder"></i>Supporting documents</div>
+    <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Your passport/ID was captured in Step 3. Only proof of address is additionally required. All other items are optional but recommended.</div>
+
+    <div class="sec-lbl">Required</div>
+    <div class="doc-row locked"><div class="doc-icon done"><i class="ti ti-check"></i></div><div class="doc-info"><div class="doc-name">Passport / National ID</div><div class="doc-desc">Captured and verified via biometric scan in Step 3</div></div><span class="doc-st ds-done">Verified ✓</span></div>
+    <div class="doc-row" onclick="dT(this,true)"><div class="doc-icon"><i class="ti ti-home"></i></div><div class="doc-info"><div class="doc-name">Proof of residential address <span style="color:var(--red)">*</span></div><div class="doc-desc">Utility bill or bank statement — dated within 6 months · Full name and address visible</div></div><span class="doc-st ds-req">Required</span></div>
+
+    <div class="sec-lbl" style="margin-top:16px">Curriculum Vitae</div>
+    <div class="doc-row" id="cv-row" onclick="cvT()"><div class="doc-icon" id="cv-icon"><i class="ti ti-id-badge"></i></div><div class="doc-info"><div class="doc-name">Curriculum Vitae <span style="color:var(--red)">*</span></div><div class="doc-desc">Upload your CV — or complete the employment history form below. <strong>Required for all clients.</strong></div></div><span class="doc-st ds-req" id="cv-st">Required</span></div>
+    <div id="cv-form" style="display:none;border:0.5px solid rgba(0,0,0,.1);border-radius:10px;padding:14px;margin-top:8px;background:var(--surface)">
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">Employment history <button class="btn btn-sm" onclick="addEmp()"><i class="ti ti-plus" style="font-size:12px"></i>Add previous</button></div>
+      <div id="emp-list">
+        <div style="border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)">
+          <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue)">Current / most recent</div>
+          <div class="fgrid">
+            <div class="fg"><label class="lbl">Employer name</label><input placeholder="Company or organisation"></div>
+            <div class="fg"><label class="lbl">Position / title</label><input placeholder="Job title"></div>
+            <div class="fg"><label class="lbl">From</label><input type="month"></div>
+            <div class="fg"><label class="lbl">To (leave blank if current)</label><input type="month"></div>
+            <div class="fg full"><label class="lbl">Nature of work</label><input placeholder="Brief description of role and responsibilities"></div>
+          </div>
+        </div>
+      </div>
+
+    <div class="sec-lbl" style="margin-top:16px">Optional — recommended</div>
+    <div class="doc-row" onclick="dT(this,false)"><div class="doc-icon"><i class="ti ti-cash"></i></div><div class="doc-info"><div class="doc-name">Source of funds evidence</div><div class="doc-desc">Payslips, employment contract, audited accounts, sale agreement</div></div><span class="doc-st ds-opt">Optional</span></div>
+    <div class="doc-row" onclick="dT(this,false)"><div class="doc-icon"><i class="ti ti-building-bank"></i></div><div class="doc-info"><div class="doc-name">Bank statement (last 3 months)</div><div class="doc-desc">From your main account</div></div><span class="doc-st ds-opt">Optional</span></div>
+    <div class="doc-row" onclick="dT(this,false)"><div class="doc-icon"><i class="ti ti-file-text"></i></div><div class="doc-info"><div class="doc-name">Tax Identification Number document</div><div class="doc-desc">Official document showing your TIN / AFM</div></div><span class="doc-st ds-opt">Optional</span></div>
+
+    <div class="sec-lbl" style="margin-top:16px">Curriculum Vitae (Employment history)</div>
+    </div>
+
+    <!-- Source of Wealth — PEP only -->
+    <div id="sow-section" style="display:none;margin-top:12px">
+      <div class="sec-lbl">Source of wealth — EDD required (PEP declared)</div>
+      <div class="alert-box"><i class="ti ti-alert-triangle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>As a declared PEP, you must provide details of how your total net worth was accumulated. Add each source separately.</div>
+      <div id="sow-rows">
+        <div class="wealth-row">
+          <div class="fg" style="margin-bottom:0"><label class="lbl">Type of wealth</label><select class="sow-type" onchange="calcSOW()"><option value="">Select...</option><option>Immovable property (land / buildings owned)</option><option>Cash at bank / savings</option><option>Movable property (vehicles, vessels, aircraft, art, jewellery)</option><option>Shares / stocks / equity investments</option><option>Bonds / fixed income investments</option><option>Investment funds / unit trusts</option><option>Cryptocurrency / digital assets</option><option>Pension / retirement fund</option><option>Business ownership (company equity / shareholding)</option><option>Inheritance received</option><option>Gift received</option><option>Insurance policy / surrender value</option><option>Intellectual property / royalties</option><option>Other (describe below)</option></select></div>
+          <div class="fg" style="margin-bottom:0"><label class="lbl">Est. value (EUR)</label><input type="number" class="sow-val" placeholder="0" oninput="calcSOW()" min="0"></div>
+          <div style="padding-bottom:1px"><button onclick="this.closest('.wealth-row').remove();calcSOW()" style="width:34px;height:40px;border:0.5px solid var(--red-border);border-radius:8px;background:var(--red-light);color:var(--red);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">×</button></div>
+        </div>
+      </div>
+      <div id="sow-other" style="display:none;margin-bottom:8px"><div class="fg" style="margin-bottom:0"><label class="lbl">Describe other source of wealth</label><textarea placeholder="Provide full details including counterparties, dates, amounts"></textarea></div></div>
+      <button class="btn btn-sm" onclick="addSOW()" style="margin-bottom:10px"><i class="ti ti-plus" style="font-size:12px"></i>Add another source</button>
+      <div class="wealth-total"><span class="wt-lbl">Total estimated net worth</span><span class="wt-val" id="sow-total">€0</span></div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-back" onclick="gs(3)"><i class="ti ti-arrow-left"></i> Back</button>
+    <span class="step-count">Step 4 of 7</span>
+    <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
+    <button class="btn btn-blue" onclick="validateAndProceed(4,5)">Continue <i class="ti ti-arrow-right"></i></button>
+  </div>
+</div>
+
+<!-- ══ STEP 5 — QUESTIONNAIRE ══ -->
+<div class="step" id="s5">
+  
+  <div class="validation-banner" id="val-banner-s5">
+    <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following required fields before continuing:</div>
+    <ul class="validation-list" id="val-list-s5"></ul>
+  </div>
+<div class="card">
+    <div class="card-title"><i class="ti ti-list-check"></i>Background questionnaire <span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:4px">— all questions required</span></div>
+    <div class="info-box" style="margin-bottom:12px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>All questions must be answered before you can proceed. Select YES or NO for each. Where YES (or NO for inverted questions) is selected, please provide full details in the field that appears.</div>
+    <div id="q-list"></div>
+    <div style="margin-top:14px;background:var(--surface);border-radius:9px;padding:11px 14px;border:var(--border)">
+      <p style="font-size:12px;color:var(--muted);line-height:1.55"><strong style="color:var(--text)">Declaration:</strong> I hereby declare and confirm that the answers to the above questions are true and correct.</p>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-back" onclick="gs(4)"><i class="ti ti-arrow-left"></i> Back</button>
+    <span class="step-count">Step 5 of 7</span>
+    <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
+    <button class="btn btn-blue" onclick="validateAndProceed(5,6)">Continue <i class="ti ti-arrow-right"></i></button>
+  </div>
+</div>
+
+<!-- ══ STEP 6 — CONSENT & DECLARATIONS ══ -->
+<div class="step" id="s6">
+  
+  <div class="validation-banner" id="val-banner-s6">
+    <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following required fields before continuing:</div>
+    <ul class="validation-list" id="val-list-s6"></ul>
+  </div>
+<div class="card">
+    <div class="card-title"><i class="ti ti-shield-check"></i>Data protection consent</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.55">Please read the following carefully before confirming.</p>
+    <div class="consent-scroll">
+      <strong>EXPRESS CONSENT AND STATEMENT OF ACKNOWLEDGEMENT BY NATURAL PERSONS IN RELATION TO THE COLLECTION AND PROCESSING OF PERSONAL DATA</strong><br><br>
+      I hereby state in full comprehension that I expressly consent to the collection and processing by <strong>Predeevo Ltd</strong> (including its subsidiaries, associates and connected companies, herein "PREDEEVO"), of my personal data, whether sensitive or not, in accordance with applicable Processing of Personal Data Protection Laws.<br><br>
+      Data includes information relating to me which has been given or shall be given in the future by me to PREDEEVO — during the submission of applications and any other documents, or extracted through the execution of my instructions and in general through services rendered to me by PREDEEVO.<br><br>
+      Processing includes the collection, recording, organization, maintenance, storage, amendment, extraction, use, transfer, transmission or any other form of distribution, the correlation or the combination, the linking, locking, deletion and destruction of the data.<br><br>
+      I acknowledge that PREDEEVO shall maintain archives, electronic or other, and shall process the data for the purpose of supporting, promoting and servicing our business relationship which includes but is not limited to the provision of fiduciary services, accounting services, tax planning services, auditing services, bank introduction services, and legal and business consultancy services.<br><br>
+      I acknowledge that my data may be processed for distance provision of services by PREDEEVO through the post and/or the telephone and/or the internet and/or otherwise and I expressly consent to the processing of my data for this purpose.<br><br>
+      I acknowledge that according to the Laws my personal data shall be maintained <strong>absolutely confidential</strong> and shall be treated with confidentiality by PREDEEVO and its authorised and appropriately trained employees and cooperators.<br><br>
+      <strong>Any information relating to me shall not be disclosed to third parties unless:</strong><br>
+      • Upon my request or with my consent<br>
+      • Upon my bankruptcy<br>
+      • If required by Law or Court Order<br>
+      • If disclosed within the framework of any court proceedings between us<br>
+      • If necessary for the protection of the interests of PREDEEVO<br>
+      • If disclosed to persons who provide support services to PREDEEVO<br>
+      • If disclosed to associates who provide services to me through PREDEEVO including banks and lawyers<br><br>
+      I acknowledge that I have the right of access to and rectification of the data and the right of objection upon my written application and payment of the relevant sum.
+    </div>
+    <div class="decl"><input type="checkbox" id="dc1" onchange="chkD()"><span class="decl-txt"><strong>I expressly consent</strong> to the collection and processing of my personal data by Predeevo Ltd as described above, in accordance with applicable Personal Data Protection Laws and GDPR. My data will be retained for a minimum of 5 years after the end of our business relationship.</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-writing"></i>Declarations <span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:4px">— all required</span></div>
+    <div class="decl"><input type="checkbox" id="dc2" onchange="chkD()"><span class="decl-txt"><strong>Accuracy.</strong> All information and documents provided are true, accurate, and complete. Knowingly providing false information is a criminal offence under Article 3 of the Cyprus AML Law — up to 2 years imprisonment and/or a fine of up to €100,000.</span></div>
+    <div class="decl"><input type="checkbox" id="dc3" onchange="chkD()"><span class="decl-txt"><strong>Legitimate funds.</strong> The funds and assets I intend to use in my relationship with Predeevo Ltd are from legitimate sources and are not the proceeds of any criminal activity.</span></div>
+    <div class="decl"><input type="checkbox" id="dc4" onchange="chkD()"><span class="decl-txt"><strong>PEP and sanctions.</strong> My PEP declaration is accurate. I am not subject to any EU, UN, or US sanctions and no sanctions apply to my business or known associates.</span></div>
+    <div class="decl"><input type="checkbox" id="dc5" onchange="chkD()"><span class="decl-txt"><strong>Ongoing duty to update.</strong> I will notify Predeevo Ltd promptly of any material changes including beneficial ownership, PEP status, source of funds, or jurisdiction.</span></div>
+    <div class="decl"><input type="checkbox" id="dc6" onchange="chkD()"><span class="decl-txt"><strong>MOKAS reporting.</strong> I acknowledge Predeevo's legal obligation to report suspicious activity to MOKAS (Cyprus FIU) without prior notification. Tipping off is a criminal offence under Cyprus law.</span></div>
+    <div class="decl"><input type="checkbox" id="dc7" onchange="chkD()"><span class="decl-txt"><strong>AML awareness.</strong> I am fully aware of the Prevention and Suppression of Money Laundering Activities Laws and relevant regulations issued by the competent authorities of Cyprus.</span></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-back" onclick="gs(5)"><i class="ti ti-arrow-left"></i> Back</button>
+    <span class="step-count">Step 6 of 7</span>
+    <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
+    <button class="btn btn-blue" id="d-next" onclick="validateAndProceed(6,7)">Continue to signature <i class="ti ti-arrow-right"></i></button>
+  </div>
+</div>
+
+<!-- ══ STEP 7 — SIGNATURE ══ -->
+<div class="step" id="s7">
+  
+  <div class="validation-banner" id="val-banner-s7">
+    <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following required fields before continuing:</div>
+    <ul class="validation-list" id="val-list-s7"></ul>
+  </div>
+<div class="card">
+    <div class="card-title"><i class="ti ti-certificate"></i>Electronic signature</div>
+    <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Only you — the person named in this form — may sign this declaration. Please select your preferred method.</div>
+
+    <!-- Option 1 -->
+    <div class="sig-opt" id="sig-own" onclick="sigS('own')">
+      <div class="sig-hd">
+        <input type="radio" name="sig" value="own">
+        <div>
+          <span class="sig-title"><i class="ti ti-certificate" style="color:var(--blue);font-size:13px;margin-right:4px"></i>I have my own eIDAS electronic signature</span>
+          <span class="sig-sub">You already have a qualified or advanced electronic signature (Evrotrust, itsme, ADACOM, bank-issued digital ID, etc.). Zero cost — apply your existing certificate.</span>
+        </div>
+      </div>
+      <div class="sig-detail" id="sd-own">
+        <div class="eidas-box"><i class="ti ti-shield-check"></i><div><div class="eidas-title">eIDAS Advanced or Qualified Electronic Signature</div><div class="eidas-sub">Upload your signed declaration PDF, or paste your certificate reference. Verified against the EU Trust List.</div></div></div>
+        <div class="fg"><label class="lbl">Upload signed declaration PDF <span class="req">*</span></label><div class="upload-zone" onclick="alert('File picker in live app')"><i class="ti ti-upload" style="font-size:20px;color:var(--muted);display:block;margin-bottom:5px"></i><div style="font-size:12px;font-weight:600">Click to upload signed PDF</div><div style="font-size:10px;color:var(--subtle);margin-top:3px">PDF only · Max 10MB</div></div></div>
+        <div class="fg" style="margin-bottom:0"><label class="lbl">eIDAS certificate reference (optional)</label><input placeholder="Certificate serial number or provider reference"></div>
+      </div>
+    </div>
+
+    <!-- Option 2 -->
+    <div class="sig-opt" id="sig-physical" onclick="sigS('physical')">
+      <div class="sig-hd">
+        <input type="radio" name="sig" value="physical">
+        <div>
+          <span class="sig-title"><i class="ti ti-pen" style="color:var(--blue);font-size:13px;margin-right:4px"></i>I will sign physically (wet ink)</span>
+          <span class="sig-sub">Download the declaration PDF, print and sign by hand, then upload a clear scan. Or sign in person at our Larnaca office.</span>
+        </div>
+      </div>
+      <div class="sig-detail" id="sd-physical">
+        <button class="btn btn-sm" style="width:100%;justify-content:center;margin-bottom:12px" onclick="alert('PDF download in live app')"><i class="ti ti-download" style="font-size:13px"></i>Download declaration PDF</button>
+        <div class="fg"><label class="lbl">Upload signed document <span class="req">*</span><span class="hint">Scan or clear photo — signature must be visible</span></label><div class="upload-zone" onclick="alert('File picker in live app')"><i class="ti ti-upload" style="font-size:20px;color:var(--muted);display:block;margin-bottom:5px"></i><div style="font-size:12px;font-weight:600">Click to upload</div><div style="font-size:10px;color:var(--subtle);margin-top:3px">PDF, JPG or PNG · Max 10MB</div></div></div>
+        <div class="fg" style="margin-bottom:0"><label class="lbl">Or — signing in person</label><input placeholder="Appointment date / confirmation reference (if applicable)"></div>
+      </div>
+    </div>
+
+    <!-- Option 3 -->
+    <div class="sig-opt" id="sig-evrotrust" onclick="sigS('evrotrust')">
+      <div class="sig-hd">
+        <input type="radio" name="sig" value="evrotrust">
+        <div>
+          <span class="sig-title"><i class="ti ti-device-mobile" style="color:var(--blue);font-size:13px;margin-right:4px"></i>Sign via Evrotrust QES (EU Trust List QTSP)</span>
+          <span class="sig-sub">We send a signing request to your phone. Sign with a Qualified Electronic Signature — legally equivalent to wet ink across all EU member states. A small fee (~€5–15) may apply.</span>
+        </div>
+      </div>
+      <div class="sig-detail" id="sd-evrotrust">
+        <div class="eidas-box"><i class="ti ti-shield-check"></i><div><div class="eidas-title">Qualified Electronic Signature (QES) — Evrotrust</div><div class="eidas-sub">eIDAS Regulation 910/2014 · AI facial recognition · Under 5 minutes on your phone</div></div></div>
+        <div class="warn-box" style="margin-bottom:12px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>A fee of approximately €5–15 applies, charged by Evrotrust. Predeevo will confirm before sending the request.</div>
+        <div class="fg"><label class="lbl">Mobile number <span class="req">*</span></label>
+          <div class="phone-row">
+            <div style="position:relative"><input id="evro-cc" class="si" placeholder="+357" style="width:100%" oninput="spc(this)" onfocus="spdd(this)" onblur="sphdd(this)"><div class="dropdown" style="width:240px" id="dd-evro"></div></div>
+            <input placeholder="Mobile number" type="tel">
+          </div>
+        </div>
+        <div id="evro-sent" style="display:none"><div class="success-box" style="margin-bottom:0"><i class="ti ti-check-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Signing request sent. Open the Evrotrust app on your phone and complete the process.</div></div>
+        <button class="btn btn-blue" style="width:100%;justify-content:center;margin-top:10px" onclick="sendEvro()"><i class="ti ti-send" style="font-size:13px"></i>Send signing request</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="warn-box"><i class="ti ti-lock" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>By submitting you are making a formal declaration under Cyprus AML Law 188(I)/2007. Your submission is encrypted and stored securely with your verified identity reference.</div>
+
+  <div class="btn-row">
+    <button class="btn-back" onclick="gs(6)"><i class="ti ti-arrow-left"></i> Back</button>
+    <span class="step-count">Step 7 of 7</span>
+    <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
+    <button class="btn btn-blue" onclick="validateAndProceed(7,'submit')"><i class="ti ti-send" style="font-size:13px"></i>Submit KYC</button>
+  </div>
+</div>
+
+<!-- SUCCESS -->
+<div class="step" id="s-success">
+  <div class="card">
+    <div class="success-wrap">
+      <div class="success-icon"><i class="ti ti-check"></i></div>
+      <div style="font-size:19px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-.3px">Submission complete</div>
+      <div style="font-size:13px;color:var(--muted);max-width:400px;margin:0 auto;line-height:1.65">Thank you. Your KYC form, verified identity, and signed declaration have been submitted securely to Predeevo's compliance team. We will review your file and contact you within 3 business days.</div>
+      <div class="ref-box"><div class="ref-lbl">Your reference</div><div class="ref-num" id="ref-num">KYC-2026-0047</div></div>
+      <div style="margin-top:20px;display:flex;flex-direction:column;gap:8px;align-items:center">
+        <button class="btn btn-blue" onclick="dlPDF()" style="min-width:240px;justify-content:center"><i class="ti ti-download" style="font-size:14px"></i>Download your application (PDF)</button>
+        
+      </div>
+      <div style="margin-top:16px;font-size:11px;color:var(--subtle)">Predeevo Ltd · Sintika Hanum 58, 6051 Larnaca, Cyprus<br>Tel: +357 24255858 · info@predeevo.com</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<!-- PEP MODAL -->
+<div class="modal-bg" id="pep-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title"><i class="ti ti-user-shield" style="color:var(--blue);margin-right:6px"></i>What is a Politically Exposed Person (PEP)?</div><button class="modal-x" onclick="document.getElementById('pep-modal').classList.remove('open')"><i class="ti ti-x"></i></button></div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">A <strong style="color:var(--text)">Politically Exposed Person (PEP)</strong> is a natural person who is or has been entrusted with a prominent public function. Under Cyprus AML Law 188(I)/2007, PEPs are subject to Enhanced Due Diligence.</p>
+    <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">The following are considered PEPs:</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;font-size:12px;color:var(--muted)">
+      <div style="display:flex;gap:8px"><span style="color:var(--blue);font-weight:700;flex-shrink:0">→</span>Heads of State, heads of government, ministers and deputy ministers</div>
+      <div style="display:flex;gap:8px"><span style="color:var(--blue);font-weight:700;flex-shrink:0">→</span>Members of Parliament or similar legislative bodies</div>
+      <div style="display:flex;gap:8px"><span style="color:var(--blue);font-weight:700;flex-shrink:0">→</span>Members of governing bodies of political parties</div>
+      <div style="display:flex;gap:8px"><span style="color:var(--blue);font-weight:700;flex-shrink:0">→</span>Members of supreme courts, constitutional courts, or other high-level judicial bodies</div>
+      <div style="display:flex;gap:8px"><span style="color:var(--blue);font-weight:700;flex-shrink:0">→</span>Members of courts of auditors or boards of central banks</div>
+      <div style="display:flex;gap:8px"><span style="color:var(--blue);font-weight:700;flex-shrink:0">→</span>Ambassadors, chargés d'affaires, and high-ranking military officers</div>
+      <div style="display:flex;gap:8px"><span style="color:var(--blue);font-weight:700;flex-shrink:0">→</span>Members of administrative / supervisory bodies of State-owned enterprises</div>
+      <div style="display:flex;gap:8px"><span style="color:var(--blue);font-weight:700;flex-shrink:0">→</span>Directors and board members of international organisations · Mayors</div>
+    </div>
+    <div style="background:var(--amber-light);border:0.5px solid var(--amber-border);border-radius:8px;padding:10px 13px;margin-bottom:10px;font-size:11px;color:var(--amber);line-height:1.55"><strong>Also included:</strong> Close family members (spouse, children and their spouses, parents) and known close associates.</div>
+    <div style="background:var(--blue-light);border:0.5px solid var(--blue-border);border-radius:8px;padding:10px 13px;font-size:11px;color:var(--blue);line-height:1.55"><strong>12-month rule:</strong> A person continues to be treated as a PEP for a minimum of 12 months after ceasing to hold a prominent public function.</div>
+    <button class="btn btn-blue" style="width:100%;justify-content:center;margin-top:16px" onclick="document.getElementById('pep-modal').classList.remove('open')">Close</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// PREDEEVO KYC FORM — ENHANCED JS
+// Features: localStorage save/resume, UBO % validation,
+//           SOF calculator, UBO identity cards, field hints
+// ═══════════════════════════════════════════════════════
+
+// ── WORLD COUNTRIES ──
+const COUNTRIES=["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","DR Congo","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"];
+const HIGH_RISK=["Afghanistan","Algeria","Angola","Bolivia","Cambodia","Cameroon","DR Congo","Haiti","Iran","Kenya","Laos","Lebanon","Monaco","Morocco","Myanmar","Namibia","Nepal","Nicaragua","North Korea","Pakistan","Russia","Syria","Trinidad and Tobago","Vanuatu","Venezuela","Yemen"];
+const PHONE_CODES=[["CY","+357"],["GR","+30"],["GB","+44"],["US","+1"],["DE","+49"],["FR","+33"],["IT","+39"],["ES","+34"],["RU","+7"],["CN","+86"],["IN","+91"],["JP","+81"],["AE","+971"],["SA","+966"],["IL","+972"],["TR","+90"],["EG","+20"],["ZA","+27"],["BR","+55"],["AU","+61"],["CA","+1"],["NL","+31"],["BE","+32"],["AT","+43"],["CH","+41"],["SE","+46"],["NO","+47"],["DK","+45"],["FI","+358"],["PL","+48"],["PT","+351"],["BG","+359"],["MT","+356"],["RO","+40"],["HU","+36"]];
+
+// ── SEARCHABLE COUNTRY ──
+function sc(inp){
+  const q=inp.value.toLowerCase().trim();
+  const wrap=inp.closest('.sw');
+  if(!wrap)return;
+  const dd=wrap.querySelector('.dropdown');
+  if(!dd)return;
+  dd.innerHTML='';
+  if(!q){dd.classList.remove('open');return;}
+  const m=COUNTRIES.filter(c=>c.toLowerCase().startsWith(q)).concat(COUNTRIES.filter(c=>c.toLowerCase().includes(q)&&!c.toLowerCase().startsWith(q))).slice(0,10);
+  if(!m.length){dd.innerHTML='<div class="dd-empty">No results for "'+q+'"</div>';}
+  m.forEach(c=>{
+    const d=document.createElement('div');d.className='dd-item';d.textContent=c;
+    d.onmousedown=e=>{
+      e.preventDefault();
+      inp.value=c;
+      const hidden=wrap.querySelector('input[type=hidden]');
+      if(hidden)hidden.value=c;
+      dd.classList.remove('open');
+      if(inp.id==='addr-ci'||inp.closest('#s2'))chkHR(c);
+      saveProgress();
+    };
+    dd.appendChild(d);
+  });
+  dd.classList.add('open');
+}
+function sdd(inp){const dd=inp.closest('.sw')?.querySelector('.dropdown');if(dd&&inp.value)dd.classList.add('open');}
+function hdd(inp){setTimeout(()=>{const dd=inp.closest('.sw')?.querySelector('.dropdown');if(dd)dd.classList.remove('open');},180);}
+function scAddr(inp){sc(inp);chkHR(inp.value);}
+function chkHR(c){document.getElementById('highrisk-warn').classList.toggle('show',HIGH_RISK.includes(c));}
+
+// ── PHONE CODES ──
+function spc(inp){
+  const q=inp.value.toLowerCase();
+  const dd=document.getElementById('dd-mob')||inp.nextElementSibling;
+  if(!dd)return;
+  dd.innerHTML='';
+  const m=PHONE_CODES.filter(([cc,code])=>cc.toLowerCase().includes(q)||code.includes(q)||!q).slice(0,8);
+  m.forEach(([cc,code])=>{
+    const d=document.createElement('div');d.className='dd-item';d.textContent=`${cc} ${code}`;
+    d.onmousedown=e=>{e.preventDefault();inp.value=code;dd.style.display='none';};
+    dd.appendChild(d);
+  });
+  dd.style.display='block';
+}
+function spdd(inp){spc(inp);}
+function sphdd(inp){setTimeout(()=>{const dd=document.getElementById('dd-mob')||inp.nextElementSibling;if(dd)dd.style.display='none';},180);}
+
+// ── NAVIGATION ──
+let currentStep=1;
+function gs(n){
+  if(n>1&&n!=='success'){
+    // Save before moving forward
+    saveProgress();
+  }
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+  const id=n==='success'?'s-success':'s'+n;
+  document.getElementById(id).classList.add('active');
+  const total=7;
+  if(n!=='success'){
+    currentStep=n;
+    document.getElementById('prog').style.width=(n/total*100)+'%';
+    for(let i=1;i<=total;i++){const el=document.getElementById('sl'+i);if(el)el.className='slbl'+(i===n?' active':i<n?' done':'');}
+    // Populate UBO identity cards when entering Step 2
+    if(n===2)renderUBOIdentityCards();
+  } else {
+    document.getElementById('prog').style.width='100%';
+  }
+  window.scrollTo(0,0);
+}
+
+// ── INTRO ──
+function introSel(v){}
+
+// ── SERVICES ──
+const DETAIL=['incorp','admin','director','trust','reg'];
+function svcT(el,val){
+  const cb=el.querySelector('input');
+  cb.checked=!cb.checked;
+  el.classList.toggle('on',cb.checked);
+  const sel=Array.from(document.querySelectorAll('.svc-item.on')).map(e=>e.querySelector('input').value).filter(Boolean);
+  // Other description field
+  const otherWrap=document.getElementById('other-svc');
+  if(otherWrap)otherWrap.style.display=sel.includes('other')?'block':'none';
+  // Incorporation selected → show new company form, hide existing entity
+  // Incorporation NOT selected → show existing entity form, hide new company
+  const hasIncorp=sel.includes('incorp');
+  const incorpF=document.getElementById('incorp-f');
+  const entityF=document.getElementById('entity-f');
+  if(incorpF)incorpF.style.display=hasIncorp?'block':'none';
+  if(entityF)entityF.style.display=hasIncorp?'none':'block';
+  saveProgress();
+}
+
+// ── PEP ──
+function pepSelectChange(v){
+  const isPEP=v.startsWith('yes');
+  document.getElementById('pep-detail').style.display=isPEP?'block':'none';
+  document.getElementById('sow-section').style.display=isPEP?'block':'none';
+  saveProgress();
+}
+function pepSel(v){}
+
+// ── UBO DETERMINATION ENGINE ──
+
+function determineUBOs(blocks, listId, determinationId, autoListId, controllingWrapId, controllingReasonId, controllingSelectId, pctTotalId, pctWarnId) {
+  // Collect shareholders
+  const shareholders = [];
+  blocks.forEach((b, i) => {
+    const nameEl = b.querySelector('.ubo-name, .entity-ubo-name');
+    const pctEl  = b.querySelector('.ubo-pct, .entity-ubo-pct');
+    const name   = nameEl?.value?.trim() || '';
+    const pct    = parseFloat(pctEl?.value) || 0;
+    if (name || pct) shareholders.push({ name: name || `Shareholder ${i+1}`, pct, idx: i });
+  });
+
+  // Update total %
+  const total = shareholders.reduce((s, sh) => s + sh.pct, 0);
+  const rounded = Math.round(total * 100) / 100;
+  const totalEl = document.getElementById(pctTotalId);
+  const warnEl  = document.getElementById(pctWarnId);
+  if (totalEl) {
+    totalEl.textContent = rounded.toFixed(rounded % 1 === 0 ? 0 : 2) + '%';
+    totalEl.style.color = rounded > 100 ? 'var(--red)' : rounded === 100 ? 'var(--teal)' : 'var(--text)';
+  }
+  if (warnEl) warnEl.style.display = rounded > 100 ? 'block' : 'none';
+
+  // Show complete/incomplete banners
+  const incompleteId = pctTotalId.replace('-total', '-incomplete');
+  const completeId   = pctTotalId.replace('-total', '-complete');
+  const incompleteEl = document.getElementById(incompleteId);
+  const completeEl   = document.getElementById(completeId);
+  if (incompleteEl) incompleteEl.style.display = rounded === 100 ? 'none' : 'block';
+  if (completeEl)   completeEl.style.display   = rounded === 100 ? 'block' : 'none';
+
+  // Block add-ubo button if at 100%
+  const addBtn = document.getElementById('add-ubo-btn');
+  if (addBtn) { addBtn.disabled = rounded >= 100; addBtn.style.opacity = rounded >= 100 ? '.4' : '1'; }
+
+  // Auto-UBO tags on each block
+  blocks.forEach((b, i) => {
+    const sh = shareholders[i];
+    const tag = b.querySelector('.ubo-auto-ubo, .entity-auto-ubo');
+    if (tag && sh) tag.style.display = sh.pct > 25 ? 'flex' : 'none';
+  });
+
+  const detEl = document.getElementById(determinationId);
+  if (!detEl || !shareholders.length || !shareholders.some(s => s.pct > 0)) {
+    if (detEl) detEl.style.display = 'none';
+    return;
+  }
+  detEl.style.display = 'block';
+
+  // ── RULE 1: Auto-UBOs (>25%) ──
+  const autoUBOs = shareholders.filter(s => s.pct > 25);
+
+  // ── Find max pct ──
+  const maxPct = Math.max(...shareholders.map(s => s.pct));
+
+  // ── RULE 2: No one above 25% ──
+  const rule2 = maxPct <= 25 && shareholders.length > 0;
+
+  // ── RULE 3: Tied top shareholders both >25% ──
+  const topShareholders = shareholders.filter(s => s.pct === maxPct && maxPct > 25);
+  const rule3 = topShareholders.length > 1;
+
+  // Render auto-UBO list
+  const autoListEl = document.getElementById(autoListId);
+  if (autoListEl) {
+    if (autoUBOs.length) {
+      autoListEl.innerHTML = autoUBOs.map(s =>
+        `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--teal-light);border:0.5px solid var(--teal-border);border-radius:7px;margin-bottom:6px">
+          <i class="ti ti-shield-check" style="font-size:14px;color:var(--teal);flex-shrink:0"></i>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--teal)">${s.name}</div>
+            <div style="font-size:10px;color:var(--muted)">${s.pct}% shareholding · Automatically classified as UBO · KYC required in next step</div>
+          </div>
+        </div>`
+      ).join('');
+    } else {
+      autoListEl.innerHTML = rule2
+        ? '<div style="font-size:12px;color:var(--amber);font-weight:500">No shareholder exceeds 25% — no automatic UBO identified. Please designate a controlling person below.</div>'
+        : '';
+    }
+  }
+
+  // Show/hide controlling person designation
+  const ctrlWrap = document.getElementById(controllingWrapId);
+  const ctrlReason = document.getElementById(controllingReasonId);
+  const ctrlSelect = document.getElementById(controllingSelectId);
+  const needsDesignation = rule2 || rule3;
+
+  if (ctrlWrap) ctrlWrap.style.display = needsDesignation ? 'block' : 'none';
+
+  if (needsDesignation && ctrlReason && ctrlSelect) {
+    // Set reason text
+    if (rule2) {
+      ctrlReason.textContent = 'No single shareholder holds more than 25%. Under Cyprus AML Law, you must designate the senior managing official or de facto controlling person as the UBO.';
+    } else if (rule3) {
+      ctrlReason.textContent = `${topShareholders.map(s=>s.name).join(' and ')} hold equal top shareholdings of ${maxPct}% each. Please designate which of them is the controlling person.`;
+    }
+
+    // Populate controlling person dropdown with relevant shareholders
+    const candidates = rule2
+      ? shareholders  // all shareholders are candidates
+      : topShareholders;  // only the tied top shareholders
+
+    const currentVal = ctrlSelect.value;
+    ctrlSelect.innerHTML = '<option value="">Select from shareholders listed above...</option>';
+    candidates.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.name;
+      opt.textContent = `${s.name} (${s.pct}%)`;
+      if (s.name === currentVal) opt.selected = true;
+      ctrlSelect.appendChild(opt);
+    });
+  }
+
+  saveProgress();
+}
+
+function calcUBOPct() {
+  const blocks = Array.from(document.querySelectorAll('#ubo-list .ubo-block'));
+  determineUBOs(
+    blocks,
+    'ubo-list',
+    'ubo-determination',
+    'ubo-auto-list',
+    'controlling-person-wrap',
+    'controlling-reason-text',
+    'controlling-person-select',
+    'ubo-pct-total',
+    'ubo-pct-warn'
+  );
+}
+
+function calcEntityPct() {
+  const blocks = Array.from(document.querySelectorAll('#entity-ubo-list .entity-ubo-block'));
+  determineUBOs(
+    blocks,
+    'entity-ubo-list',
+    'entity-ubo-determination',
+    'entity-ubo-auto-list',
+    'entity-controlling-wrap',
+    'entity-controlling-reason-text',
+    'entity-controlling-select',
+    'entity-pct-total',
+    'entity-pct-warn'
+  );
+}
+
+let uboN = 1;
+function addUBO() {
+  const blocks = document.querySelectorAll('.ubo-block');
+  const total = Array.from(blocks).reduce((s, b) => s + (parseFloat(b.querySelector('.ubo-pct')?.value) || 0), 0);
+  if (total >= 100) { alert('Total shareholding is already at 100%. You cannot add more shareholders.'); return; }
+  uboN++;
+  const b = document.createElement('div');
+  b.className = 'ubo-block';
+  b.setAttribute('data-ubo-idx', uboN);
+  b.style.cssText = 'border:0.5px solid rgba(0,0,0,.1);border-radius:9px;padding:13px;margin-bottom:10px;background:var(--surface)';
+  b.innerHTML = `
+    <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue);display:flex;justify-content:space-between;align-items:center">
+      Shareholder ${uboN}
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="ubo-auto-ubo" style="display:none;font-size:10px;font-weight:700;color:var(--teal);background:var(--teal-light);padding:2px 8px;border-radius:10px"><i class="ti ti-shield-check" style="font-size:10px"></i> Auto-UBO &gt;25%</span>
+        <button type="button" onclick="this.closest('.ubo-block').remove();calcUBOPct()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;font-family:Manrope,sans-serif">Remove</button>
+      </div>
+    </div>
+    <div class="fgrid">
+      <div class="fg full"><label class="lbl">Full legal name <span class="req">*</span></label><input class="ubo-name" placeholder="Full legal name as on passport" oninput="calcUBOPct()"></div>
+      <div class="fg"><label class="lbl">Shareholding % <span class="req">*</span></label><input type="number" class="ubo-pct" min="0.01" max="100" step="0.01" placeholder="e.g. 50" oninput="calcUBOPct()"></div>
+      <div class="fg"><label class="lbl">Type of shareholding</label><select><option value="">Select...</option><option>Ordinary shares</option><option>Preference shares</option><option>Indirect holding (through another entity)</option><option>Control through other means</option></select></div>
+      <div class="fg"><label class="lbl">Nationality</label><div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden"><div class="dropdown"></div></div></div>
+      <div class="fg"><label class="lbl">Is this shareholder also the applicant?</label><select class="ubo-is-applicant" onchange="enforceOneApplicant(this,'ubo-list','ubo-is-applicant');calcUBOPct()"><option value="no">No — another person</option><option value="yes">Yes — this is me</option></select></div>
+      <div class="fg"><label class="lbl">Email <span class="hint">(for KYC link if separate)</span></label><input type="email" class="ubo-email" placeholder="shareholder@email.com"></div>
+    </div>`;
+  document.getElementById('ubo-list').appendChild(b);
+}
+
+let entityUboN = 1;
+function addEntityUBO() {
+  const blocks = document.querySelectorAll('.entity-ubo-block');
+  const total = Array.from(blocks).reduce((s, b) => s + (parseFloat(b.querySelector('.entity-ubo-pct')?.value) || 0), 0);
+  if (total >= 100) { alert('Total shareholding is already at 100%.'); return; }
+  entityUboN++;
+  const b = document.createElement('div');
+  b.className = 'entity-ubo-block';
+  b.style.cssText = 'border:0.5px solid rgba(0,0,0,.1);border-radius:9px;padding:13px;margin-bottom:10px;background:var(--surface)';
+  b.innerHTML = `
+    <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue);display:flex;justify-content:space-between;align-items:center">
+      Shareholder ${entityUboN}
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="entity-auto-ubo" style="display:none;font-size:10px;font-weight:700;color:var(--teal);background:var(--teal-light);padding:2px 8px;border-radius:10px"><i class="ti ti-shield-check" style="font-size:10px"></i> Auto-UBO &gt;25%</span>
+        <button type="button" onclick="this.closest('.entity-ubo-block').remove();calcEntityPct()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;font-family:Manrope,sans-serif">Remove</button>
+      </div>
+    </div>
+    <div class="fgrid">
+      <div class="fg full"><label class="lbl">Full legal name <span class="req">*</span></label><input class="entity-ubo-name" placeholder="Full legal name as on passport" oninput="calcEntityPct()"></div>
+      <div class="fg"><label class="lbl">Shareholding %</label><input type="number" class="entity-ubo-pct" min="0.01" max="100" step="0.01" placeholder="e.g. 50" oninput="calcEntityPct()"></div>
+      <div class="fg"><label class="lbl">Type of shareholding</label><select><option value="">Select...</option><option>Ordinary shares</option><option>Preference shares</option><option>Indirect holding (through another entity)</option><option>Control through other means</option></select></div>
+      <div class="fg"><label class="lbl">Nationality</label><div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden"><div class="dropdown"></div></div></div>
+      <div class="fg"><label class="lbl">Is this shareholder also the applicant?</label><select class="entity-ubo-is-applicant" onchange="enforceOneApplicant(this,'entity-ubo-list','entity-ubo-is-applicant');calcEntityPct()"><option value="no">No — another person</option><option value="yes">Yes — this is me</option></select></div>
+      <div class="fg"><label class="lbl">Email <span class="hint">(for KYC link if separate)</span></label><input type="email" class="entity-ubo-email" placeholder="shareholder@email.com"></div>
+    </div>`;
+  document.getElementById('entity-ubo-list').appendChild(b);
+}
+
+// ── SOW CALCULATOR ──
+function addSOW(){
+  const r=document.createElement('div');r.className='wealth-row';
+  r.innerHTML=`<div class="fg" style="margin-bottom:0"><select class="sow-type" onchange="calcSOW()"><option value="">Select...</option><option>Immovable property (land / buildings owned)</option><option>Cash at bank / savings</option><option>Movable property (vehicles, vessels, aircraft, art, jewellery)</option><option>Shares / stocks / equity investments</option><option>Bonds / fixed income investments</option><option>Investment funds / unit trusts</option><option>Cryptocurrency / digital assets</option><option>Pension / retirement fund</option><option>Business ownership (company equity / shareholding)</option><option>Inheritance received</option><option>Gift received</option><option>Insurance policy / surrender value</option><option>Intellectual property / royalties</option><option>Other (describe below)</option></select></div><div class="fg" style="margin-bottom:0"><input type="number" class="sow-val" placeholder="0" oninput="calcSOW()" min="0"></div><button type="button" onclick="this.closest('.wealth-row').remove();calcSOW()" style="width:34px;height:40px;border:0.5px solid var(--red-border);border-radius:8px;background:var(--red-light);color:var(--red);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">×</button>`;
+  document.getElementById('sow-rows').appendChild(r);
+}
+function calcSOW(){
+  let t=0;document.querySelectorAll('.sow-val').forEach(i=>{t+=parseFloat(i.value)||0;});
+  const el=document.getElementById('sow-total');if(el)el.textContent='€'+t.toLocaleString('en');
+  const hasOther=Array.from(document.querySelectorAll('.sow-type')).some(s=>s.value.startsWith('Other'));
+  const othEl=document.getElementById('sow-other');if(othEl)othEl.style.display=hasOther?'block':'none';
+}
+
+// ── UBO IDENTITY CARDS (Step 2) ──
+function renderUBOIdentityCards(){
+  const section   = document.getElementById('ubo-identity-section');
+  const container = document.getElementById('ubo-identity-cards');
+  const isIncorp  = document.getElementById('incorp-f')?.style.display !== 'none';
+
+  const ubosForKYC = [];
+
+  if (isIncorp) {
+    document.querySelectorAll('#ubo-list .ubo-block').forEach(b => {
+      const name = b.querySelector('.ubo-name')?.value?.trim();
+      const pct  = parseFloat(b.querySelector('.ubo-pct')?.value) || 0;
+      const isMe = b.querySelector('.ubo-is-applicant')?.value === 'yes';
+      const email= b.querySelector('.ubo-email')?.value?.trim() || '';
+      if (name && pct > 25) ubosForKYC.push({name, pct, email, isApplicant: isMe, reason:`${pct}% shareholder · Auto-UBO`});
+    });
+    const ctrl = document.getElementById('controlling-person-select')?.value;
+    if (ctrl && !ubosForKYC.find(u => u.name === ctrl)) {
+      let ctrlEmail=''; let ctrlIsMe=false;
+      document.querySelectorAll('#ubo-list .ubo-block').forEach(b => {
+        if(b.querySelector('.ubo-name')?.value?.trim()===ctrl){
+          ctrlEmail=b.querySelector('.ubo-email')?.value||'';
+          ctrlIsMe=b.querySelector('.ubo-is-applicant')?.value==='yes';
+        }
+      });
+      ubosForKYC.push({name:ctrl, pct:null, email:ctrlEmail, isApplicant:ctrlIsMe, reason:'Designated controlling person'});
+    }
+  } else {
+    document.querySelectorAll('#entity-ubo-list .entity-ubo-block').forEach(b => {
+      const name = b.querySelector('.entity-ubo-name')?.value?.trim();
+      const pct  = parseFloat(b.querySelector('.entity-ubo-pct')?.value) || 0;
+      const isMe = b.querySelector('.entity-ubo-is-applicant')?.value === 'yes';
+      const email= b.querySelector('.entity-ubo-email')?.value?.trim() || '';
+      if (name && pct > 25) ubosForKYC.push({name, pct, email, isApplicant: isMe, reason:`${pct}% shareholder · Auto-UBO`});
+    });
+    const ctrl = document.getElementById('entity-controlling-select')?.value;
+    if (ctrl && !ubosForKYC.find(u => u.name === ctrl)) {
+      let ctrlEmail=''; let ctrlIsMe=false;
+      document.querySelectorAll('#entity-ubo-list .entity-ubo-block').forEach(b => {
+        if(b.querySelector('.entity-ubo-name')?.value?.trim()===ctrl){
+          ctrlEmail=b.querySelector('.entity-ubo-email')?.value||'';
+          ctrlIsMe=b.querySelector('.entity-ubo-is-applicant')?.value==='yes';
+        }
+      });
+      ubosForKYC.push({name:ctrl, pct:null, email:ctrlEmail, isApplicant:ctrlIsMe, reason:'Designated controlling person'});
+    }
+  }
+
+  // Sort: applicant first, then others
+  ubosForKYC.sort((a,b) => b.isApplicant - a.isApplicant);
+
+  if (!ubosForKYC.length) {
+    section.style.display='none';
+    const noUbo = document.getElementById('no-ubo-section');
+    if(noUbo) noUbo.style.display='block';
+    return;
+  }
+  const noUbo = document.getElementById('no-ubo-section');
+  if(noUbo) noUbo.style.display='none';
+  section.style.display='block';
+  container.innerHTML='';
+
+  // Get applicant details from Step 2 once
+  const apd = getApplicantDetails();
+
+  ubosForKYC.forEach((ubo, i) => {
+    const cardId  = `ubo-card-${i}`;
+    const bodyId  = `ubo-body-${i}`;
+    const chevId  = `ubo-chev-${i}`;
+    const statusId= `ubo-status-${i}`;
+
+    // Pre-fill: applicant gets Step 2 data, others get Step 1 name/email
+    const firstName = ubo.isApplicant ? (apd.firstName || ubo.name.split(' ')[0]) : ubo.name.split(' ')[0];
+    const lastName  = ubo.isApplicant ? (apd.surname  || ubo.name.split(' ').slice(1).join(' ')) : ubo.name.split(' ').slice(1).join(' ');
+    const prefillDOB      = ubo.isApplicant ? apd.dob        : '';
+    const prefillNat      = ubo.isApplicant ? apd.nationality: '';
+    const prefillPassport = ubo.isApplicant ? apd.passport   : '';
+    const prefillEmail    = ubo.isApplicant ? (apd.email || ubo.email) : ubo.email;
+    const prefillOccup    = ubo.isApplicant ? apd.occupation  : '';
+    const prefillTIN      = ubo.isApplicant ? apd.tin         : '';
+    const prefillAddrStr  = ubo.isApplicant ? apd.addrStreet  : '';
+    const prefillAddrTown = ubo.isApplicant ? apd.addrTown    : '';
+    const prefillAddrPC   = ubo.isApplicant ? apd.addrPostcode: '';
+
+    // Applicant card opens by default, others collapsed
+    const startOpen = ubo.isApplicant;
+    const refNum = 'KYC-UBO-'+Math.random().toString(36).slice(2,8).toUpperCase();
+
+    const card = document.createElement('div');
+    card.className = 'ubo-id-card';
+    card.id = cardId;
+    card.innerHTML = `
+      <div class="ubo-id-trigger" onclick="toggleUBOCard(${i})">
+        <div>
+          <div class="ubo-id-name"><i class="ti ti-user-circle" style="font-size:17px"></i>${ubo.name}${ubo.isApplicant?' <span style="font-size:10px;background:rgba(255,255,255,.2);padding:1px 7px;border-radius:8px;font-weight:500">You</span>':''}</div>
+          <div class="ubo-id-meta">${ubo.reason}</div>
+        </div>
+        <div class="ubo-id-badge">
+          <span class="ubo-id-status ${ubo.isApplicant?'ubo-status-partial':'ubo-status-empty'}" id="${statusId}">${ubo.isApplicant?'Pre-filled from your details':'Not started'}</span>
+          <i class="ti ti-chevron-down ubo-id-chevron${startOpen?' open':''}" id="${chevId}"></i>
+        </div>
+      </div>
+
+      <div class="ubo-id-body${startOpen?' open':''}" id="${bodyId}">
+
+        ${!ubo.isApplicant ? `
+        <div class="ubo-id-actions">
+          <button type="button" class="ubo-send-btn" id="send-btn-${i}" onclick="sendUBOLink(${i},'${ubo.name}','${prefillEmail}')">
+            <i class="ti ti-link" style="font-size:13px"></i>Send KYC link${prefillEmail?' to '+prefillEmail:''}
+          </button>
+          <span style="font-size:11px;color:var(--muted)">or fill in details below on their behalf</span>
+          <span id="link-sent-${i}" style="display:none;font-size:11px;font-weight:600;color:var(--teal)"><i class="ti ti-circle-check"></i> Link sent · Ref: ${refNum}</span>
+        </div>` : ''}
+
+        <div class="ubo-id-form" id="ubo-form-${i}">
+          ${!ubo.isApplicant ? `<div class="warn-box" style="margin-bottom:14px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>You are completing this on behalf of <strong>${firstName}</strong>. Pre-fill their details here to save them time. <strong>Biometric identity verification (facial recognition) and the declaration signature must be completed by ${firstName} personally</strong> via their own secure KYC link — this cannot be done on their behalf.</div>` : `<div class="info-box" style="margin-bottom:14px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Your details have been pre-filled from Step 2. Please review and complete any missing fields.</div>`}
+          <div class="fgrid">
+            <div class="fg"><label class="lbl">Title</label><select><option value="">Select...</option><option>Mr</option><option>Mrs</option><option>Miss</option><option>Ms</option><option>Dr</option><option>Prof</option></select></div>
+            <div class="fg"><label class="lbl">Marital status</label><select><option value="">Select...</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option><option>Other</option></select></div>
+            <div class="fg"><label class="lbl">First name(s) <span class="req">*</span></label><input placeholder="As on passport" value="${firstName}" oninput="updateUBOStatus(${i})"></div>
+            <div class="fg"><label class="lbl">Surname <span class="req">*</span></label><input placeholder="As on passport" value="${lastName}" oninput="updateUBOStatus(${i})"></div>
+            <div class="fg full"><label class="lbl">Previous or other surname</label><input placeholder="Maiden name or other legal name"></div>
+            <div class="fg"><label class="lbl">Date of birth <span class="req">*</span></label><input type="date" value="${prefillDOB}" oninput="updateUBOStatus(${i})"></div>
+            <div class="fg"><label class="lbl">Place / country of birth</label><input placeholder="e.g. Nicosia, Cyprus"></div>
+            <div class="fg"><label class="lbl">Nationality <span class="req">*</span></label><div class="sw"><input class="si" placeholder="${prefillNat||'Type country...'}" oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" value="${prefillNat}"><div class="dropdown"></div></div></div>
+            <div class="fg"><label class="lbl">Dual nationality?</label><select><option value="no">No</option><option value="yes">Yes</option></select></div>
+            <div class="fg full" style="grid-column:1/-1">
+              <div style="background:var(--blue-pale);border:0.5px solid var(--blue-border);border-radius:9px;padding:12px 14px;margin-bottom:0">
+                <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Identity document — at least one required <span style="color:var(--red)">*</span></div>
+                <div class="fgrid" style="gap:8px">
+                  <div class="fg" style="margin-bottom:0"><label class="lbl">Passport number</label><input class="doc-passport-num" placeholder="Passport number" value="${prefillPassport}" oninput="checkDocRequired(this)"></div>
+                  <div class="fg" style="margin-bottom:0"><label class="lbl">Passport expiry date</label><input type="date" class="doc-passport-exp" min="${new Date().toISOString().split('T')[0]}" oninput="checkDocRequired(this)"></div>
+                  <div class="fg" style="margin-bottom:0"><label class="lbl">National ID card number</label><input class="doc-id-num" placeholder="ID card number (if applicable)" oninput="checkDocRequired(this)"></div>
+                  <div class="fg" style="margin-bottom:0"><label class="lbl">ID card expiry date</label><input type="date" class="doc-id-exp" min="${new Date().toISOString().split('T')[0]}" oninput="checkDocRequired(this)"></div>
+                </div>
+                <div class="doc-req-warn" style="display:none;margin-top:8px;font-size:11px;color:var(--red);font-weight:600"><i class="ti ti-alert-circle"></i> Please provide either passport details or national ID card details</div>
+              </div>
+            </div>
+            <div class="fg full"><label class="lbl">Country of residence <span class="req">*</span></label><div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden"><div class="dropdown"></div></div></div>
+            <div class="fg full"><label class="lbl">Street address</label><input placeholder="Street name and number" value="${prefillAddrStr}"></div>
+            <div class="fg"><label class="lbl">Town / City</label><input placeholder="Town or city" value="${prefillAddrTown}"></div>
+            <div class="fg"><label class="lbl">Postcode</label><input placeholder="Postcode / ZIP" value="${prefillAddrPC}"></div>
+            <div class="fg"><label class="lbl">Email address <span class="req">*</span></label><input type="email" placeholder="email@domain.com" value="${prefillEmail}" oninput="updateUBOStatus(${i})"></div>
+            <div class="fg"><label class="lbl">Mobile</label><div class="phone-row"><input class="si" placeholder="+357" style="width:100%" oninput="spc(this)" onfocus="spdd(this)" onblur="sphdd(this)"><input placeholder="Number" type="tel"></div></div>
+            <div class="fg"><label class="lbl">Occupation / profession</label><input placeholder="e.g. Director, Investor" value="${prefillOccup}"></div>
+            <div class="fg"><label class="lbl">Employment status</label><select><option value="">Select...</option><option>Self-employed</option><option>Employed</option><option>Business owner</option><option>Retired</option><option>Investor</option><option>Other</option></select></div>
+            <div class="fg"><label class="lbl">Country of tax residence</label><div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden"><div class="dropdown"></div></div></div>
+            <div class="fg"><label class="lbl">TIN / AFM</label><input placeholder="Tax identification number" value="${prefillTIN}"></div>
+            <div class="fg"><label class="lbl">Annual income (EUR)</label><select><option value="">Select...</option><option>Under €30,000</option><option>€30,000–€100,000</option><option>€100,000–€500,000</option><option>€500,000–€2,000,000</option><option>Over €2,000,000</option></select></div>
+          </div>
+          <hr>
+          <div class="sec-lbl" style="display:flex;align-items:center;gap:6px">
+            PEP declaration for ${firstName||'this person'}
+            <span class="info-btn" onclick="document.getElementById('pep-modal').classList.add('open')" title="What is a PEP?" style="flex-shrink:0">i</span>
+          </div>
+          <div class="fg">
+            <label class="lbl">Is ${firstName||'this person'} a Politically Exposed Person (PEP)? <span class="req">*</span> <button type="button" onclick="document.getElementById('pep-modal').classList.add('open')" style="background:none;border:none;color:var(--blue);font-size:11px;cursor:pointer;font-family:'Manrope',sans-serif;font-weight:600;padding:0;text-decoration:underline">What is a PEP?</button></label>
+            <select>
+              <option value="">Please select...</option>
+              <option value="no">No — not a PEP</option>
+              <option value="yes">Yes — is or has been a PEP</option>
+            </select>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:0.5px solid rgba(0,0,0,.07);display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:11px;color:var(--muted)">Fields marked * are required</span>
+            <button type="button" class="btn btn-sm btn-blue" onclick="markUBOComplete(${i})"><i class="ti ti-check" style="font-size:12px"></i>Confirm details</button>
+          </div>
+        </div>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+function toggleUBOCard(i){
+  const body = document.getElementById('ubo-body-'+i);
+  const chev = document.getElementById('ubo-chev-'+i);
+  if(!body)return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chev.classList.toggle('open', !isOpen);
+}
+
+function updateUBOStatus(i){
+  const form = document.getElementById('ubo-form-'+i);
+  const statusEl = document.getElementById('ubo-status-'+i);
+  if(!form||!statusEl)return;
+  const required = form.querySelectorAll('input[placeholder*="As on passport"], input[type="date"], input[type="email"]');
+  const filled = Array.from(required).filter(inp=>inp.value.trim()).length;
+  const total = required.length;
+  if(filled===0){statusEl.className='ubo-id-status ubo-status-empty';statusEl.textContent='Not started';}
+  else if(filled<total){statusEl.className='ubo-id-status ubo-status-partial';statusEl.textContent=`In progress (${filled}/${total})`;}
+  else{statusEl.className='ubo-id-status ubo-status-complete';statusEl.textContent='Complete ✓';}
+  saveProgress();
+}
+
+function markUBOComplete(i){
+  const statusEl = document.getElementById('ubo-status-'+i);
+  if(statusEl){statusEl.className='ubo-id-status ubo-status-complete';statusEl.textContent='Complete ✓';}
+  toggleUBOCard(i);
+  // Open next card if exists
+  const next = document.getElementById('ubo-body-'+(i+1));
+  const nextChev = document.getElementById('ubo-chev-'+(i+1));
+  if(next&&!next.classList.contains('open')){next.classList.add('open');nextChev?.classList.add('open');}
+  saveProgress();
+}
+
+function sendUBOLink(idx,name,email){
+  const sendBtn=document.getElementById('send-btn-'+idx);
+  const sentBox=document.getElementById('link-sent-'+idx);
+  if(sendBtn){sendBtn.classList.add('sent');sendBtn.innerHTML='<i class="ti ti-circle-check" style="font-size:13px"></i>Link sent';}
+  if(sentBox)sentBox.style.display='flex';
+  saveProgress();
+}
+
+function toggleUBOManual(idx){
+  const form=document.getElementById('ubo-manual-'+idx);
+  if(form){form.classList.toggle('show');const btn=form.previousElementSibling;if(btn)btn.innerHTML=form.classList.contains('show')?'<i class="ti ti-chevron-up" style="font-size:13px"></i>Hide manual form':'<i class="ti ti-pencil" style="font-size:13px"></i>Fill in details on their behalf instead';}
+}
+
+// ── QUESTIONNAIRE ──
+const QS=[
+  {id:'other_names',t:'OTHER NAMES',q:'Have you ever used, or do you currently use, a name other than the name mentioned in your Passport or Identity Card? Are you today known by any other name(s)?',exp:'Please specify the other name(s) used:'},
+  {id:'ownership',t:'OWNERSHIP',q:'Are you the ultimate beneficial owner of the company under formation, acting on your own behalf and not as nominee, trustee or in a fiduciary capacity on behalf of any other person(s)?',exp:'If no, please specify:',inv:true},
+  {id:'entry',t:'ENTRY REFUSAL',q:'Have you ever been refused entry into any foreign country?',exp:'Please specify the country and circumstances:'},
+  {id:'ml',t:'MONEY LAUNDERING AWARENESS',q:'Are you fully aware of the Prevention and Suppression of Money Laundering Activities Laws and relevant regulations issued by the competent authorities?',exp:'If no, please specify:',inv:true},
+  {id:'prohibited',t:'PROHIBITED ACTIVITIES',q:'Have you ever been involved in any of the following activities: money laundering, receiving the proceeds of drug trafficking and/or criminal and/or terrorist activities, trading in arms and weapons, soliciting funds from the general public, trading with countries subject to any embargo issued by the United Nations or any affiliate organisation?',exp:'Please specify:'},
+  {id:'investigations',t:'INVESTIGATIONS',q:'Are you, or any corporation of which you have been a director, officer, or 10%+ shareholder, indicated or the subject of any investigation by any law enforcement agency, regulatory body or government?',exp:'Please specify:'},
+  {id:'convictions',t:'CONVICTIONS',q:'Have you, or any corporation of which you have been a director, officer, or 10%+ shareholder, ever been convicted for any crime (other than minor traffic violations)?',exp:'Please specify:'},
+  {id:'bankruptcy',t:'BANKRUPTCY / LIQUIDATION / INSOLVENCY',q:'Have you ever been under bankruptcy, or has any corporation of which you have been a director, officer, or 10%+ shareholder, ever been obliged to compound with creditors, or been under liquidation or insolvent?',exp:'Please specify:'},
+  {id:'tax_audit',t:'TAX AUDIT',q:'Are you currently being audited by the tax authorities of any jurisdiction?',exp:'Please specify the jurisdiction and nature of the audit:'},
+  {id:'insurance',t:'INSURANCE',q:'Have you ever been refused malpractice insurance, liability insurance, or professional indemnity insurance?',exp:'Please specify:'},
+  {id:'litigation',t:'LITIGATION FOR DAMAGES OR DEBTS',q:'Are there, to the best of your knowledge, any actions filed or threatened against you in any court for the recovery of damages or debts?',exp:'Please specify:'},
+];
+function buildQ(){
+  const list=document.getElementById('q-list');
+  if(!list||list.children.length>0)return;
+  QS.forEach(q=>{
+    const el=document.createElement('div');
+    el.className='q-item';
+    el.innerHTML=`<div class="q-row"><div class="q-text"><div class="q-title">${q.t}</div><div class="q-question">${q.q}</div></div><div class="q-buttons"><button type="button" class="qb" id="qno-${q.id}" onclick="qSel('${q.id}','no',${!!q.inv})">NO</button><button type="button" class="qb" id="qyes-${q.id}" onclick="qSel('${q.id}','yes',${!!q.inv})">YES</button></div></div><div class="q-expand" id="qe-${q.id}"><label style="font-size:11px;font-weight:700;color:var(--red);display:block;margin-bottom:5px">${q.exp}</label><textarea placeholder="Please provide full details..."></textarea></div>`;
+    list.appendChild(el);
+  });
+}
+function qSel(id,val,inv){
+  document.getElementById('qno-'+id).className='qb'+(val==='no'?' sel-no':'');
+  document.getElementById('qyes-'+id).className='qb'+(val==='yes'?' sel-yes':'');
+  const show=inv?val==='no':val==='yes';
+  document.getElementById('qe-'+id).className='q-expand'+(show?' show':'');
+  saveProgress();
+}
+buildQ();
+
+// ── VERIFICATION ──
+function runV(){
+  if(!document.getElementById('bio-c').checked){alert('Please provide biometric consent first.');return;}
+  const btn=document.getElementById('v-btn');
+  btn.disabled=true;btn.style.opacity='.5';btn.innerHTML='<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0 4px 0 0;display:inline-block;vertical-align:middle"></div>Verifying...';
+  document.getElementById('v-running').style.display='block';
+  function sv(n,lbl){const el=document.getElementById('vs'+n);el.className='vs-row done';el.querySelector('.vs-icon').className='vs-icon vsi-done';el.querySelector('.vs-icon').innerHTML='<i class="ti ti-check"></i>';el.querySelector('.vs-tag').className='vs-tag vst-d';el.querySelector('.vs-tag').innerHTML='<i class="ti ti-check" style="font-size:10px"></i>'+lbl;}
+  function av(n,lbl){const el=document.getElementById('vs'+n);el.className='vs-row act';el.querySelector('.vs-icon').className='vs-icon vsi-act';el.querySelector('.vs-tag').className='vs-tag vst-a';el.querySelector('.vs-tag').textContent=lbl;}
+  setTimeout(()=>{sv(1,'Document extracted');av(2,'Processing...');},1500);
+  setTimeout(()=>{sv(2,'Face matched');av(3,'Screening...');},3200);
+  setTimeout(()=>{
+    sv(3,'AML clear');
+    document.getElementById('v-running').style.display='none';
+    document.getElementById('v-result').style.display='block';
+    btn.disabled=false;btn.style.opacity='1';btn.innerHTML='<i class="ti ti-check" style="font-size:14px"></i>Verification complete';
+    const next=document.getElementById('v-next');
+    next.disabled=false;next.style.opacity='1';next.style.cursor='pointer';
+    saveProgress();
+  },5200);
+}
+
+// ── DOCUMENTS ──
+function dT(el,isReq){
+  if(el.classList.contains('locked'))return;
+  const icon=el.querySelector('.doc-icon');const st=el.querySelector('.doc-st');
+  if(el.classList.contains('done')){el.classList.remove('done');icon.classList.remove('done');icon.innerHTML=icon.dataset.orig||'<i class="ti ti-upload"></i>';st.className=isReq?'doc-st ds-req':'doc-st ds-opt';st.textContent=isReq?'Required':'Optional';}
+  else{el.classList.add('done');icon.dataset.orig=icon.innerHTML;icon.classList.add('done');icon.innerHTML='<i class="ti ti-check"></i>';st.className='doc-st ds-done';st.textContent='Uploaded ✓';}
+  saveProgress();
+}
+let cvUp=false;
+function cvT(){
+  cvUp=!cvUp;
+  const icon=document.getElementById('cv-icon');const st=document.getElementById('cv-st');const row=document.getElementById('cv-row');const form=document.getElementById('cv-form');
+  if(cvUp){row.classList.add('done');icon.classList.add('done');icon.innerHTML='<i class="ti ti-check"></i>';st.className='doc-st ds-done';st.textContent='Uploaded ✓';form.style.display='none';}
+  else{row.classList.remove('done');icon.classList.remove('done');icon.innerHTML='<i class="ti ti-id-badge"></i>';st.className='doc-st ds-opt';st.textContent='Not uploaded — complete form below';form.style.display='block';}
+  saveProgress();
+}
+let empN=1;
+function addEmp(){
+  empN++;
+  const list=document.getElementById('emp-list');
+  const b=document.createElement('div');b.style.cssText='border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)';
+  b.innerHTML=`<div style="font-size:11px;font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between">Previous employment ${empN-1}<button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;font-family:Manrope,sans-serif" onclick="this.closest('[style]').remove()">Remove</button></div><div class="fgrid"><div class="fg"><label class="lbl">Employer</label><input placeholder="Company or organisation"></div><div class="fg"><label class="lbl">Position</label><input placeholder="Job title"></div><div class="fg"><label class="lbl">From</label><input type="month"></div><div class="fg"><label class="lbl">To</label><input type="month"></div><div class="fg full"><label class="lbl">Nature of work</label><input placeholder="Brief description"></div></div>`;
+  list.appendChild(b);
+}
+
+// ── DECLARATIONS ──
+function chkD(){
+  const all=['dc1','dc2','dc3','dc4','dc5','dc6','dc7'].every(id=>document.getElementById(id).checked);
+  const btn=document.getElementById('d-next');
+  btn.disabled=!all;btn.style.opacity=all?'1':'.4';btn.style.cursor=all?'pointer':'not-allowed';
+  if(all)saveProgress();
+}
+
+// ── SIGNATURE ──
+function sigS(m){
+  ['own','physical','evrotrust'].forEach(x=>{
+    const opt=document.getElementById('sig-'+x);
+    const det=document.getElementById('sd-'+x);
+    if(opt){opt.classList.toggle('on',x===m);opt.querySelector('input').checked=x===m;}
+    if(det)det.classList.toggle('show',x===m);
+  });
+  saveProgress();
+}
+function sendEvro(){
+  const btn=event.currentTarget;
+  document.getElementById('evro-sent').style.display='block';
+  btn.disabled=true;btn.style.opacity='.5';
+}
+
+
+// ════════════════════════════════════════════════
+// VALIDATION ENGINE
+// ════════════════════════════════════════════════
+
+// Field definitions per step — [selector, label, optional custom check fn name]
+const STEP_REQUIRED = {
+  1: [
+    {check:'services', label:'At least one service must be selected'},
+    {check:'company_name', label:'Proposed company name is required (incorporation services)'},
+    {check:'principal_activities', label:'Principal business activities are required'},
+    {check:'turnover_y1', label:'Expected turnover Year 1 is required'},
+    {check:'sof', label:'Please specify at least one source of funds (incorporation services)'},
+    {check:'shareholders_100', label:'Total shareholding must equal exactly 100% before proceeding — all shareholders must be disclosed'},
+  ],
+  2: [
+    {check:'ubo_cards_started', label:'Please complete the identity form for each UBO — at minimum first name, surname, date of birth, and email are required for each person'},
+  ],
+  4: [
+    {check:'proof_address', label:'Proof of residential address'},
+    {check:'cv', label:'Curriculum Vitae (or employment history form)'},
+  ],
+  5: [
+    {check:'questionnaire', label:'All background questionnaire questions must be answered'},
+  ],
+  6: [
+    {sel:'#dc1', label:'Data protection consent', type:'checkbox'},
+    {sel:'#dc2', label:'Declaration: Accuracy', type:'checkbox'},
+    {sel:'#dc3', label:'Declaration: Legitimate funds', type:'checkbox'},
+    {sel:'#dc4', label:'Declaration: PEP and sanctions', type:'checkbox'},
+    {sel:'#dc5', label:'Declaration: Ongoing duty to update', type:'checkbox'},
+    {sel:'#dc6', label:'Declaration: MOKAS reporting', type:'checkbox'},
+    {sel:'#dc7', label:'Declaration: AML awareness', type:'checkbox'},
+  ],
+  7: [
+    {check:'signature', label:'Please select a signing method'},
+  ],
+};
+
+function validateStep(stepNum){
+  const errors = [];
+  const fields = STEP_REQUIRED[stepNum] || [];
+
+  fields.forEach(f => {
+    if(f.optional) return;
+
+    // Custom checks
+    if(f.check){
+      switch(f.check){
+        case 'services':
+          if(!document.querySelectorAll('.svc-item.on').length) errors.push(f.label);
+          break;
+        case 'company_name': {
+          const incorpVis2 = document.getElementById('incorp-f')?.style.display !== 'none';
+          if(incorpVis2){
+            const nameInp = document.getElementById('incorp-company-name');
+            if(!nameInp || !nameInp.value.trim()) errors.push(f.label);
+          }
+          break;
+        }
+        case 'principal_activities': {
+          // Check whichever form is visible
+          const incorpVis3 = document.getElementById('incorp-f')?.style.display !== 'none';
+          const entityVis3 = document.getElementById('entity-f')?.style.display !== 'none';
+          if(incorpVis3){
+            const actInp = document.getElementById('incorp-activities');
+            if(!actInp || !actInp.value.trim()) errors.push(f.label);
+          } else if(entityVis3){
+            const actInp = document.getElementById('entity-activities');
+            if(!actInp || !actInp.value.trim()) errors.push(f.label);
+          }
+          break;
+        }
+        case 'turnover_y1': {
+          const incorpVis4 = document.getElementById('incorp-f')?.style.display !== 'none';
+          if(incorpVis4){
+            const t1 = document.getElementById('incorp-turnover-y1');
+            if(!t1 || !t1.value.trim()) errors.push(f.label);
+          }
+          break;
+        }
+        case 'sof':
+          // Only validate SOF when incorporation form is visible
+          const incorpVisible = document.getElementById('incorp-f')?.style.display !== 'none';
+          if(incorpVisible){
+            const sofTypes = Array.from(document.querySelectorAll('.sof-type')).filter(s=>s.value);
+            if(!sofTypes.length) errors.push(f.label);
+          }
+          break;
+        case 'shareholders_100': {
+          const incorpVis = document.getElementById('incorp-f')?.style.display !== 'none';
+          const entityVis = document.getElementById('entity-f')?.style.display !== 'none';
+          if(incorpVis){
+            const pcts = Array.from(document.querySelectorAll('#ubo-list .ubo-pct')).map(i=>parseFloat(i.value)||0);
+            const total = pcts.reduce((a,b)=>a+b,0);
+            if(Math.round(total*100)/100 !== 100) errors.push(f.label);
+          } else if(entityVis){
+            const pcts = Array.from(document.querySelectorAll('#entity-ubo-list .entity-ubo-pct')).map(i=>parseFloat(i.value)||0);
+            const total = pcts.reduce((a,b)=>a+b,0);
+            if(Math.round(total*100)/100 !== 100) errors.push(f.label);
+          }
+          break;
+        }
+        case 'nationality':
+          const natInput = document.querySelector('#s2 .sw input[placeholder*="nationality"], #s2 input[placeholder*="Type country"]');
+          // Check if nationality sw has a value
+          const natHidden = document.getElementById('nat-v');
+          if(!natHidden || !natHidden.value) errors.push(f.label);
+          break;
+        case 'ubo_cards_started': {
+          const uboCards = document.querySelectorAll('.ubo-id-card');
+          if(uboCards.length === 0) break;
+          const missing = [];
+          uboCards.forEach((card, i) => {
+            const form = document.getElementById('ubo-form-'+i);
+            if(!form) return;
+            const nameInp  = form.querySelector('input[placeholder*="As on passport"]');
+            const emailInp = form.querySelector('input[type="email"]');
+            const dobInp   = form.querySelectorAll('input[type="date"]')[0];
+            const passNum  = form.querySelector('.doc-passport-num');
+            const passExp  = form.querySelector('.doc-passport-exp');
+            const idNum    = form.querySelector('.doc-id-num');
+            const idExp    = form.querySelector('.doc-id-exp');
+            const today2 = new Date().toISOString().split('T')[0];
+            const hasPassport = passNum?.value?.trim() && passExp?.value && passExp.value > today2;
+            const hasID       = idNum?.value?.trim() && idExp?.value && idExp.value > today2;
+            const hasDoc      = hasPassport || hasID;
+            const personName  = nameInp?.value?.trim() || 'Person '+(i+1);
+            const pepSel = form.querySelector('select[id^="pep-"]');
+            // Find PEP select — it's the last select in the form (no fixed id since template literal)
+            const allSelects = form.querySelectorAll('select');
+            const pepSelect = allSelects[allSelects.length - 1]; // PEP is always last select
+            const hasPEP = pepSelect?.value && pepSelect.value !== '';
+            const issues = [];
+            if(!nameInp?.value?.trim()) issues.push('name');
+            if(!dobInp?.value) issues.push('date of birth');
+            if(!emailInp?.value?.trim()) issues.push('email');
+            if(!hasDoc) issues.push('passport or ID card details (number + expiry)');
+            if(!hasPEP) issues.push('PEP declaration');
+            if(issues.length) missing.push(`${personName}: missing ${issues.join(', ')}`);
+          });
+          if(missing.length) errors.push(...missing.map(m=>'Identity form incomplete — '+m));
+          break;
+        }
+        case 'addr_street':
+          const street = document.querySelector('#s2 input[placeholder*="Street name"]');
+          if(street && !street.value.trim()) errors.push(f.label);
+          break;
+        case 'addr_town':
+          const town = document.querySelector('#s2 input[placeholder*="Town or city"]');
+          if(!town || !town.value.trim()) errors.push(f.label);
+          break;
+        case 'addr_postcode':
+          const pc = document.querySelector('#s2 input[placeholder*="Postcode"]');
+          if(!pc || !pc.value.trim()) errors.push(f.label);
+          break;
+        case 'addr_country':
+          const ac = document.getElementById('addr-v');
+          if(!ac || !ac.value) errors.push(f.label);
+          break;
+        case 'mobile':
+          const mob = document.querySelector('#s2 input[type="tel"]');
+          if(!mob || !mob.value.trim()) errors.push(f.label);
+          break;
+        case 'occupation':
+          const occ = document.querySelector('#s2 input[placeholder*="Accountant, Director"]');
+          if(!occ || !occ.value.trim()) errors.push(f.label);
+          break;
+        case 'emp_status':
+          const empSel = document.querySelector('#s2 select');
+          // Find employment status select (3rd select in s2 after title, marital)
+          const s2Sels = document.querySelectorAll('#s2 select');
+          let empFound = false;
+          s2Sels.forEach(s => { if(s.previousElementSibling?.textContent?.includes('Employment status') || s.closest('.fg')?.querySelector('.lbl')?.textContent?.includes('Employment status')) { if(s.value) empFound = true; }});
+          // Simplified: check any employment status select
+          const empS = Array.from(document.querySelectorAll('#s2 .fg')).find(fg=>fg.querySelector('.lbl')?.textContent?.includes('Employment status'));
+          const empSel2 = empS?.querySelector('select');
+          if(empSel2 && !empSel2.value) errors.push(f.label);
+          break;
+        case 'annual_income':
+          const incFg = Array.from(document.querySelectorAll('#s2 .fg')).find(fg=>fg.querySelector('.lbl')?.textContent?.includes('Annual income'));
+          const incSel = incFg?.querySelector('select');
+          if(incSel && !incSel.value) errors.push(f.label);
+          break;
+        case 'tax_country':
+          const taxFg = Array.from(document.querySelectorAll('#s2 .fg')).find(fg=>fg.querySelector('.lbl')?.textContent?.includes('tax residence'));
+          const taxInp = taxFg?.querySelector('input[type=hidden]');
+          if(!taxInp || !taxInp.value) errors.push(f.label);
+          break;
+        case 'tin':
+          const tinInp = document.querySelector('#s2 input[placeholder*="TIN"]');
+          if(!tinInp || !tinInp.value.trim()) errors.push(f.label);
+          break;
+        case 'pep':
+          const pepSel = document.getElementById('pep-select');
+          if(!pepSel || !pepSel.value) errors.push(f.label);
+          break;
+        case 'proof_address':
+          // Check if proof of address doc row is done
+          const addrRow = Array.from(document.querySelectorAll('.doc-row')).find(r=>r.querySelector('.doc-name')?.textContent?.includes('Proof of residential'));
+          if(!addrRow?.classList.contains('done')) errors.push(f.label);
+          break;
+        case 'cv':
+          const cvDone = document.getElementById('cv-row')?.classList.contains('done');
+          // Also accept if employment form has at least employer filled
+          const empInp = document.querySelector('#emp-list input[placeholder*="Company"]');
+          if(!cvDone && (!empInp || !empInp.value.trim())) errors.push(f.label);
+          break;
+        case 'questionnaire':
+          const allQsAnswered = QS.every(q => {
+            const noBtn = document.getElementById('qno-'+q.id);
+            const yesBtn = document.getElementById('qyes-'+q.id);
+            return noBtn?.classList.contains('sel-no') || yesBtn?.classList.contains('sel-yes') ||
+                   noBtn?.classList.contains('sel-yes') || yesBtn?.classList.contains('sel-no');
+          });
+          if(!allQsAnswered) errors.push(f.label);
+          break;
+        case 'signature':
+          const sigSelected = document.querySelector('.sig-opt.on');
+          if(!sigSelected) errors.push(f.label);
+          break;
+      }
+      return;
+    }
+
+    // Selector-based checks
+    if(f.sel){
+      const el = document.querySelector(f.sel);
+      if(!el) return;
+      if(f.type === 'checkbox'){
+        if(!el.checked){
+          errors.push(f.label);
+          el.closest('.decl')?.style.setProperty('border-color','var(--red)');
+          el.closest('.decl')?.style.setProperty('background','var(--red-light)');
+        } else {
+          el.closest('.decl')?.style.removeProperty('border-color');
+          el.closest('.decl')?.style.removeProperty('background');
+        }
+      } else {
+        if(!el.value || !el.value.trim()){
+          errors.push(f.label);
+          highlightField(el);
+        } else {
+          clearHighlight(el);
+        }
+      }
+    }
+  });
+
+  return errors;
+}
+
+function highlightField(el){
+  el.classList.add('field-error');
+  el.addEventListener('input', ()=>el.classList.remove('field-error'), {once:true});
+  el.addEventListener('change', ()=>el.classList.remove('field-error'), {once:true});
+}
+
+function clearHighlight(el){
+  el.classList.remove('field-error');
+}
+
+function validateAndProceed(fromStep, toStep){
+  // For questionnaire step - custom check
+  if(fromStep === 5){
+    const unanswered = QS.filter(q => {
+      const noBtn = document.getElementById('qno-'+q.id);
+      const yesBtn = document.getElementById('qyes-'+q.id);
+      return !noBtn?.classList.contains('sel-no') && !yesBtn?.classList.contains('sel-yes') &&
+             !noBtn?.classList.contains('sel-yes') && !yesBtn?.classList.contains('sel-no');
+    });
+    if(unanswered.length){
+      const banner = document.getElementById('val-banner-s5');
+      const list = document.getElementById('val-list-s5');
+      if(banner && list){
+        list.innerHTML = `<li>${unanswered.length} questionnaire question${unanswered.length>1?'s':''} not yet answered — please select YES or NO for each question</li>`;
+        banner.classList.add('show');
+        banner.scrollIntoView({behavior:'smooth',block:'start'});
+        // Highlight unanswered questions
+        unanswered.forEach(q => {
+          const item = document.getElementById('qno-'+q.id)?.closest('.q-item');
+          if(item){ item.style.borderColor='var(--red)'; item.style.boxShadow='0 0 0 2px rgba(192,57,43,.15)'; setTimeout(()=>{item.style.borderColor='';item.style.boxShadow='';},3000); }
+        });
+      }
+      return;
+    }
+  }
+
+  const errors = validateStep(fromStep);
+  const banner = document.getElementById('val-banner-s'+fromStep);
+  const list = document.getElementById('val-list-s'+fromStep);
+
+  if(errors.length && banner && list){
+    list.innerHTML = errors.map(e=>`<li>${e}</li>`).join('');
+    banner.classList.add('show');
+    banner.scrollIntoView({behavior:'smooth',block:'start'});
+    return;
+  }
+
+  // Clear banner if validation passes
+  if(banner) banner.classList.remove('show');
+
+  if(toStep === 'submit'){
+    submit();
+  } else {
+    gs(toStep);
+  }
+}
+
+// ── PASSPORT EXPIRY CHECK ──
+function checkPassportExpiry(inp){
+  const today = new Date().toISOString().split('T')[0];
+  const err = document.getElementById('passport-expiry-err');
+  if(inp.value && inp.value <= today){
+    inp.classList.add('field-error');
+    if(err) err.style.display='block';
+  } else {
+    inp.classList.remove('field-error');
+    if(err) err.style.display='none';
+  }
+  saveProgress();
+}
+
+
+// ── ONE APPLICANT ENFORCEMENT ──
+function enforceOneApplicant(changedSelect, listId, className){
+  if(changedSelect.value !== 'yes') return;
+  // Set all others in the same list to 'no'
+  const list = document.getElementById(listId);
+  if(!list) return;
+  list.querySelectorAll('select.'+className).forEach(sel => {
+    if(sel !== changedSelect) sel.value = 'no';
+  });
+}
+
+// ── PRE-FILL APPLICANT DETAILS INTO UBO CARD ──
+// Called by renderUBOIdentityCards — carries applicant's Step 2 data into their card
+function getApplicantDetails(){
+  // Read applicant identity from their already-saved UBO toggle card (if filled)
+  // or fall back to name/email from Step 1 shareholder block
+  const isIncorp = document.getElementById('incorp-f')?.style.display !== 'none';
+  const listSel  = isIncorp ? '#ubo-list .ubo-block' : '#entity-ubo-list .entity-ubo-block';
+  const nameCls  = isIncorp ? '.ubo-name' : '.entity-ubo-name';
+  const emailCls = isIncorp ? '.ubo-email' : '.entity-ubo-email';
+  const apSel    = isIncorp ? '.ubo-is-applicant' : '.entity-ubo-is-applicant';
+
+  let name = '', email = '';
+  document.querySelectorAll(listSel).forEach(b => {
+    if (b.querySelector(apSel)?.value === 'yes') {
+      name  = b.querySelector(nameCls)?.value?.trim() || '';
+      email = b.querySelector(emailCls)?.value?.trim() || '';
+    }
+  });
+
+  const parts = name.split(' ');
+  return {
+    firstName:   parts[0] || '',
+    surname:     parts.slice(1).join(' ') || '',
+    email:       email,
+    // All other fields left blank — applicant fills them in their toggle card
+    dob: '', nationality: '', passport: '', occupation: '', tin: '',
+    addrStreet: '', addrTown: '', addrPostcode: '',
+  };
+}
+
+// ── ARROW KEY NAVIGATION IN COUNTRY DROPDOWNS ──
+document.addEventListener('keydown', function(e){
+  // Find any open dropdown
+  const openDD = document.querySelector('.dropdown.open');
+  if(!openDD) return;
+  const items = Array.from(openDD.querySelectorAll('.dd-item'));
+  if(!items.length) return;
+
+  const highlighted = openDD.querySelector('.dd-item.highlighted');
+  let idx = highlighted ? items.indexOf(highlighted) : -1;
+
+  if(e.key === 'ArrowDown'){
+    e.preventDefault();
+    if(highlighted) highlighted.classList.remove('highlighted');
+    idx = Math.min(idx + 1, items.length - 1);
+    items[idx].classList.add('highlighted');
+    items[idx].scrollIntoView({block:'nearest'});
+  } else if(e.key === 'ArrowUp'){
+    e.preventDefault();
+    if(highlighted) highlighted.classList.remove('highlighted');
+    idx = Math.max(idx - 1, 0);
+    items[idx].classList.add('highlighted');
+    items[idx].scrollIntoView({block:'nearest'});
+  } else if(e.key === 'Enter'){
+    e.preventDefault();
+    if(highlighted) highlighted.dispatchEvent(new MouseEvent('mousedown', {bubbles:true}));
+  } else if(e.key === 'Escape'){
+    openDD.classList.remove('open');
+  }
+});
+
+// Also handle phone code dropdowns (style:display:block not .open class)
+document.addEventListener('keydown', function(e){
+  const visibleDD = Array.from(document.querySelectorAll('.dropdown[style*="display: block"], .dropdown[style*="display:block"]'))
+    .find(d => !d.classList.contains('open'));
+  if(!visibleDD) return;
+  const items = Array.from(visibleDD.querySelectorAll('.dd-item'));
+  if(!items.length) return;
+  const highlighted = visibleDD.querySelector('.dd-item.highlighted');
+  let idx = highlighted ? items.indexOf(highlighted) : -1;
+  if(e.key === 'ArrowDown'){ e.preventDefault(); if(highlighted)highlighted.classList.remove('highlighted'); idx=Math.min(idx+1,items.length-1); items[idx].classList.add('highlighted'); items[idx].scrollIntoView({block:'nearest'}); }
+  else if(e.key === 'ArrowUp'){ e.preventDefault(); if(highlighted)highlighted.classList.remove('highlighted'); idx=Math.max(idx-1,0); items[idx].classList.add('highlighted'); items[idx].scrollIntoView({block:'nearest'}); }
+  else if(e.key === 'Enter'){ e.preventDefault(); if(highlighted)highlighted.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); }
+  else if(e.key === 'Escape'){ visibleDD.style.display='none'; }
+});
+
+
+// ── DOCUMENT FIELD VALIDATION ──
+function checkDocRequired(inp){
+  const form = inp.closest('.ubo-id-form');
+  if(!form) return;
+  const today = new Date().toISOString().split('T')[0];
+  const passNum = form.querySelector('.doc-passport-num');
+  const passExp = form.querySelector('.doc-passport-exp');
+  const idNum   = form.querySelector('.doc-id-num');
+  const idExp   = form.querySelector('.doc-id-exp');
+  // Expiry must be in the future
+  const passExpOk = passExp?.value && passExp.value > today;
+  const idExpOk   = idExp?.value && idExp.value > today;
+  const hasPassport = passNum?.value?.trim() && passExpOk;
+  const hasID       = idNum?.value?.trim() && idExpOk;
+  // Highlight expired dates
+  if(passExp?.value) passExp.classList.toggle('field-error', passExp.value <= today);
+  if(idExp?.value)   idExp.classList.toggle('field-error', idExp.value <= today);
+  const warn = form.querySelector('.doc-req-warn');
+  if(warn){
+    let msg = '';
+    if(!hasPassport && !hasID){
+      const anyFilled = passNum?.value||passExp?.value||idNum?.value||idExp?.value;
+      if(anyFilled) msg = 'Please provide a valid passport or ID card with a future expiry date';
+    }
+    if(passExp?.value && passExp.value <= today) msg = 'Passport expiry date must be in the future';
+    if(idExp?.value && idExp.value <= today) msg = (msg?msg+' · ':'') + 'ID card expiry date must be in the future';
+    warn.style.display = msg ? 'block' : 'none';
+    warn.innerHTML = msg ? '<i class=\'ti ti-alert-circle\'></i> ' + msg : '';
+  }
+  saveProgress();
+}
+
+// ── SUBMIT ──
+function generateRef(){
+  return 'KYC-' + new Date().getFullYear() + '-' + String(Math.floor(Math.random()*9000)+1000);
+}
+
+async function submit(){
+  const submitBtn = document.querySelector('#s7 .btn-blue');
+  if(submitBtn){ submitBtn.disabled=true; submitBtn.innerHTML='<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0 4px 0 0;display:inline-block;vertical-align:middle"></div>Submitting...'; }
+
+  try {
+    // ── Collect all form data ──
+    const services = Array.from(document.querySelectorAll('.svc-item.on')).map(e=>e.querySelector('input').value);
+    const isIncorp = document.getElementById('incorp-f')?.style.display !== 'none';
+
+    const appData = {
+      reference: currentRef || generateRef(),
+      status: 'submitted',
+      submitted_at: new Date().toISOString(),
+
+      // Services
+      services: services,
+      introduced_by: document.querySelector('#intro-by input')?.value || null,
+
+      // Company (incorp)
+      company_name: document.getElementById('incorp-company-name')?.value || null,
+      principal_activities: document.getElementById('incorp-activities')?.value || null,
+      economic_rationale: document.querySelector('#incorp-f textarea[placeholder*="commercial"]')?.value || null,
+      turnover_y1: parseFloat(document.getElementById('incorp-turnover-y1')?.value) || null,
+      turnover_y2: parseFloat(document.querySelector('#incorp-f input[placeholder*="500000"]')?.value) || null,
+      share_capital: parseFloat(document.querySelector('#incorp-f input[placeholder*="1,000"]')?.value) || null,
+
+      // Entity
+      entity_name: document.querySelector('#entity-f input[placeholder*="legal registered"]')?.value || null,
+      entity_reg_number: document.querySelector('#entity-f input[placeholder*="HE 123456"]')?.value || null,
+      entity_activities: document.getElementById('entity-activities')?.value || null,
+      entity_rationale: document.querySelector('#entity-f textarea[placeholder*="business purpose"]')?.value || null,
+      entity_turnover_y1: parseFloat(document.querySelector('#entity-f input[placeholder*="1500000"]')?.value) || null,
+      entity_turnover_y2: parseFloat(document.querySelector('#entity-f input[placeholder*="2000000"]')?.value) || null,
+
+      // Will be filled from UBO card (applicant)
+      pep_status: document.getElementById('pep-select')?.value || null,
+
+      // Biometric
+      biometric_ref: 'SUM-2026-AB7F291',
+      biometric_score: 98,
+      biometric_passed: true,
+
+      // Signature
+      sig_method: document.querySelector('.sig-opt.on input')?.value || null,
+
+      // Declarations
+      decl_accuracy: document.getElementById('dc2')?.checked || false,
+      decl_funds: document.getElementById('dc3')?.checked || false,
+      decl_pep: document.getElementById('dc4')?.checked || false,
+      decl_update: document.getElementById('dc5')?.checked || false,
+      decl_mokas: document.getElementById('dc6')?.checked || false,
+      decl_aml: document.getElementById('dc7')?.checked || false,
+      decl_gdpr: document.getElementById('dc1')?.checked || false,
+      express_consent: document.getElementById('dc1')?.checked || false,
+
+      form_version: '2.0'
+    };
+
+    // ── Insert or update application ──
+    let appId = currentAppId;
+    if(appId){
+      const { error } = await supabase.from('kyc_applications').update(appData).eq('id', appId);
+      if(error) console.warn('Update warning:', error.message);
+    } else {
+      const { data, error } = await supabase.from('kyc_applications').insert(appData).select('id,reference').single();
+      if(error){
+        console.warn('Insert warning:', error.message, '— proceeding with local reference');
+      } else {
+        appId = data.id;
+        currentAppId = appId;
+      }
+      currentRef = appData.reference;
+    }
+
+    // ── Insert shareholders/UBOs ──
+    const listSel = isIncorp ? '#ubo-list .ubo-block' : '#entity-ubo-list .entity-ubo-block';
+    const nameCls = isIncorp ? '.ubo-name' : '.entity-ubo-name';
+    const pctCls  = isIncorp ? '.ubo-pct' : '.entity-ubo-pct';
+    const apCls   = isIncorp ? '.ubo-is-applicant' : '.entity-ubo-is-applicant';
+    const emailCls= isIncorp ? '.ubo-email' : '.entity-ubo-email';
+
+    const shareholders = [];
+    document.querySelectorAll(listSel).forEach(b => {
+      const name = b.querySelector(nameCls)?.value?.trim();
+      const pct  = parseFloat(b.querySelector(pctCls)?.value) || 0;
+      if(!name) return;
+      shareholders.push({
+        application_id: appId,
+        full_name: name,
+        shareholding_pct: pct,
+        ownership_type: b.querySelector('select')?.value || null,
+        nationality: b.querySelector('input[type=hidden]')?.value || null,
+        is_applicant: b.querySelector(apCls)?.value === 'yes',
+        is_ubo: pct > 25,
+        email: b.querySelector(emailCls)?.value || null,
+        kyc_status: 'draft'
+      });
+    });
+    if(shareholders.length){
+      const { error } = await supabase.from('kyc_shareholders').insert(shareholders);
+      if(error) console.warn('Shareholders insert error:', error);
+    }
+
+    // ── Insert source of funds ──
+    const sofRows = [];
+    document.querySelectorAll('.sof-type').forEach((sel, i) => {
+      if(!sel.value) return;
+      const val = document.querySelectorAll('.sof-val')[i];
+      sofRows.push({
+        application_id: appId,
+        sof_type: sel.value,
+        amount_eur: parseFloat(val?.value) || null
+      });
+    });
+    if(sofRows.length){
+      const { error } = await supabase.from('kyc_source_of_funds').insert(sofRows);
+      if(error) console.warn('SOF insert error:', error);
+    }
+
+    // ── Insert questionnaire answers ──
+    const qAnswers = [];
+    ['other_names','ownership','entry','ml','prohibited','investigations','convictions','bankruptcy','tax_audit','insurance','litigation'].forEach(qid => {
+      const noBtn  = document.getElementById('qno-'+qid);
+      const yesBtn = document.getElementById('qyes-'+qid);
+      const answer = yesBtn?.classList.contains('sel-yes') ? true : noBtn?.classList.contains('sel-no') ? false : null;
+      if(answer !== null){
+        const expand = document.getElementById('qe-'+qid);
+        qAnswers.push({
+          application_id: appId,
+          question_id: qid,
+          answer: answer,
+          details: expand?.querySelector('textarea')?.value || null
+        });
+      }
+    });
+    if(qAnswers.length){
+      const { error } = await supabase.from('kyc_questionnaire').insert(qAnswers);
+      if(error) console.warn('Questionnaire insert error:', error);
+    }
+
+    // ── Audit log ──
+    await supabase.from('kyc_audit_log').insert({
+      application_id: appId,
+      event: 'kyc_submitted',
+      details: { services, sig_method: appData.sig_method, biometric_ref: appData.biometric_ref }
+    });
+
+    // ── Clear localStorage draft ──
+    try{ localStorage.removeItem('predeevo_kyc_draft'); }catch(e){}
+
+    // ── Show success ──
+    currentRef = appData.reference;
+    document.getElementById('ref-num').textContent = currentRef;
+    gs('success');
+
+  } catch(err) {
+    console.error('Submission error:', err);
+    // If it's a DB/schema error, still show success with local ref (form data is in localStorage)
+    if(err.message && (err.message.includes('relation') || err.message.includes('does not exist') || err.message.includes('JWT'))){
+      console.warn('Database not yet configured — showing success with local reference');
+      if(!currentRef) currentRef = generateRef();
+      document.getElementById('ref-num').textContent = currentRef;
+      try{ localStorage.removeItem('predeevo_kyc_draft'); }catch(e){}
+      gs('success');
+    } else {
+      if(submitBtn){ submitBtn.disabled=false; submitBtn.innerHTML='<i class="ti ti-send" style="font-size:13px"></i>Submit KYC'; }
+      alert('Submission failed: ' + (err.message || 'Please check your connection and try again.'));
+    }
+  }
+}
+function dlPDF(){
+  alert('In the live app, a fully completed PDF of your application will download here — including all form data, document references, biometric verification result, and signature certificate.');
+}
+
+// ════════════════════════════════════════════════
+// LOCALSTORAGE SAVE / RESUME
+// ════════════════════════════════════════════════
+const SAVE_KEY = 'predeevo_kyc_draft';
+
+function saveProgress(){
+  try {
+    const data = {
+      step: currentStep,
+      timestamp: Date.now(),
+      // Step 1
+      intro: document.querySelector('select[onchange*="intro-by"]')?.value || 'no',
+      intro_by: document.querySelector('#intro-by input')?.value || '',
+      services: Array.from(document.querySelectorAll('.svc-item.on')).map(e=>e.querySelector('input').value),
+      sof_rows: Array.from(document.querySelectorAll('.sof-type')).map((s,i)=>({type:s.value,val:document.querySelectorAll('.sof-val')[i]?.value||''})),
+      ubos: Array.from(document.querySelectorAll('.ubo-block')).map(b=>({
+        name: b.querySelector('.ubo-name')?.value||'',
+        pct: b.querySelector('.ubo-pct')?.value||'',
+        isApplicant: b.querySelector('.ubo-is-applicant')?.value||'yes',
+        email: b.querySelector('.ubo-email')?.value||'',
+      })),
+      // Step 2
+      firstName: document.querySelector('#s2 input[placeholder*="First name"]')?.value || '',
+      surname: document.querySelector('#s2 input[placeholder*="Surname"]')?.value || '',
+      dob: document.querySelector('#s2 input[type=date]')?.value || '',
+      pep: document.getElementById('pep-select')?.value || '',
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    // Flash save indicator
+    const ind = document.getElementById('save-ind');
+    if(ind){ind.classList.add('show');setTimeout(()=>ind.classList.remove('show'),2000);}
+  } catch(e){ console.log('Save error:', e); }
+}
+
+function loadProgress(){
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    // Show resume banner
+    const banner = document.getElementById('resume-banner');
+    if(banner) banner.style.display = 'flex';
+    // Store data for resumeForm to use
+    window._savedData = data;
+  } catch(e){ console.log('Load error:', e); }
+}
+
+function resumeForm(){
+  const data = window._savedData;
+  if(!data) return;
+  document.getElementById('resume-banner').style.display = 'none';
+  try {
+    // Restore Step 1 intro
+    const introSel = document.querySelector('select[onchange*="intro-by"]');
+    if(introSel && data.intro){
+      introSel.value = data.intro;
+      if(data.intro === 'yes'){
+        document.getElementById('intro-by').style.display = 'block';
+        const introInp = document.querySelector('#intro-by input');
+        if(introInp && data.intro_by) introInp.value = data.intro_by;
+      }
+    }
+    // Restore services
+    if(data.services && data.services.length){
+      data.services.forEach(val=>{
+        const item = document.querySelector(`.svc-item input[value="${val}"]`);
+        if(item){
+          item.checked = true;
+          item.closest('.svc-item').classList.add('on');
+        }
+      });
+      const sel = data.services;
+      const otherWrap=document.getElementById('other-svc');
+      if(otherWrap)otherWrap.style.display=sel.includes('other')?'block':'none';
+      const hasIncorp=sel.includes('incorp');
+      const incorpF=document.getElementById('incorp-f');
+      const entityF=document.getElementById('entity-f');
+      if(incorpF)incorpF.style.display=hasIncorp?'block':'none';
+      if(entityF)entityF.style.display=hasIncorp?'none':'block';
+    }
+    // Restore UBOs
+    if(data.ubos && data.ubos.length > 0){
+      const firstBlock = document.querySelector('.ubo-block');
+      if(firstBlock && data.ubos[0]){
+        const u = data.ubos[0];
+        if(firstBlock.querySelector('.ubo-name')) firstBlock.querySelector('.ubo-name').value = u.name;
+        if(firstBlock.querySelector('.ubo-pct')) firstBlock.querySelector('.ubo-pct').value = u.pct;
+        if(firstBlock.querySelector('.ubo-is-applicant')) firstBlock.querySelector('.ubo-is-applicant').value = u.isApplicant;
+        if(firstBlock.querySelector('.ubo-email')) firstBlock.querySelector('.ubo-email').value = u.email;
+      }
+      // Add extra UBO blocks
+      for(let i=1; i<data.ubos.length; i++){
+        addUBO();
+        const blocks = document.querySelectorAll('.ubo-block');
+        const b = blocks[blocks.length-1];
+        const u = data.ubos[i];
+        if(b.querySelector('.ubo-name')) b.querySelector('.ubo-name').value = u.name;
+        if(b.querySelector('.ubo-pct')) b.querySelector('.ubo-pct').value = u.pct;
+        if(b.querySelector('.ubo-is-applicant')) b.querySelector('.ubo-is-applicant').value = u.isApplicant;
+        if(b.querySelector('.ubo-email')) b.querySelector('.ubo-email').value = u.email;
+      }
+      calcUBOPct();
+    }
+    // Restore Step 2 basics
+    if(data.firstName){const inp=document.querySelector('#s2 input[placeholder*="First name"]');if(inp)inp.value=data.firstName;}
+    if(data.surname){const inp=document.querySelector('#s2 input[placeholder*="Surname"]');if(inp)inp.value=data.surname;}
+    if(data.pep){const sel=document.getElementById('pep-select');if(sel){sel.value=data.pep;pepSelectChange(data.pep);}}
+    // Navigate to saved step
+    if(data.step && data.step > 1) gs(data.step);
+    else gs(1);
+  } catch(e){ console.log('Resume error:', e); gs(1); }
+}
+
+function clearSave(){
+  try{localStorage.removeItem(SAVE_KEY);}catch(e){}
+  document.getElementById('resume-banner').style.display = 'none';
+  window._savedData = null;
+  gs(1);
+}
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', ()=>{
+  loadProgress();
+  // Auto-save on any input change
+  document.addEventListener('change', saveProgress);
+  document.addEventListener('input', ()=>{ clearTimeout(window._saveTimer); window._saveTimer = setTimeout(saveProgress, 800); });
+});
+</script>
+</body>
+</html>
