@@ -1769,11 +1769,18 @@ function validateStep(stepNum){
           if(uboCards.length === 0) break;
           const missing = [];
           uboCards.forEach((card, i) => {
-            const form = document.getElementById('ubo-form-'+i);
+            // Try by ID first, then search within the card body
+            let form = document.getElementById('ubo-form-'+i);
+            if(!form){
+              const body = document.getElementById('ubo-body-'+i);
+              form = body?.querySelector('.ubo-id-form');
+            }
             if(!form) return;
             const nameInp  = form.querySelector('input[placeholder*="As on passport"]');
             const emailInp = form.querySelector('input[type="email"]');
-            const dobInp   = form.querySelectorAll('input[type="date"]')[0];
+            // DOB is the first date input that is NOT a document expiry field
+            const allDateInputs = Array.from(form.querySelectorAll('input[type="date"]'));
+            const dobInp = allDateInputs.find(inp => !inp.classList.contains('doc-passport-exp') && !inp.classList.contains('doc-id-exp'));
             const passNum  = form.querySelector('.doc-passport-num');
             const passExp  = form.querySelector('.doc-passport-exp');
             const idNum    = form.querySelector('.doc-id-num');
