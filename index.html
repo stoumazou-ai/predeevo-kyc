@@ -11,7 +11,7 @@ const SUPABASE_URL = 'https://dnvmprywxeuzhjumtnpm.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudm1wcnl3eGV1emhqdW10bnBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNDY5MjMsImV4cCI6MjA5MzkyMjkyM30.hAHkY1se2EZ834TIEEpger-cNG3EQIhWYs31CPzXH7w';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentAppId = null;      // UUID of current draft in Supabase
-let currentRef = null;        // KYC-2026-XXXX reference
+let currentRef = "KYC-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random()*9000)+1000);
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -2108,7 +2108,8 @@ function checkDocRequired(inp){
 
 // ── SUBMIT ──
 function generateRef(){
-  return 'KYC-' + new Date().getFullYear() + '-' + String(Math.floor(Math.random()*9000)+1000);
+  if(!currentRef) currentRef = 'KYC-' + new Date().getFullYear() + '-' + String(Math.floor(Math.random()*9000)+1000);
+  return currentRef;
 }
 
 async function submit(){
@@ -2121,7 +2122,7 @@ async function submit(){
     const isIncorp = document.getElementById('incorp-f')?.style.display !== 'none';
 
     const appData = {
-      reference: currentRef || generateRef(),
+      reference: currentRef,
       status: 'submitted',
       submitted_at: new Date().toISOString(),
 
