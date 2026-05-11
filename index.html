@@ -1060,7 +1060,7 @@ function chkHR(c){document.getElementById('highrisk-warn').classList.toggle('sho
 // ── PHONE CODES ──
 function spc(inp){
   const q=inp.value.toLowerCase();
-  const dd=document.getElementById('dd-mob')||inp.nextElementSibling;
+  const dd=inp.parentElement.querySelector('.dropdown')||document.getElementById('dd-mob');
   if(!dd)return;
   dd.innerHTML='';
   const m=PHONE_CODES.filter(([cc,code])=>cc.toLowerCase().includes(q)||code.includes(q)||!q).slice(0,8);
@@ -1072,7 +1072,7 @@ function spc(inp){
   dd.style.display='block';
 }
 function spdd(inp){spc(inp);}
-function sphdd(inp){setTimeout(()=>{const dd=document.getElementById('dd-mob')||inp.nextElementSibling;if(dd)dd.style.display='none';},180);}
+function sphdd(inp){setTimeout(()=>{const dd=inp.parentElement.querySelector('.dropdown')||document.getElementById('dd-mob');if(dd)dd.style.display='none';},180);}
 
 // ── NAVIGATION ──
 let currentStep=1;
@@ -1531,7 +1531,7 @@ function renderUBOIdentityCards(){
             <div class="fg"><label class="lbl">Town / City</label><input placeholder="Town or city" value="${prefillAddrTown}"></div>
             <div class="fg"><label class="lbl">Postcode</label><input placeholder="Postcode / ZIP" value="${prefillAddrPC}"></div>
             <div class="fg"><label class="lbl">Email address <span class="req">*</span></label><input type="email" placeholder="email@domain.com" value="${prefillEmail}" oninput="updateUBOStatus(${i})"></div>
-            <div class="fg"><label class="lbl">Mobile</label><div class="phone-row"><input class="si" placeholder="+357" style="width:100%" oninput="spc(this)" onfocus="spdd(this)" onblur="sphdd(this)"><input placeholder="Number" type="tel"></div></div>
+            <div class="fg"><label class="lbl">Mobile</label><div class="phone-row"><div style="position:relative"><input class="si" placeholder="+357" style="width:100%" oninput="spc(this)" onfocus="spdd(this)" onblur="sphdd(this)"><div class="dropdown" style="width:200px"></div></div><input placeholder="Number" type="tel"></div></div>
             <div class="fg"><label class="lbl">Occupation / profession</label><input placeholder="e.g. Director, Investor" value="${prefillOccup}"></div>
             <div class="fg"><label class="lbl">Employment status</label><select><option value="">Select...</option><option>Self-employed</option><option>Employed</option><option>Business owner</option><option>Retired</option><option>Investor</option><option>Other</option></select></div>
             <div class="fg"><label class="lbl">Country of tax residence</label><div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden"><div class="dropdown"></div></div></div>
