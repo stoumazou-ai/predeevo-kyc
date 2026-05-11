@@ -4,14 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Predeevo — Client KYC Verification</title>
+<script>
+// ── CRITICAL GLOBALS — must run first, independent of CDN ──
+window.currentAppId = null;
+window.currentRef = "KYC-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random()*9000)+1000);
+var currentAppId = window.currentAppId;
+var currentRef = window.currentRef;
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ── SUPABASE CONFIG ──
 const SUPABASE_URL = 'https://dnvmprywxeuzhjumtnpm.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudm1wcnl3eGV1emhqdW10bnBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNDY5MjMsImV4cCI6MjA5MzkyMjkyM30.hAHkY1se2EZ834TIEEpger-cNG3EQIhWYs31CPzXH7w';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let currentAppId = null;      // UUID of current draft in Supabase
-let currentRef = "KYC-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random()*9000)+1000);
+let sb = null;
+try {
+  if(window.supabase && window.supabase.createClient){
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } else {
+    console.warn('Supabase library not loaded — submissions will use local fallback');
+  }
+} catch(e){
+  console.warn('Supabase init failed:', e.message);
+}
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -1320,6 +1334,47 @@ function addEntityUBO() {
   document.getElementById('entity-ubo-list').appendChild(b);
 }
 
+
+// ── SOF CALCULATOR ──
+function calcSOF(){
+  let t=0;
+  document.querySelectorAll('.sof-val').forEach(i=>{t+=parseFloat(i.value)||0;});
+  const el=document.getElementById('sof-total');
+  if(el)el.textContent=Math.round(t).toLocaleString('en');
+  const hasOther=Array.from(document.querySelectorAll('.sof-type')).some(s=>s.value&&s.value.startsWith('Other'));
+  const othEl=document.getElementById('sof-other');
+  if(othEl)othEl.style.display=hasOther?'block':'none';
+  saveProgress();
+}
+
+function addSOF(){
+  const r=document.createElement('div');
+  r.className='sof-row';
+  r.innerHTML=`<div class="fg" style="margin-bottom:0">
+    <select class="sof-type" onchange="calcSOF()">
+      <option value="">Select source...</option>
+      <option>Employment income / salary</option>
+      <option>Business trading income / revenues</option>
+      <option>Share capital injection from shareholders</option>
+      <option>Director loans</option>
+      <option>Bank financing / loans</option>
+      <option>Sale of property or assets</option>
+      <option>Investment returns / dividends</option>
+      <option>Intercompany transfers / group funding</option>
+      <option>Grant or government funding</option>
+      <option>Third party investor funding</option>
+      <option>Inheritance or gift</option>
+      <option>Cryptocurrency liquidation</option>
+      <option>Other (describe below)</option>
+    </select>
+  </div>
+  <div class="fg" style="margin-bottom:0">
+    <input type="number" class="sof-val" placeholder="0" oninput="calcSOF()" min="0" step="1">
+  </div>
+  <button type="button" onclick="this.closest('.sof-row').remove();calcSOF()" style="width:34px;height:40px;border:0.5px solid var(--red-border);border-radius:8px;background:var(--red-light);color:var(--red);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">×</button>`;
+  document.getElementById('sof-rows').appendChild(r);
+}
+
 // ── SOW CALCULATOR ──
 function addSOW(){
   const r=document.createElement('div');r.className='wealth-row';
@@ -2172,11 +2227,14 @@ async function submit(){
 
     // ── Insert or update application ──
     let appId = currentAppId;
-    if(appId){
-      const { error } = await supabase.from('kyc_applications').update(appData).eq('id', appId);
+    if(!sb){
+      console.warn('Supabase client not initialised — local-only submission');
+      currentRef = appData.reference;
+    } else if(appId){
+      const { error } = await sb.from('kyc_applications').update(appData).eq('id', appId);
       if(error) console.warn('Update warning:', error.message);
     } else {
-      const { data, error } = await supabase.from('kyc_applications').insert(appData).select('id,reference').single();
+      const { data, error } = await sb.from('kyc_applications').insert(appData).select('id,reference').single();
       if(error){
         console.warn('Insert warning:', error.message, '— proceeding with local reference');
       } else {
@@ -2210,8 +2268,8 @@ async function submit(){
         kyc_status: 'draft'
       });
     });
-    if(shareholders.length){
-      const { error } = await supabase.from('kyc_shareholders').insert(shareholders);
+    if(shareholders.length && sb){
+      const { error } = await sb.from('kyc_shareholders').insert(shareholders);
       if(error) console.warn('Shareholders insert error:', error);
     }
 
@@ -2226,8 +2284,8 @@ async function submit(){
         amount_eur: parseFloat(val?.value) || null
       });
     });
-    if(sofRows.length){
-      const { error } = await supabase.from('kyc_source_of_funds').insert(sofRows);
+    if(sofRows.length && sb){
+      const { error } = await sb.from('kyc_source_of_funds').insert(sofRows);
       if(error) console.warn('SOF insert error:', error);
     }
 
@@ -2247,13 +2305,13 @@ async function submit(){
         });
       }
     });
-    if(qAnswers.length){
-      const { error } = await supabase.from('kyc_questionnaire').insert(qAnswers);
+    if(qAnswers.length && sb){
+      const { error } = await sb.from('kyc_questionnaire').insert(qAnswers);
       if(error) console.warn('Questionnaire insert error:', error);
     }
 
     // ── Audit log ──
-    await supabase.from('kyc_audit_log').insert({
+    if(sb) await sb.from('kyc_audit_log').insert({
       application_id: appId,
       event: 'kyc_submitted',
       details: { services, sig_method: appData.sig_method, biometric_ref: appData.biometric_ref }
