@@ -41,19 +41,27 @@
     // Pre-fill
     if(invitation){
       window.currentInvitation = invitation;
-      function doPrefill(){
+      function doPrefill(force){
         const firstNameInp = document.querySelector('.ubo-name');
         const emailInp = document.querySelector('.ubo-email');
         const compNameInp = document.getElementById('incorp-company-name');
-        if(firstNameInp && !firstNameInp.value && invitation.client_name) firstNameInp.value = invitation.client_name;
-        if(emailInp && !emailInp.value && invitation.client_email) emailInp.value = invitation.client_email;
-        if(compNameInp && !compNameInp.value && invitation.client_company) compNameInp.value = invitation.client_company;
+        if(firstNameInp && (force || !firstNameInp.value) && invitation.client_name){
+          firstNameInp.value = invitation.client_name;
+          firstNameInp.dispatchEvent(new Event('input', {bubbles:true}));
+        }
+        if(emailInp && (force || !emailInp.value) && invitation.client_email){
+          emailInp.value = invitation.client_email;
+          emailInp.dispatchEvent(new Event('input', {bubbles:true}));
+        }
+        if(compNameInp && (force || !compNameInp.value) && invitation.client_company){
+          compNameInp.value = invitation.client_company;
+          compNameInp.dispatchEvent(new Event('input', {bubbles:true}));
+        }
       }
-      // Try multiple times to handle race condition
-      setTimeout(doPrefill, 100);
-      setTimeout(doPrefill, 500);
-      setTimeout(doPrefill, 1000);
-      setTimeout(doPrefill, 2000);
+      // Run after form is ready - force fill at 2s to override any localStorage load
+      setTimeout(() => doPrefill(false), 200);
+      setTimeout(() => doPrefill(false), 800);
+      setTimeout(() => doPrefill(true), 2000); // FORCE at 2s — overrides empty localStorage values
     }
   }
 
