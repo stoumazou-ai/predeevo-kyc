@@ -5,14 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Predeevo — Client KYC Verification</title>
 <script>
-// ── INVITATION TOKEN GATE ──
-// Runs immediately on page load — blocks access without valid token
+// ── INVITATION TOKEN GATE — runs first, blocks access without valid token ──
 (async function() {
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get('token');
-  const gate = document.getElementById('access-gate');
 
   function showGate(title, msg, isError) {
+    // Wait for DOM if not ready
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', () => showGate(title, msg, isError));
+      return;
+    }
+    const gate = document.getElementById('access-gate');
     if(!gate) return;
     gate.style.display = 'flex';
     const titleEl = document.getElementById('gate-title');
@@ -24,8 +28,28 @@
       iconWrap.style.background = '#fee2e2';
       iconWrap.innerHTML = '<i class="ti ti-x" style="font-size:26px;color:#dc2626"></i>';
     }
-    // Hide everything else
-    document.querySelectorAll('.app, .wrap, header, main').forEach(el => el.style.display = 'none');
+    // Form stays hidden via .wrap visibility:hidden CSS
+  }
+
+  function grantAccess(invitation) {
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', () => grantAccess(invitation));
+      return;
+    }
+    // Reveal the form
+    document.querySelectorAll('.wrap').forEach(el => el.classList.add('access-granted'));
+    // Pre-fill
+    if(invitation){
+      window.currentInvitation = invitation;
+      setTimeout(() => {
+        const firstNameInp = document.querySelector('.ubo-name');
+        const emailInp = document.querySelector('.ubo-email');
+        const compNameInp = document.getElementById('incorp-company-name');
+        if(firstNameInp && !firstNameInp.value && invitation.client_name) firstNameInp.value = invitation.client_name;
+        if(emailInp && !emailInp.value && invitation.client_email) emailInp.value = invitation.client_email;
+        if(compNameInp && !compNameInp.value && invitation.client_company) compNameInp.value = invitation.client_company;
+      }, 300);
+    }
   }
 
   if(!token){
@@ -33,7 +57,7 @@
     return;
   }
 
-  // Wait for sb to be available (it's initialised in a later script)
+  // Wait for sb to be available
   let attempts = 0;
   while(!window.sb && attempts < 50){
     await new Promise(r => setTimeout(r, 100));
@@ -41,13 +65,12 @@
   }
 
   if(!window.sb){
-    // Supabase failed to load — allow access but warn
-    console.warn('Supabase unavailable, allowing access');
+    console.warn('Supabase unavailable, allowing access with token:', token);
     window.currentToken = token;
+    grantAccess(null);
     return;
   }
 
-  // Validate token
   try {
     const { data, error } = await window.sb
       .from('kyc_invitations')
@@ -75,30 +98,17 @@
       return;
     }
 
-    // Valid! Store invitation data for pre-fill
-    window.currentInvitation = data;
-    window.currentToken = token;
     console.log('Invitation validated:', data.client_name);
-
-    // Pre-fill name/email if elements exist (after form loads)
-    setTimeout(() => {
-      const firstNameInp = document.querySelector('.ubo-name');
-      const emailInp = document.querySelector('.ubo-email');
-      if(firstNameInp && !firstNameInp.value && data.client_name) firstNameInp.value = data.client_name;
-      if(emailInp && !emailInp.value && data.client_email) emailInp.value = data.client_email;
-      // Pre-fill company if entity form
-      const compNameInp = document.getElementById('incorp-company-name');
-      if(compNameInp && !compNameInp.value && data.client_company) compNameInp.value = data.client_company;
-    }, 500);
+    window.currentToken = token;
+    grantAccess(data);
 
   } catch(e){
     console.warn('Token validation error:', e);
-    // On error, allow access to avoid blocking real clients
     window.currentToken = token;
+    grantAccess(null);
   }
 })();
 
-// Expose sb to window when initialised (so the gate function can use it)
 window.addEventListener('DOMContentLoaded', () => {
   if(typeof sb !== 'undefined') window.sb = sb;
 });
@@ -130,6 +140,11 @@ try {
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <style>
+/* Hide form content until token validation completes */
+.wrap{visibility:hidden}
+.wrap.access-granted{visibility:visible}
+
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --blue:#1C75BC;--blue-dark:#155d96;
