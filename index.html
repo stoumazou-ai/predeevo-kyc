@@ -38,6 +38,24 @@
     }
     // Reveal the form
     document.body.classList.add('access-granted');
+    // Show welcome banner (with retry to handle race condition)
+    if(invitation && invitation.client_name){
+      function showBanner(){
+        const banner = document.getElementById('invite-welcome');
+        const nameEl = document.getElementById('invite-client-name');
+        if(banner && nameEl){
+          banner.style.display = 'block';
+          nameEl.textContent = invitation.client_name;
+          return true;
+        }
+        return false;
+      }
+      if(!showBanner()){
+        setTimeout(showBanner, 200);
+        setTimeout(showBanner, 800);
+        setTimeout(showBanner, 2000);
+      }
+    }
     // Pre-fill
     if(invitation){
       window.currentInvitation = invitation;
