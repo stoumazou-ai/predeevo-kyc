@@ -5,6 +5,105 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Predeevo — Client KYC Verification</title>
 <script>
+// ── INVITATION TOKEN GATE ──
+// Runs immediately on page load — blocks access without valid token
+(async function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  const gate = document.getElementById('access-gate');
+
+  function showGate(title, msg, isError) {
+    if(!gate) return;
+    gate.style.display = 'flex';
+    const titleEl = document.getElementById('gate-title');
+    const msgEl = document.getElementById('gate-msg');
+    const iconWrap = document.getElementById('gate-icon');
+    if(titleEl) titleEl.textContent = title;
+    if(msgEl) msgEl.textContent = msg;
+    if(iconWrap && isError){
+      iconWrap.style.background = '#fee2e2';
+      iconWrap.innerHTML = '<i class="ti ti-x" style="font-size:26px;color:#dc2626"></i>';
+    }
+    // Hide everything else
+    document.querySelectorAll('.app, .wrap, header, main').forEach(el => el.style.display = 'none');
+  }
+
+  if(!token){
+    showGate('Access by invitation only', 'This KYC form is accessible by invitation only. Please contact your Predeevo advisor to receive your secure access link.', false);
+    return;
+  }
+
+  // Wait for sb to be available (it's initialised in a later script)
+  let attempts = 0;
+  while(!window.sb && attempts < 50){
+    await new Promise(r => setTimeout(r, 100));
+    attempts++;
+  }
+
+  if(!window.sb){
+    // Supabase failed to load — allow access but warn
+    console.warn('Supabase unavailable, allowing access');
+    window.currentToken = token;
+    return;
+  }
+
+  // Validate token
+  try {
+    const { data, error } = await window.sb
+      .from('kyc_invitations')
+      .select('*')
+      .eq('token', token)
+      .single();
+
+    if(error || !data){
+      showGate('Invalid link', 'This invitation link is invalid or has been revoked. Please contact your Predeevo advisor.', true);
+      return;
+    }
+
+    if(data.status === 'completed'){
+      showGate('Already submitted', 'This invitation has already been used. If you need to submit additional information, please contact your Predeevo advisor.', true);
+      return;
+    }
+
+    if(data.status === 'revoked'){
+      showGate('Link revoked', 'This invitation has been revoked. Please contact your Predeevo advisor for a new link.', true);
+      return;
+    }
+
+    if(new Date(data.expires_at) < new Date()){
+      showGate('Link expired', 'This invitation has expired. Please contact your Predeevo advisor for a new link.', true);
+      return;
+    }
+
+    // Valid! Store invitation data for pre-fill
+    window.currentInvitation = data;
+    window.currentToken = token;
+    console.log('Invitation validated:', data.client_name);
+
+    // Pre-fill name/email if elements exist (after form loads)
+    setTimeout(() => {
+      const firstNameInp = document.querySelector('.ubo-name');
+      const emailInp = document.querySelector('.ubo-email');
+      if(firstNameInp && !firstNameInp.value && data.client_name) firstNameInp.value = data.client_name;
+      if(emailInp && !emailInp.value && data.client_email) emailInp.value = data.client_email;
+      // Pre-fill company if entity form
+      const compNameInp = document.getElementById('incorp-company-name');
+      if(compNameInp && !compNameInp.value && data.client_company) compNameInp.value = data.client_company;
+    }, 500);
+
+  } catch(e){
+    console.warn('Token validation error:', e);
+    // On error, allow access to avoid blocking real clients
+    window.currentToken = token;
+  }
+})();
+
+// Expose sb to window when initialised (so the gate function can use it)
+window.addEventListener('DOMContentLoaded', () => {
+  if(typeof sb !== 'undefined') window.sb = sb;
+});
+</script>
+<script>
 // ── CRITICAL GLOBALS — must run first, independent of CDN ──
 window.currentAppId = null;
 window.currentRef = "KYC-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random()*9000)+1000);
@@ -318,6 +417,22 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 </style>
 </head>
 <body>
+
+<!-- ── ACCESS GATE — shown until token is validated ── -->
+<div id="access-gate" style="display:none;position:fixed;inset:0;background:#fafbfc;z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px">
+  <div style="max-width:480px;width:100%;text-align:center;background:white;padding:40px 32px;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.04),0 2px 12px rgba(0,0,0,.04);border:0.5px solid rgba(0,0,0,.06)">
+    <img src="https://predeevo.com/wp-content/uploads/2026/02/logo-1.png" alt="Predeevo" style="height:32px;margin-bottom:24px">
+    <div id="gate-icon" style="width:56px;height:56px;margin:0 auto 18px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center"><i class="ti ti-lock" style="font-size:26px;color:#d97706"></i></div>
+    <h2 id="gate-title" style="font-size:18px;font-weight:700;margin:0 0 8px;color:#111827">Access by invitation only</h2>
+    <p id="gate-msg" style="font-size:13px;line-height:1.6;color:#6b7280;margin:0 0 24px">This KYC form is accessible by invitation only. Please contact your Predeevo advisor to receive your secure access link.</p>
+    <div style="padding:16px;background:#f9fafb;border-radius:8px;font-size:11px;color:#6b7280;text-align:left">
+      <strong style="color:#374151">Predeevo Ltd</strong><br>
+      Sintika Hanum 58, 6051 Larnaca, Cyprus<br>
+      Tel: +357 24255858 · info@predeevo.com
+    </div>
+  </div>
+</div>
+
 <div class="wrap">
 
 <!-- RESUME BANNER — shown if saved progress exists -->
@@ -2308,6 +2423,17 @@ async function submit(){
     if(qAnswers.length && sb){
       const { error } = await sb.from('kyc_questionnaire').insert(qAnswers);
       if(error) console.warn('Questionnaire insert error:', error);
+    }
+
+    // ── Mark invitation as completed ──
+    if(sb && window.currentToken){
+      try {
+        await sb.from('kyc_invitations').update({
+          status: 'completed',
+          used_at: new Date().toISOString(),
+          application_id: appId
+        }).eq('token', window.currentToken);
+      } catch(e){ console.warn('Invitation update warning:', e); }
     }
 
     // ── Audit log ──
