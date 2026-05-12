@@ -37,18 +37,23 @@
       return;
     }
     // Reveal the form
-    document.querySelectorAll('.wrap').forEach(el => el.classList.add('access-granted'));
+    document.body.classList.add('access-granted');
     // Pre-fill
     if(invitation){
       window.currentInvitation = invitation;
-      setTimeout(() => {
+      function doPrefill(){
         const firstNameInp = document.querySelector('.ubo-name');
         const emailInp = document.querySelector('.ubo-email');
         const compNameInp = document.getElementById('incorp-company-name');
         if(firstNameInp && !firstNameInp.value && invitation.client_name) firstNameInp.value = invitation.client_name;
         if(emailInp && !emailInp.value && invitation.client_email) emailInp.value = invitation.client_email;
         if(compNameInp && !compNameInp.value && invitation.client_company) compNameInp.value = invitation.client_company;
-      }, 300);
+      }
+      // Try multiple times to handle race condition
+      setTimeout(doPrefill, 100);
+      setTimeout(doPrefill, 500);
+      setTimeout(doPrefill, 1000);
+      setTimeout(doPrefill, 2000);
     }
   }
 
@@ -141,8 +146,7 @@ try {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <style>
 /* Hide form content until token validation completes */
-.wrap{visibility:hidden}
-.wrap.access-granted{visibility:visible}
+body:not(.access-granted) .wrap{visibility:hidden!important}
 
 
 *{box-sizing:border-box;margin:0;padding:0}
