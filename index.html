@@ -46,6 +46,30 @@
         if(banner && nameEl){
           banner.style.display = 'flex';
           nameEl.textContent = invitation.client_name;
+
+          // If a saved draft was found, adapt the welcome gate to a "resume" state
+          const draft = window._pendingDraft;
+          if(draft){
+            const greetEl = document.getElementById('invite-greeting');
+            if(greetEl) greetEl.innerHTML = 'Welcome back, <span id="invite-client-name">' + invitation.client_name + '</span>';
+            const subEl = document.getElementById('invite-subtitle');
+            if(subEl) subEl.textContent = "You've already started this KYC application. Resume where you left off, or start fresh.";
+            const draftBox = document.getElementById('invite-draft-box');
+            const draftDate = document.getElementById('invite-draft-date');
+            if(draftBox && draftDate){
+              const when = new Date(draft.updated_at || draft.created_at);
+              const opts = { weekday:'long', day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' };
+              draftDate.textContent = 'You last saved on ' + when.toLocaleDateString('en-GB', opts) + '.';
+              draftBox.style.display = 'block';
+            }
+            const iconWrap = document.getElementById('invite-icon');
+            if(iconWrap) iconWrap.innerHTML = '<i class="ti ti-restore" style="font-size:28px;color:#1C75BC"></i>';
+            const primaryBtn = document.getElementById('invite-primary-btn');
+            if(primaryBtn) primaryBtn.innerHTML = 'Resume your application <i class="ti ti-arrow-right" style="font-size:13px;vertical-align:-1px;margin-left:4px"></i>';
+            const freshWrap = document.getElementById('invite-start-fresh-wrap');
+            if(freshWrap) freshWrap.style.display = 'block';
+          }
+
           // Show invitation expiry date
           const expEl = document.getElementById('invite-expires');
           const expBox = document.getElementById('invite-expires-box');
@@ -142,6 +166,23 @@
     window.currentToken = token;
     window.currentInvitationId = data.id;
     window.currentInvitationExpiresAt = data.expires_at;
+
+    // Check for an existing draft for this invitation
+    try {
+      const { data: draft, error: draftErr } = await window.sb
+        .from('kyc_applications')
+        .select('id,reference,updated_at,created_at')
+        .eq('current_invitation_id', data.id)
+        .eq('status', 'draft')
+        .maybeSingle();
+      if(!draftErr && draft){
+        window._pendingDraft = draft;
+        console.log('Saved draft found:', draft.reference);
+      }
+    } catch(e){
+      console.warn('Draft lookup error (will proceed without resume):', e);
+    }
+
     grantAccess(data);
 
   } catch(e){
@@ -505,21 +546,82 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 <div id="invite-welcome" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1C75BC 0%,#155a93 100%);z-index:99998;align-items:center;justify-content:center;padding:24px">
   <div style="background:white;border-radius:14px;padding:36px 32px;max-width:420px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.2)">
     <img src="https://predeevo.com/wp-content/uploads/2026/02/logo-1.png" alt="Predeevo" style="height:36px;margin-bottom:24px">
-    <div style="width:56px;height:56px;margin:0 auto 18px;border-radius:50%;background:#eaf3fb;display:flex;align-items:center;justify-content:center">
+    <div id="invite-icon" style="width:56px;height:56px;margin:0 auto 18px;border-radius:50%;background:#eaf3fb;display:flex;align-items:center;justify-content:center">
       <i class="ti ti-shield-check" style="font-size:28px;color:#1C75BC"></i>
     </div>
-    <div style="font-size:16px;font-weight:700;margin-bottom:6px;color:#111827">Welcome, <span id="invite-client-name">Client</span></div>
-    <div style="font-size:12px;color:#6b7280;margin-bottom:20px;line-height:1.5">Your invitation has been verified. Please complete the KYC form to continue.</div>
+    <div id="invite-greeting" style="font-size:16px;font-weight:700;margin-bottom:6px;color:#111827">Welcome, <span id="invite-client-name">Client</span></div>
+    <div id="invite-subtitle" style="font-size:12px;color:#6b7280;margin-bottom:20px;line-height:1.5">Your invitation has been verified. Please complete the KYC form to continue.</div>
+
+    <!-- Draft-found info box (shown only when a saved draft exists) -->
+    <div id="invite-draft-box" style="display:none;font-size:12px;color:#374151;background:#eaf3fb;border-radius:8px;padding:12px 14px;margin-bottom:14px;border:0.5px solid #9DCBEE;text-align:left">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <i class="ti ti-restore" style="font-size:14px;color:#1C75BC;margin-top:2px;flex-shrink:0"></i>
+        <div>
+          <div style="font-weight:700;color:#111827;margin-bottom:2px">Saved progress found</div>
+          <div id="invite-draft-date" style="color:#6b7280;font-size:11px">You last saved your application on this date.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expiry info box -->
     <div id="invite-expires-box" style="display:none;font-size:12px;color:#374151;background:#f9fafb;border-radius:8px;padding:12px 14px;margin-bottom:20px;border:0.5px solid #e5e7eb">
       <i class="ti ti-clock-hour-4" style="font-size:13px;color:#1C75BC;vertical-align:-2px;margin-right:4px"></i>
       <span id="invite-expires"></span>
     </div>
-    <button onclick="dismissInviteWelcome()" style="width:100%;padding:11px;background:#1C75BC;color:white;border:none;border-radius:8px;font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Continue to form <i class="ti ti-arrow-right" style="font-size:13px;vertical-align:-1px;margin-left:4px"></i></button>
+
+    <!-- Primary button — text changes based on whether a draft exists -->
+    <button id="invite-primary-btn" onclick="continueOrResume()" style="width:100%;padding:11px;background:#1C75BC;color:white;border:none;border-radius:8px;font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Continue to form <i class="ti ti-arrow-right" style="font-size:13px;vertical-align:-1px;margin-left:4px"></i></button>
+
+    <!-- Secondary "Start fresh" link — shown only when a draft exists -->
+    <div id="invite-start-fresh-wrap" style="display:none;margin-top:12px">
+      <button onclick="startFreshFromGate()" style="background:none;border:none;color:#6b7280;font-size:11px;cursor:pointer;font-family:'Manrope',sans-serif;text-decoration:underline">Start fresh and discard saved progress</button>
+    </div>
+
     <div style="font-size:11px;color:#9ca3af;margin-top:20px;padding-top:16px;border-top:0.5px solid #e5e7eb">Predeevo Limited · Larnaca, Cyprus</div>
   </div>
 </div>
 <script>
+  // Set by the resume-detection logic; null when no draft exists.
+  window._pendingDraft = null;
+
+  function continueOrResume(){
+    const el = document.getElementById('invite-welcome');
+    if(el) el.style.display = 'none';
+    if(window._pendingDraft){
+      resumeDraft(window._pendingDraft);
+    }
+  }
+
   function dismissInviteWelcome(){
+    // Backwards-compat alias kept for any external callers
+    continueOrResume();
+  }
+
+  async function startFreshFromGate(){
+    if(!confirm('Are you sure? Your saved progress will be discarded and you will start a fresh application. This action cannot be undone.')) return;
+    const draft = window._pendingDraft;
+    if(!draft || !window.sb){
+      // No draft to discard; just continue
+      const el = document.getElementById('invite-welcome');
+      if(el) el.style.display = 'none';
+      return;
+    }
+    try {
+      // Soft-discard: mark the draft as 'discarded' (audit trail preserved).
+      // Child rows (shareholders, SOF, questionnaire) stay linked for compliance history.
+      const { error } = await window.sb
+        .from('kyc_applications')
+        .update({ status: 'discarded' })
+        .eq('id', draft.id);
+      if(error) throw error;
+      window._pendingDraft = null;
+      window.currentAppId = null;
+      if(typeof currentAppId !== 'undefined') currentAppId = null;
+    } catch(e){
+      console.warn('Could not discard draft:', e);
+      alert('Could not discard saved progress. Please try again or contact your Predeevo advisor.');
+      return;
+    }
     const el = document.getElementById('invite-welcome');
     if(el) el.style.display = 'none';
   }
@@ -2366,6 +2468,182 @@ function checkDocRequired(inp){
     warn.innerHTML = msg ? '<i class=\'ti ti-alert-circle\'></i> ' + msg : '';
   }
   saveProgress();
+}
+
+// ════════════════════════════════════════════════
+// RESUME DRAFT — load saved DB state back into form
+// ════════════════════════════════════════════════
+// Called from the welcome gate when client clicks "Resume your application".
+// Fetches the application + child rows from DB, populates the form fields,
+// and sets globals so subsequent saves UPDATE the existing draft.
+async function resumeDraft(draftInfo){
+  if(!sb || !draftInfo || !draftInfo.id){
+    console.warn('Cannot resume — missing supabase client or draft id');
+    return;
+  }
+
+  try {
+    // Fetch full application row
+    const { data: app, error: appErr } = await sb.from('kyc_applications')
+      .select('*').eq('id', draftInfo.id).single();
+    if(appErr || !app) throw appErr || new Error('Application not found');
+
+    // Set globals so subsequent saves UPDATE this row
+    window.currentAppId = app.id;
+    currentAppId = app.id;
+    window.currentRef = app.reference;
+    currentRef = app.reference;
+
+    // Fetch child rows in parallel
+    const [{ data: shList }, { data: sofList }, { data: qList }] = await Promise.all([
+      sb.from('kyc_shareholders').select('*').eq('application_id', app.id),
+      sb.from('kyc_source_of_funds').select('*').eq('application_id', app.id),
+      sb.from('kyc_questionnaire').select('*').eq('application_id', app.id),
+    ]);
+
+    // ── Restore Step 1: services (and trigger conditional incorp/entity forms) ──
+    if(Array.isArray(app.services)){
+      app.services.forEach(svc => {
+        const cb = document.querySelector(`.svc-item input[value="${svc}"]`);
+        if(cb && !cb.checked){
+          // Trigger the toggle through svcT so conditional forms react properly
+          svcT(cb.closest('.svc-item'), svc);
+        }
+      });
+    }
+
+    // ── Restore introduced_by ──
+    if(app.introduced_by){
+      const introSel = document.querySelector('select[onchange*="intro-by"]');
+      if(introSel){
+        introSel.value = 'yes';
+        introSel.dispatchEvent(new Event('change', {bubbles:true}));
+        const introInp = document.querySelector('#intro-by input');
+        if(introInp) introInp.value = app.introduced_by;
+      }
+    }
+
+    // ── Restore incorporation fields (when incorp service was selected) ──
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if(el && val !== null && val !== undefined) el.value = val;
+    };
+    const setBySelector = (sel, val) => {
+      const el = document.querySelector(sel);
+      if(el && val !== null && val !== undefined) el.value = val;
+    };
+    setVal('incorp-company-name', app.company_name);
+    setVal('incorp-activities', app.principal_activities);
+    setBySelector('#incorp-f textarea[placeholder*="commercial"]', app.economic_rationale);
+    setVal('incorp-turnover-y1', app.turnover_y1);
+    setBySelector('#incorp-f input[placeholder*="500000"]', app.turnover_y2);
+    setBySelector('#incorp-f input[placeholder*="1,000"]', app.share_capital);
+
+    // ── Restore entity fields (when incorp NOT selected) ──
+    setBySelector('#entity-f input[placeholder*="legal registered"]', app.entity_name);
+    setBySelector('#entity-f input[placeholder*="HE 123456"]', app.entity_reg_number);
+    setVal('entity-activities', app.entity_activities);
+    setBySelector('#entity-f textarea[placeholder*="business purpose"]', app.entity_rationale);
+    setBySelector('#entity-f input[placeholder*="1500000"]', app.entity_turnover_y1);
+    setBySelector('#entity-f input[placeholder*="2000000"]', app.entity_turnover_y2);
+
+    // ── Restore PEP status ──
+    if(app.pep_status){
+      const pepSel = document.getElementById('pep-select');
+      if(pepSel){
+        pepSel.value = app.pep_status;
+        pepSelectChange(app.pep_status);
+      }
+    }
+
+    // ── Restore signature method ──
+    if(app.sig_method){
+      const sigOpt = document.querySelector(`.sig-opt input[value="${app.sig_method}"]`);
+      if(sigOpt){
+        sigOpt.checked = true;
+        sigOpt.closest('.sig-opt')?.classList.add('on');
+      }
+    }
+
+    // ── Restore declarations ──
+    const setCheck = (id, val) => { const el = document.getElementById(id); if(el) el.checked = !!val; };
+    setCheck('dc1', app.decl_gdpr || app.express_consent);
+    setCheck('dc2', app.decl_accuracy);
+    setCheck('dc3', app.decl_funds);
+    setCheck('dc4', app.decl_pep);
+    setCheck('dc5', app.decl_update);
+    setCheck('dc6', app.decl_mokas);
+    setCheck('dc7', app.decl_aml);
+
+    // ── Restore shareholders / UBOs ──
+    if(Array.isArray(shList) && shList.length){
+      const isIncorp = (app.services || []).includes('incorp');
+      const blockSel = isIncorp ? '.ubo-block' : '.entity-ubo-block';
+      const nameCls  = isIncorp ? '.ubo-name' : '.entity-ubo-name';
+      const pctCls   = isIncorp ? '.ubo-pct'  : '.entity-ubo-pct';
+      const apCls    = isIncorp ? '.ubo-is-applicant' : '.entity-ubo-is-applicant';
+      const emailCls = isIncorp ? '.ubo-email' : '.entity-ubo-email';
+      const addFn    = isIncorp ? addUBO      : addEntityUBO;
+
+      shList.forEach((sh, idx) => {
+        let blocks = document.querySelectorAll(blockSel);
+        // Add a new block if needed (the first one already exists in the form)
+        if(idx >= blocks.length){
+          try { addFn(); } catch(e){ console.warn('Could not add UBO block:', e); }
+          blocks = document.querySelectorAll(blockSel);
+        }
+        const b = blocks[idx];
+        if(!b) return;
+        const nameEl  = b.querySelector(nameCls);
+        const pctEl   = b.querySelector(pctCls);
+        const apEl    = b.querySelector(apCls);
+        const emailEl = b.querySelector(emailCls);
+        if(nameEl)  nameEl.value  = sh.full_name || '';
+        if(pctEl)   pctEl.value   = sh.shareholding_pct ?? '';
+        if(apEl)    apEl.value    = sh.is_applicant ? 'yes' : 'no';
+        if(emailEl) emailEl.value = sh.email || '';
+      });
+    }
+
+    // ── Restore source-of-funds rows ──
+    if(Array.isArray(sofList) && sofList.length){
+      sofList.forEach((sof, idx) => {
+        let typeRows = document.querySelectorAll('.sof-type');
+        if(idx >= typeRows.length){
+          try { addSOF(); } catch(e){ console.warn('Could not add SOF row:', e); }
+          typeRows = document.querySelectorAll('.sof-type');
+        }
+        const typeEl = typeRows[idx];
+        const valEl  = document.querySelectorAll('.sof-val')[idx];
+        if(typeEl) typeEl.value = sof.sof_type || '';
+        if(valEl)  valEl.value  = sof.amount_eur ?? '';
+      });
+    }
+
+    // ── Restore questionnaire answers ──
+    if(Array.isArray(qList) && qList.length){
+      qList.forEach(q => {
+        const yesBtn = document.getElementById('qyes-' + q.question_id);
+        const noBtn  = document.getElementById('qno-'  + q.question_id);
+        if(q.answer === true && yesBtn){
+          yesBtn.click();
+        } else if(q.answer === false && noBtn){
+          noBtn.click();
+        }
+        // Restore expanded details
+        if(q.details){
+          const exp = document.getElementById('qe-' + q.question_id);
+          const ta  = exp?.querySelector('textarea');
+          if(ta) ta.value = q.details;
+        }
+      });
+    }
+
+    console.log('Draft resumed:', app.reference);
+  } catch(e){
+    console.warn('Resume error:', e);
+    alert('Could not load your saved progress: ' + (e.message || 'unknown error') + '. You can continue with a fresh form, but please be aware your previous progress could not be loaded.');
+  }
 }
 
 // ── SUBMIT ──
