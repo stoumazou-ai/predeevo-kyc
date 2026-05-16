@@ -202,9 +202,18 @@ body{font-family:'Manrope',sans-serif;color:var(--text);background:var(--surface
 
 /* HEADER */
 .hdr{background:var(--blue);border-radius:14px;padding:24px 28px;margin-bottom:22px}
-.hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px}
 .hdr-secure{font-size:10px;color:rgba(255,255,255,.55);font-weight:500;display:flex;align-items:center;gap:4px}
 .logo-white{height:24px;width:auto}
+.hdr-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+.btn-save-hdr{background:rgba(255,255,255,.12);border:0.5px solid rgba(255,255,255,.25);color:white;padding:7px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif;display:inline-flex;align-items:center;gap:5px;transition:all .13s}
+.btn-save-hdr:hover{background:rgba(255,255,255,.2)}
+.btn-save-hdr:disabled{opacity:.5;cursor:not-allowed}
+.btn-save-hdr i{font-size:13px}
+.btn-save-row{background:none;border:0.5px solid rgba(0,0,0,.13);color:var(--muted);padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif;display:inline-flex;align-items:center;gap:5px;transition:all .13s}
+.btn-save-row:hover{background:var(--surface);color:var(--text)}
+.btn-save-row:disabled{opacity:.5;cursor:not-allowed}
+.btn-save-row i{font-size:14px}
 .hdr h1{color:white;font-size:18px;font-weight:700;margin-bottom:4px;letter-spacing:-.3px}
 .hdr-sub{color:rgba(255,255,255,.65);font-size:12px;line-height:1.6}
 .prog-bar{background:rgba(255,255,255,.2);border-radius:3px;height:3px;margin-top:16px;overflow:hidden}
@@ -523,7 +532,10 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 <div class="hdr">
   <div class="hdr-top">
     <img src="https://predeevo.com/wp-content/uploads/2026/02/logo-1.png" class="logo-white" alt="Predeevo">
-    <span class="hdr-secure"><i class="ti ti-lock" style="font-size:12px"></i>Secure · Encrypted</span>
+    <div class="hdr-actions">
+      <button class="btn-save-hdr" id="hdr-save-btn" onclick="saveDraftToDB()" title="Save your progress so you can continue later"><i class="ti ti-device-floppy"></i>Save draft</button>
+      <span class="hdr-secure"><i class="ti ti-lock" style="font-size:12px"></i>Secure · Encrypted</span>
+    </div>
   </div>
   <h1>Client KYC verification</h1>
   <p class="hdr-sub">Completing this form fulfils your Know Your Client requirements under Cyprus AML Law 188(I)/2007. All information is encrypted and processed in strict confidence.</p>
@@ -874,6 +886,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   <div class="btn-row">
     <span class="step-count">Step 1 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
+    <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn btn-blue" onclick="validateAndProceed(1,2)">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
@@ -909,6 +922,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <button class="btn-back" onclick="gs(1)"><i class="ti ti-arrow-left"></i> Back</button>
     <span class="step-count">Step 2 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
+    <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn btn-blue" onclick="validateAndProceed(2,3)">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
@@ -941,6 +955,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <button class="btn-back" onclick="gs(2)"><i class="ti ti-arrow-left"></i> Back</button>
     <span class="step-count">Step 3 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
+    <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn btn-blue" id="v-next" onclick="gs(4)" disabled style="opacity:.4;cursor:not-allowed">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
@@ -1005,6 +1020,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <button class="btn-back" onclick="gs(3)"><i class="ti ti-arrow-left"></i> Back</button>
     <span class="step-count">Step 4 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
+    <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn btn-blue" onclick="validateAndProceed(4,5)">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
@@ -1028,6 +1044,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <button class="btn-back" onclick="gs(4)"><i class="ti ti-arrow-left"></i> Back</button>
     <span class="step-count">Step 5 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
+    <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn btn-blue" onclick="validateAndProceed(5,6)">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
@@ -1077,6 +1094,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <button class="btn-back" onclick="gs(5)"><i class="ti ti-arrow-left"></i> Back</button>
     <span class="step-count">Step 6 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
+    <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn btn-blue" id="d-next" onclick="validateAndProceed(6,7)">Continue to signature <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
@@ -1154,6 +1172,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <button class="btn-back" onclick="gs(6)"><i class="ti ti-arrow-left"></i> Back</button>
     <span class="step-count">Step 7 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
+    <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn btn-blue" onclick="validateAndProceed(7,'submit')"><i class="ti ti-send" style="font-size:13px"></i>Submit KYC</button>
   </div>
 </div>
@@ -2207,6 +2226,9 @@ function validateAndProceed(fromStep, toStep){
   if(toStep === 'submit'){
     submit();
   } else {
+    // Auto-save draft to DB before advancing to next step (fire-and-forget).
+    // saveDraftToDB handles its own error UI; we don't block navigation on it.
+    try { saveDraftToDB(); } catch(e){ /* swallow — navigation should not be blocked */ }
     gs(toStep);
   }
 }
@@ -2544,18 +2566,233 @@ function dlPDF(){
 }
 
 // ════════════════════════════════════════════════
-// DRAFTS — placeholder stubs (full DB-backed system in Commit 2)
+// DRAFTS — DB-backed save (Commit 2)
 // ════════════════════════════════════════════════
-// The old localStorage-based save/resume has been removed. The DB-backed
-// equivalent (saveDraftToDB / resume prompt) lands in subsequent commits.
-// For Commit 1 we keep these as no-op stubs so the many existing
-// saveProgress() call sites scattered through the form don't error.
-function saveProgress(){ /* no-op stub — replaced by saveDraftToDB in Commit 2 */ }
+// Backwards-compat no-op (many inline `oninput="saveProgress()"` exist).
+// The real save happens on Save Draft button click and on section advance.
+function saveProgress(){ /* no-op — Save Draft button + section advance trigger DB saves */ }
 
-// ── INIT ──
-// (The old global change/input auto-save listeners are removed.
-//  Draft saves will be triggered explicitly by the Save button and by
-//  validateAndProceed() in upcoming commits.)
+// Track whether a save is in flight so multiple clicks don't fire parallel writes
+window._saveInFlight = false;
+
+// Build the appData object from current form state. Shared by submit() and saveDraftToDB().
+function _collectAppData(forSubmit){
+  const services = Array.from(document.querySelectorAll('.svc-item.on')).map(e=>e.querySelector('input').value);
+  return {
+    reference: currentRef,
+    status: forSubmit ? 'submitted' : 'draft',
+    submitted_at: forSubmit ? new Date().toISOString() : null,
+    current_invitation_id: window.currentInvitationId || null,
+
+    // Services
+    services: services.length ? services : null,
+    introduced_by: document.querySelector('#intro-by input')?.value || null,
+
+    // Company (incorp)
+    company_name: document.getElementById('incorp-company-name')?.value || null,
+    principal_activities: document.getElementById('incorp-activities')?.value || null,
+    economic_rationale: document.querySelector('#incorp-f textarea[placeholder*="commercial"]')?.value || null,
+    turnover_y1: parseFloat(document.getElementById('incorp-turnover-y1')?.value) || null,
+    turnover_y2: parseFloat(document.querySelector('#incorp-f input[placeholder*="500000"]')?.value) || null,
+    share_capital: parseFloat(document.querySelector('#incorp-f input[placeholder*="1,000"]')?.value) || null,
+
+    // Entity
+    entity_name: document.querySelector('#entity-f input[placeholder*="legal registered"]')?.value || null,
+    entity_reg_number: document.querySelector('#entity-f input[placeholder*="HE 123456"]')?.value || null,
+    entity_activities: document.getElementById('entity-activities')?.value || null,
+    entity_rationale: document.querySelector('#entity-f textarea[placeholder*="business purpose"]')?.value || null,
+    entity_turnover_y1: parseFloat(document.querySelector('#entity-f input[placeholder*="1500000"]')?.value) || null,
+    entity_turnover_y2: parseFloat(document.querySelector('#entity-f input[placeholder*="2000000"]')?.value) || null,
+
+    pep_status: document.getElementById('pep-select')?.value || null,
+
+    // Biometric (only filled on actual submit in this version)
+    biometric_ref: forSubmit ? 'SUM-2026-AB7F291' : null,
+    biometric_score: forSubmit ? 98 : null,
+    biometric_passed: forSubmit ? true : null,
+
+    // Signature
+    sig_method: document.querySelector('.sig-opt.on input')?.value || null,
+
+    // Declarations
+    decl_accuracy: document.getElementById('dc2')?.checked || false,
+    decl_funds: document.getElementById('dc3')?.checked || false,
+    decl_pep: document.getElementById('dc4')?.checked || false,
+    decl_update: document.getElementById('dc5')?.checked || false,
+    decl_mokas: document.getElementById('dc6')?.checked || false,
+    decl_aml: document.getElementById('dc7')?.checked || false,
+    decl_gdpr: document.getElementById('dc1')?.checked || false,
+    express_consent: document.getElementById('dc1')?.checked || false,
+
+    form_version: '2.0'
+  };
+}
+
+// Collect shareholders rows. Returns array. application_id is filled in by the caller.
+function _collectShareholders(){
+  // Detect which form is visible (incorp vs entity)
+  const isIncorp = document.getElementById('incorp-f')?.style.display !== 'none';
+  const listSel  = isIncorp ? '#ubo-list .ubo-block' : '#entity-ubo-list .entity-ubo-block';
+  const nameCls  = isIncorp ? '.ubo-name' : '.entity-ubo-name';
+  const pctCls   = isIncorp ? '.ubo-pct' : '.entity-ubo-pct';
+  const apCls    = isIncorp ? '.ubo-is-applicant' : '.entity-ubo-is-applicant';
+  const emailCls = isIncorp ? '.ubo-email' : '.entity-ubo-email';
+
+  const rows = [];
+  document.querySelectorAll(listSel).forEach(b => {
+    const name = b.querySelector(nameCls)?.value?.trim();
+    if(!name) return;  // skip empty rows
+    const pct = parseFloat(b.querySelector(pctCls)?.value) || 0;
+    rows.push({
+      full_name: name,
+      shareholding_pct: pct,
+      ownership_type: b.querySelector('select')?.value || null,
+      nationality: b.querySelector('input[type=hidden]')?.value || null,
+      is_applicant: b.querySelector(apCls)?.value === 'yes',
+      is_ubo: pct > 25,
+      email: b.querySelector(emailCls)?.value || null,
+      kyc_status: 'draft'
+    });
+  });
+  return rows;
+}
+
+// Collect source-of-funds rows.
+function _collectSOF(){
+  const rows = [];
+  document.querySelectorAll('.sof-type').forEach((sel, i) => {
+    if(!sel.value) return;
+    const val = document.querySelectorAll('.sof-val')[i];
+    rows.push({
+      sof_type: sel.value,
+      amount_eur: parseFloat(val?.value) || null
+    });
+  });
+  return rows;
+}
+
+// Collect questionnaire answers.
+function _collectQuestionnaire(){
+  const rows = [];
+  ['other_names','ownership','entry','ml','prohibited','investigations','convictions','bankruptcy','tax_audit','insurance','litigation'].forEach(qid => {
+    const noBtn  = document.getElementById('qno-'+qid);
+    const yesBtn = document.getElementById('qyes-'+qid);
+    const answer = yesBtn?.classList.contains('sel-yes') ? true : noBtn?.classList.contains('sel-no') ? false : null;
+    if(answer === null) return;  // skip unanswered
+    const expand = document.getElementById('qe-'+qid);
+    rows.push({
+      question_id: qid,
+      answer: answer,
+      details: expand?.querySelector('textarea')?.value || null
+    });
+  });
+  return rows;
+}
+
+// Flash the in-row save indicator (any visible .save-indicator) and the header button state.
+function _flashSaved(msg){
+  document.querySelectorAll('.save-indicator').forEach(ind => {
+    const closest = ind.closest('.step');
+    // Only flash the indicator inside the currently visible step
+    if(closest && closest.style.display !== 'none'){
+      ind.classList.add('show');
+      setTimeout(()=>ind.classList.remove('show'), 2000);
+    }
+  });
+  const hdrBtn = document.getElementById('hdr-save-btn');
+  if(hdrBtn){
+    const prev = hdrBtn.innerHTML;
+    hdrBtn.innerHTML = '<i class="ti ti-check"></i>' + (msg || 'Saved');
+    setTimeout(()=>{ hdrBtn.innerHTML = prev; }, 1800);
+  }
+}
+
+// Public: save current form state as a draft application in the DB.
+// Returns the application id, or null on failure.
+async function saveDraftToDB(){
+  if(window._saveInFlight) return null;
+  if(!sb){
+    console.warn('Supabase client not initialised — cannot save draft');
+    alert('Could not save: connection unavailable. Please check your internet and try again.');
+    return null;
+  }
+  if(!window.currentInvitationId){
+    console.warn('No invitation id available — cannot save draft');
+    return null;
+  }
+
+  window._saveInFlight = true;
+
+  // Disable save buttons while saving
+  const hdrBtn = document.getElementById('hdr-save-btn');
+  if(hdrBtn){ hdrBtn.disabled = true; hdrBtn.innerHTML = '<i class="ti ti-loader-2"></i>Saving...'; }
+  document.querySelectorAll('.btn-save-row').forEach(b => b.disabled = true);
+
+  try {
+    const appData = _collectAppData(false);
+
+    let appId = window.currentAppId || currentAppId;
+
+    if(appId){
+      // UPDATE existing draft
+      const { error } = await sb.from('kyc_applications').update(appData).eq('id', appId);
+      if(error) throw error;
+    } else {
+      // INSERT new draft — the partial unique index will reject duplicates per invitation
+      const { data, error } = await sb.from('kyc_applications').insert(appData).select('id,reference').single();
+      if(error){
+        // Unique-violation: a draft already exists for this invitation. Fetch it.
+        if(error.code === '23505'){
+          const { data: existing, error: fetchErr } = await sb.from('kyc_applications')
+            .select('id,reference')
+            .eq('current_invitation_id', window.currentInvitationId)
+            .eq('status', 'draft')
+            .single();
+          if(fetchErr || !existing) throw error;
+          appId = existing.id;
+          // Now update it with current data
+          const { error: updErr } = await sb.from('kyc_applications').update(appData).eq('id', appId);
+          if(updErr) throw updErr;
+        } else {
+          throw error;
+        }
+      } else {
+        appId = data.id;
+      }
+      window.currentAppId = appId;
+      currentAppId = appId;
+    }
+
+    // Replace child rows: delete all current, then insert fresh.
+    // This way removed UBOs/SOF/questions actually disappear.
+    const [delSh, delSof, delQ] = await Promise.all([
+      sb.from('kyc_shareholders').delete().eq('application_id', appId),
+      sb.from('kyc_source_of_funds').delete().eq('application_id', appId),
+      sb.from('kyc_questionnaire').delete().eq('application_id', appId),
+    ]);
+
+    const sh  = _collectShareholders().map(r => ({...r, application_id: appId}));
+    const sof = _collectSOF().map(r => ({...r, application_id: appId}));
+    const q   = _collectQuestionnaire().map(r => ({...r, application_id: appId}));
+
+    if(sh.length)  { const { error } = await sb.from('kyc_shareholders').insert(sh);     if(error) console.warn('Draft shareholders error:', error.message); }
+    if(sof.length) { const { error } = await sb.from('kyc_source_of_funds').insert(sof); if(error) console.warn('Draft SOF error:', error.message); }
+    if(q.length)   { const { error } = await sb.from('kyc_questionnaire').insert(q);     if(error) console.warn('Draft questionnaire error:', error.message); }
+
+    _flashSaved('Saved');
+    return appId;
+  } catch(e){
+    console.warn('Draft save error:', e);
+    if(hdrBtn) hdrBtn.innerHTML = '<i class="ti ti-alert-triangle"></i>Save failed';
+    setTimeout(()=>{ if(hdrBtn) hdrBtn.innerHTML = '<i class="ti ti-device-floppy"></i>Save draft'; }, 2200);
+    alert('Could not save draft: ' + (e.message || 'Please try again.'));
+    return null;
+  } finally {
+    window._saveInFlight = false;
+    if(hdrBtn){ hdrBtn.disabled = false; }
+    document.querySelectorAll('.btn-save-row').forEach(b => b.disabled = false);
+  }
+}
 </script>
 </body>
 </html>
