@@ -44,8 +44,17 @@
         const banner = document.getElementById('invite-welcome');
         const nameEl = document.getElementById('invite-client-name');
         if(banner && nameEl){
-          banner.style.display = 'block';
+          banner.style.display = 'flex';
           nameEl.textContent = invitation.client_name;
+          // Show invitation expiry date
+          const expEl = document.getElementById('invite-expires');
+          const expBox = document.getElementById('invite-expires-box');
+          if(expEl && expBox && invitation.expires_at){
+            const d = new Date(invitation.expires_at);
+            const opts = { weekday:'long', day:'numeric', month:'long', year:'numeric' };
+            expEl.textContent = 'This invitation is valid until ' + d.toLocaleDateString('en-GB', opts) + '.';
+            expBox.style.display = 'block';
+          }
           return true;
         }
         return false;
@@ -131,6 +140,8 @@
 
     console.log('Invitation validated:', data.client_name);
     window.currentToken = token;
+    window.currentInvitationId = data.id;
+    window.currentInvitationExpiresAt = data.expires_at;
     grantAccess(data);
 
   } catch(e){
@@ -463,46 +474,49 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 </head>
 <body>
 
-<!-- ── ACCESS GATE — shown until token is validated ── -->
-<div id="access-gate" style="display:none;position:fixed;inset:0;background:#fafbfc;z-index:99999;align-items:center;justify-content:center;padding:24px">
-  <div style="max-width:480px;width:100%;text-align:center;background:white;padding:40px 32px;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.04),0 2px 12px rgba(0,0,0,.04);border:0.5px solid rgba(0,0,0,.06)">
-    <img src="https://predeevo.com/wp-content/uploads/2026/02/logo-1.png" alt="Predeevo" style="height:32px;margin-bottom:24px">
+<!-- ── ACCESS GATE — shown until token is validated (denial states) ── -->
+<div id="access-gate" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1C75BC 0%,#155a93 100%);z-index:99999;align-items:center;justify-content:center;padding:24px">
+  <div style="background:white;border-radius:14px;padding:36px 32px;max-width:420px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <img src="https://predeevo.com/wp-content/uploads/2026/02/logo-1.png" alt="Predeevo" style="height:36px;margin-bottom:24px">
     <div id="gate-icon" style="width:56px;height:56px;margin:0 auto 18px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center"><i class="ti ti-lock" style="font-size:26px;color:#d97706"></i></div>
-    <h2 id="gate-title" style="font-size:18px;font-weight:700;margin:0 0 8px;color:#111827">Access by invitation only</h2>
-    <p id="gate-msg" style="font-size:13px;line-height:1.6;color:#6b7280;margin:0 0 24px">This KYC form is accessible by invitation only. Please contact your Predeevo advisor to receive your secure access link.</p>
-    <div style="padding:16px;background:#f9fafb;border-radius:8px;font-size:11px;color:#6b7280;text-align:left">
-      <strong style="color:#374151">Predeevo Ltd</strong><br>
+    <h2 id="gate-title" style="font-size:16px;font-weight:700;margin:0 0 6px;color:#111827">Access by invitation only</h2>
+    <p id="gate-msg" style="font-size:12px;line-height:1.5;color:#6b7280;margin:0 0 20px">This KYC form is accessible by invitation only. Please contact your Predeevo advisor to receive your secure access link.</p>
+    <div style="padding:12px 14px;background:#f9fafb;border-radius:8px;font-size:11px;color:#374151;text-align:left;border:0.5px solid #e5e7eb">
+      <strong style="color:#111827">Predeevo Ltd</strong><br>
       Sintika Hanum 58, 6051 Larnaca, Cyprus<br>
       Tel: +357 24255858 · info@predeevo.com
     </div>
+    <div style="font-size:11px;color:#9ca3af;margin-top:20px;padding-top:16px;border-top:0.5px solid #e5e7eb">Predeevo Limited · Larnaca, Cyprus</div>
   </div>
 </div>
 
 <div class="wrap">
 
-<!-- INVITATION WELCOME BANNER — shown when accessed via valid invitation link -->
-<div id="invite-welcome" style="display:none;background:linear-gradient(135deg,#1C75BC 0%,#2563eb 100%);color:white;border-radius:12px;padding:16px 20px;margin-bottom:16px;box-shadow:0 4px 12px rgba(28,117,188,.15)">
-  <div style="display:flex;align-items:center;gap:12px">
-    <i class="ti ti-shield-check" style="font-size:24px;flex-shrink:0"></i>
-    <div>
-      <div style="font-size:14px;font-weight:700">Welcome, <span id="invite-client-name">Client</span></div>
-      <div style="font-size:11px;opacity:.85;margin-top:2px">Your invitation has been verified. Please complete the form to begin your KYC.</div>
+<!-- ── INVITATION WELCOME GATE — full-screen, matches Predeevo App login style ── -->
+<div id="invite-welcome" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1C75BC 0%,#155a93 100%);z-index:99998;align-items:center;justify-content:center;padding:24px">
+  <div style="background:white;border-radius:14px;padding:36px 32px;max-width:420px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <img src="https://predeevo.com/wp-content/uploads/2026/02/logo-1.png" alt="Predeevo" style="height:36px;margin-bottom:24px">
+    <div style="width:56px;height:56px;margin:0 auto 18px;border-radius:50%;background:#eaf3fb;display:flex;align-items:center;justify-content:center">
+      <i class="ti ti-shield-check" style="font-size:28px;color:#1C75BC"></i>
     </div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:6px;color:#111827">Welcome, <span id="invite-client-name">Client</span></div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:20px;line-height:1.5">Your invitation has been verified. Please complete the KYC form to continue.</div>
+    <div id="invite-expires-box" style="display:none;font-size:12px;color:#374151;background:#f9fafb;border-radius:8px;padding:12px 14px;margin-bottom:20px;border:0.5px solid #e5e7eb">
+      <i class="ti ti-clock-hour-4" style="font-size:13px;color:#1C75BC;vertical-align:-2px;margin-right:4px"></i>
+      <span id="invite-expires"></span>
+    </div>
+    <button onclick="dismissInviteWelcome()" style="width:100%;padding:11px;background:#1C75BC;color:white;border:none;border-radius:8px;font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Continue to form <i class="ti ti-arrow-right" style="font-size:13px;vertical-align:-1px;margin-left:4px"></i></button>
+    <div style="font-size:11px;color:#9ca3af;margin-top:20px;padding-top:16px;border-top:0.5px solid #e5e7eb">Predeevo Limited · Larnaca, Cyprus</div>
   </div>
 </div>
+<script>
+  function dismissInviteWelcome(){
+    const el = document.getElementById('invite-welcome');
+    if(el) el.style.display = 'none';
+  }
+</script>
 
-<!-- RESUME BANNER — shown if saved progress exists -->
-<div class="resume-banner" id="resume-banner" style="display:none">
-  <i class="ti ti-clock-hour-4"></i>
-  <div style="flex:1">
-    <div class="resume-title">You have a saved application</div>
-    <div class="resume-sub">You previously started a KYC application. Would you like to continue where you left off?</div>
-  </div>
-  <div style="display:flex;gap:8px;flex-shrink:0">
-    <button class="btn btn-blue btn-sm" onclick="resumeForm()">Resume</button>
-    <button class="btn btn-sm" onclick="clearSave()">Start fresh</button>
-  </div>
-</div>
+<!-- RESUME BANNER — DB-backed resume prompt is added in a later commit -->
 
 
 <!-- HEADER — real Predeevo logo from uploaded SVG, white version -->
@@ -2352,6 +2366,9 @@ async function submit(){
       status: 'submitted',
       submitted_at: new Date().toISOString(),
 
+      // Link to invitation (REQUIRED by RLS — anon writes are gated by this)
+      current_invitation_id: window.currentInvitationId || null,
+
       // Services
       services: services,
       introduced_by: document.querySelector('#intro-by input')?.value || null,
@@ -2527,132 +2544,18 @@ function dlPDF(){
 }
 
 // ════════════════════════════════════════════════
-// LOCALSTORAGE SAVE / RESUME
+// DRAFTS — placeholder stubs (full DB-backed system in Commit 2)
 // ════════════════════════════════════════════════
-const SAVE_KEY = 'predeevo_kyc_draft';
-
-function saveProgress(){
-  try {
-    const data = {
-      step: currentStep,
-      timestamp: Date.now(),
-      // Step 1
-      intro: document.querySelector('select[onchange*="intro-by"]')?.value || 'no',
-      intro_by: document.querySelector('#intro-by input')?.value || '',
-      services: Array.from(document.querySelectorAll('.svc-item.on')).map(e=>e.querySelector('input').value),
-      sof_rows: Array.from(document.querySelectorAll('.sof-type')).map((s,i)=>({type:s.value,val:document.querySelectorAll('.sof-val')[i]?.value||''})),
-      ubos: Array.from(document.querySelectorAll('.ubo-block')).map(b=>({
-        name: b.querySelector('.ubo-name')?.value||'',
-        pct: b.querySelector('.ubo-pct')?.value||'',
-        isApplicant: b.querySelector('.ubo-is-applicant')?.value||'yes',
-        email: b.querySelector('.ubo-email')?.value||'',
-      })),
-      // Step 2
-      firstName: document.querySelector('#s2 input[placeholder*="First name"]')?.value || '',
-      surname: document.querySelector('#s2 input[placeholder*="Surname"]')?.value || '',
-      dob: document.querySelector('#s2 input[type=date]')?.value || '',
-      pep: document.getElementById('pep-select')?.value || '',
-    };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-    // Flash save indicator
-    const ind = document.getElementById('save-ind');
-    if(ind){ind.classList.add('show');setTimeout(()=>ind.classList.remove('show'),2000);}
-  } catch(e){ console.log('Save error:', e); }
-}
-
-function loadProgress(){
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if(!raw) return;
-    const data = JSON.parse(raw);
-    // Show resume banner
-    const banner = document.getElementById('resume-banner');
-    if(banner) banner.style.display = 'flex';
-    // Store data for resumeForm to use
-    window._savedData = data;
-  } catch(e){ console.log('Load error:', e); }
-}
-
-function resumeForm(){
-  const data = window._savedData;
-  if(!data) return;
-  document.getElementById('resume-banner').style.display = 'none';
-  try {
-    // Restore Step 1 intro
-    const introSel = document.querySelector('select[onchange*="intro-by"]');
-    if(introSel && data.intro){
-      introSel.value = data.intro;
-      if(data.intro === 'yes'){
-        document.getElementById('intro-by').style.display = 'block';
-        const introInp = document.querySelector('#intro-by input');
-        if(introInp && data.intro_by) introInp.value = data.intro_by;
-      }
-    }
-    // Restore services
-    if(data.services && data.services.length){
-      data.services.forEach(val=>{
-        const item = document.querySelector(`.svc-item input[value="${val}"]`);
-        if(item){
-          item.checked = true;
-          item.closest('.svc-item').classList.add('on');
-        }
-      });
-      const sel = data.services;
-      const otherWrap=document.getElementById('other-svc');
-      if(otherWrap)otherWrap.style.display=sel.includes('other')?'block':'none';
-      const hasIncorp=sel.includes('incorp');
-      const incorpF=document.getElementById('incorp-f');
-      const entityF=document.getElementById('entity-f');
-      if(incorpF)incorpF.style.display=hasIncorp?'block':'none';
-      if(entityF)entityF.style.display=hasIncorp?'none':'block';
-    }
-    // Restore UBOs
-    if(data.ubos && data.ubos.length > 0){
-      const firstBlock = document.querySelector('.ubo-block');
-      if(firstBlock && data.ubos[0]){
-        const u = data.ubos[0];
-        if(firstBlock.querySelector('.ubo-name')) firstBlock.querySelector('.ubo-name').value = u.name;
-        if(firstBlock.querySelector('.ubo-pct')) firstBlock.querySelector('.ubo-pct').value = u.pct;
-        if(firstBlock.querySelector('.ubo-is-applicant')) firstBlock.querySelector('.ubo-is-applicant').value = u.isApplicant;
-        if(firstBlock.querySelector('.ubo-email')) firstBlock.querySelector('.ubo-email').value = u.email;
-      }
-      // Add extra UBO blocks
-      for(let i=1; i<data.ubos.length; i++){
-        addUBO();
-        const blocks = document.querySelectorAll('.ubo-block');
-        const b = blocks[blocks.length-1];
-        const u = data.ubos[i];
-        if(b.querySelector('.ubo-name')) b.querySelector('.ubo-name').value = u.name;
-        if(b.querySelector('.ubo-pct')) b.querySelector('.ubo-pct').value = u.pct;
-        if(b.querySelector('.ubo-is-applicant')) b.querySelector('.ubo-is-applicant').value = u.isApplicant;
-        if(b.querySelector('.ubo-email')) b.querySelector('.ubo-email').value = u.email;
-      }
-      calcUBOPct();
-    }
-    // Restore Step 2 basics
-    if(data.firstName){const inp=document.querySelector('#s2 input[placeholder*="First name"]');if(inp)inp.value=data.firstName;}
-    if(data.surname){const inp=document.querySelector('#s2 input[placeholder*="Surname"]');if(inp)inp.value=data.surname;}
-    if(data.pep){const sel=document.getElementById('pep-select');if(sel){sel.value=data.pep;pepSelectChange(data.pep);}}
-    // Navigate to saved step
-    if(data.step && data.step > 1) gs(data.step);
-    else gs(1);
-  } catch(e){ console.log('Resume error:', e); gs(1); }
-}
-
-function clearSave(){
-  try{localStorage.removeItem(SAVE_KEY);}catch(e){}
-  document.getElementById('resume-banner').style.display = 'none';
-  window._savedData = null;
-  gs(1);
-}
+// The old localStorage-based save/resume has been removed. The DB-backed
+// equivalent (saveDraftToDB / resume prompt) lands in subsequent commits.
+// For Commit 1 we keep these as no-op stubs so the many existing
+// saveProgress() call sites scattered through the form don't error.
+function saveProgress(){ /* no-op stub — replaced by saveDraftToDB in Commit 2 */ }
 
 // ── INIT ──
-document.addEventListener('DOMContentLoaded', ()=>{
-  loadProgress();
-  // Auto-save on any input change
-  document.addEventListener('change', saveProgress);
-  document.addEventListener('input', ()=>{ clearTimeout(window._saveTimer); window._saveTimer = setTimeout(saveProgress, 800); });
-});
+// (The old global change/input auto-save listeners are removed.
+//  Draft saves will be triggered explicitly by the Save button and by
+//  validateAndProceed() in upcoming commits.)
 </script>
 </body>
 </html>
