@@ -2701,9 +2701,10 @@ function _flashSaved(msg){
   });
   const hdrBtn = document.getElementById('hdr-save-btn');
   if(hdrBtn){
-    const prev = hdrBtn.innerHTML;
     hdrBtn.innerHTML = '<i class="ti ti-check"></i>' + (msg || 'Saved');
-    setTimeout(()=>{ hdrBtn.innerHTML = prev; }, 1800);
+    setTimeout(()=>{
+      if(hdrBtn) hdrBtn.innerHTML = '<i class="ti ti-device-floppy"></i>Save draft';
+    }, 1800);
   }
 }
 
