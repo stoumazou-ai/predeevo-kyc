@@ -2048,7 +2048,7 @@ function renderUBOIdentityCards(){
             <div class="fg"><label class="lbl">Town / City</label><input data-field="addr_town" placeholder="Town or city" value="${prefillAddrTown}"></div>
             <div class="fg"><label class="lbl">Postcode</label><input data-field="addr_postcode" placeholder="Postcode / ZIP" value="${prefillAddrPC}"></div>
             <div class="fg"><label class="lbl">Email address <span class="req">*</span></label><input data-field="email" type="email" placeholder="email@domain.com" value="${prefillEmail}" oninput="updateUBOStatus(${i})"></div>
-            <div class="fg"><label class="lbl">Mobile</label><div class="phone-row"><div style="position:relative"><input class="si" placeholder="+357" style="width:100%" oninput="spc(this)" onfocus="spdd(this)" onblur="sphdd(this)"><div class="dropdown" style="width:200px"></div></div><input data-field="mobile" placeholder="Number" type="tel"></div></div>
+            <div class="fg"><label class="lbl">Mobile</label><div class="phone-row"><div style="position:relative"><input data-field="mobile_country_code" class="si" placeholder="+357" style="width:100%" oninput="spc(this)" onfocus="spdd(this)" onblur="sphdd(this)"><div class="dropdown" style="width:200px"></div></div><input data-field="mobile" placeholder="Number" type="tel"></div></div>
             <div class="fg"><label class="lbl">Occupation / profession</label><input data-field="occupation" placeholder="e.g. Director, Investor" value="${prefillOccup}"></div>
             <div class="fg"><label class="lbl">Employment status</label><select data-field="employment_status"><option value="">Select...</option><option>Self-employed</option><option>Employed</option><option>Business owner</option><option>Retired</option><option>Investor</option><option>Other</option></select></div>
             <div class="fg"><label class="lbl">Country of tax residence</label><div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" data-field="tax_country"><div class="dropdown"></div></div></div>
@@ -3128,6 +3128,7 @@ async function resumeDraft(draftInfo){
     setVal('sig-eidas-reference', app.sig_reference);
     setVal('sig-physical-appointment', app.physical_appointment_ref);
     setVal('sig-evrotrust-mobile', app.evrotrust_mobile);
+    setVal('evro-cc', app.evrotrust_mobile_country_code);
 
     // ── Restore declarations ──
     const setCheck = (id, val) => { const el = document.getElementById(id); if(el) el.checked = !!val; };
@@ -3456,6 +3457,7 @@ function _collectAppData(forSubmit){
     sig_reference: txt('sig-eidas-reference'),
     physical_appointment_ref: txt('sig-physical-appointment'),
     evrotrust_mobile: txt('sig-evrotrust-mobile'),
+    evrotrust_mobile_country_code: txt('evro-cc'),
 
     // Declarations
     decl_gdpr: chk('dc1'),
