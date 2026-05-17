@@ -3315,8 +3315,6 @@ async function submit(){
   if(submitBtn){ submitBtn.disabled=true; submitBtn.innerHTML='<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0 4px 0 0;display:inline-block;vertical-align:middle"></div>Submitting...'; }
 
   try {
-    const isIncorp = document.getElementById('incorp-f')?.style.display !== 'none';
-
     // Build the application payload using the same canonical collector as draft save.
     // Single source of truth — if a field saves on draft, it saves on submit.
     const appData = _collectAppData(true);
@@ -3340,67 +3338,32 @@ async function submit(){
       currentRef = appData.reference;
     }
 
-    // ── Insert shareholders/UBOs ──
-    const listSel = isIncorp ? '#ubo-list .ubo-block' : '#entity-ubo-list .entity-ubo-block';
-    const nameCls = isIncorp ? '.ubo-name' : '.entity-ubo-name';
-    const pctCls  = isIncorp ? '.ubo-pct' : '.entity-ubo-pct';
-    const apCls   = isIncorp ? '.ubo-is-applicant' : '.entity-ubo-is-applicant';
-    const emailCls= isIncorp ? '.ubo-email' : '.entity-ubo-email';
+    // ── Replace children using canonical collectors (same single-source-of-truth as draft save) ──
+    // Delete-then-insert avoids the duplication bug where submit() previously inserted on top
+    // of whatever saveDraftToDB had already inserted during step transitions.
+    if(sb && appId){
+      const [delSh, delSof, delQ] = await Promise.all([
+        sb.from('kyc_shareholders').delete().eq('application_id', appId),
+        sb.from('kyc_source_of_funds').delete().eq('application_id', appId),
+        sb.from('kyc_questionnaire').delete().eq('application_id', appId),
+      ]);
+      if(delSh.error) console.warn('Shareholders cleanup error:', delSh.error.message);
+      if(delSof.error) console.warn('SOF cleanup error:', delSof.error.message);
+      if(delQ.error)  console.warn('Questionnaire cleanup error:', delQ.error.message);
+    }
 
-    const shareholders = [];
-    document.querySelectorAll(listSel).forEach(b => {
-      const name = b.querySelector(nameCls)?.value?.trim();
-      const pct  = parseFloat(b.querySelector(pctCls)?.value) || 0;
-      if(!name) return;
-      shareholders.push({
-        application_id: appId,
-        full_name: name,
-        shareholding_pct: pct,
-        ownership_type: b.querySelector('select')?.value || null,
-        nationality: b.querySelector('input[type=hidden]')?.value || null,
-        is_applicant: b.querySelector(apCls)?.value === 'yes',
-        is_ubo: pct > 25,
-        email: b.querySelector(emailCls)?.value || null,
-        kyc_status: 'draft'
-      });
-    });
+    const shareholders = _collectShareholders().map(r => ({...r, application_id: appId}));
+    const sofRows      = _collectSOF().map(r => ({...r, application_id: appId}));
+    const qAnswers     = _collectQuestionnaire().map(r => ({...r, application_id: appId}));
+
     if(shareholders.length && sb){
       const { error } = await sb.from('kyc_shareholders').insert(shareholders);
       if(error) console.warn('Shareholders insert error:', error);
     }
-
-    // ── Insert source of funds ──
-    const sofRows = [];
-    document.querySelectorAll('.sof-type').forEach((sel, i) => {
-      if(!sel.value) return;
-      const val = document.querySelectorAll('.sof-val')[i];
-      sofRows.push({
-        application_id: appId,
-        sof_type: sel.value,
-        amount_eur: parseFloat(val?.value) || null
-      });
-    });
     if(sofRows.length && sb){
       const { error } = await sb.from('kyc_source_of_funds').insert(sofRows);
       if(error) console.warn('SOF insert error:', error);
     }
-
-    // ── Insert questionnaire answers ──
-    const qAnswers = [];
-    ['other_names','ownership','entry','ml','prohibited','investigations','convictions','bankruptcy','tax_audit','insurance','litigation'].forEach(qid => {
-      const noBtn  = document.getElementById('qno-'+qid);
-      const yesBtn = document.getElementById('qyes-'+qid);
-      const answer = yesBtn?.classList.contains('sel-yes') ? true : noBtn?.classList.contains('sel-no') ? false : null;
-      if(answer !== null){
-        const expand = document.getElementById('qe-'+qid);
-        qAnswers.push({
-          application_id: appId,
-          question_id: qid,
-          answer: answer,
-          details: expand?.querySelector('textarea')?.value || null
-        });
-      }
-    });
     if(qAnswers.length && sb){
       const { error } = await sb.from('kyc_questionnaire').insert(qAnswers);
       if(error) console.warn('Questionnaire insert error:', error);
