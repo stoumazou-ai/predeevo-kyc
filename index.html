@@ -1403,13 +1403,14 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 </div>
 
 <!-- ══ SAVED & EXIT CONFIRMATION ══ -->
-<!-- Shown after the client clicks "Save & exit" and the draft has been saved + email sent. -->
+<!-- Shown after the client clicks "Save & exit" and the draft has been saved. Email
+     is sent only the first time per application; subsequent visits show a softened message. -->
 <div class="step" id="s-saved-exit">
   <div class="card">
     <div class="success-wrap">
       <div class="success-icon" style="background:var(--blue-light);color:var(--blue)"><i class="ti ti-mail-check"></i></div>
-      <div style="font-size:19px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-.3px">Your application is saved</div>
-      <div style="font-size:13px;color:var(--muted);max-width:440px;margin:0 auto;line-height:1.65">We've saved your progress and emailed you a link to continue when you're ready. You can also reopen your original invitation link any time.</div>
+      <div id="exit-headline" style="font-size:19px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-.3px">Your application is saved</div>
+      <div id="exit-intro" style="font-size:13px;color:var(--muted);max-width:440px;margin:0 auto;line-height:1.65">We've saved your progress and emailed you a link to continue when you're ready. You can also reopen your original invitation link any time.</div>
 
       <div class="ref-box"><div class="ref-lbl">Your reference</div><div class="ref-num" id="exit-ref-num">—</div></div>
 
@@ -1417,7 +1418,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
         <i class="ti ti-mail" style="font-size:14px;color:var(--blue);margin-right:6px"></i>Email sent to <strong id="exit-client-email" style="color:var(--blue)">—</strong>
       </div>
 
-      <div style="margin-top:14px;background:var(--blue-light);border-radius:8px;padding:12px 16px;max-width:440px;margin-left:auto;margin-right:auto;text-align:left">
+      <div id="exit-info-box" style="margin-top:14px;background:var(--blue-light);border-radius:8px;padding:12px 16px;max-width:440px;margin-left:auto;margin-right:auto;text-align:left">
         <p style="margin:0;font-size:12px;line-height:1.55;color:var(--blue-dark)"><strong>Important:</strong> Your application link will remain accessible for 14 days from your original invitation. Don't see the email? Check your spam folder, or reuse the link you were sent originally.</p>
       </div>
 
@@ -3812,10 +3813,25 @@ async function saveAndExit(){
       const emailEl = document.getElementById('exit-client-email');
       if(refEl)   refEl.textContent   = currentRef || '—';
       if(emailEl) emailEl.textContent = (window.currentInvitationEmail || 'your email');
-      // If email wasn't actually sent (idempotency), soften the message
-      const row = document.getElementById('exit-email-row');
-      if(row && !emailSent){
-        row.innerHTML = '<i class="ti ti-info-circle" style="font-size:14px;color:var(--blue);margin-right:6px"></i>You\'ve already received a resume email for this application. Check your inbox or use your original invitation link.';
+
+      // Swap copy so it stays consistent with whether an email was actually sent.
+      const headline = document.getElementById('exit-headline');
+      const intro    = document.getElementById('exit-intro');
+      const emailRow = document.getElementById('exit-email-row');
+      const infoBox  = document.getElementById('exit-info-box');
+
+      if(emailSent){
+        // First save & exit — fresh email sent
+        if(headline) headline.textContent = 'Your application is saved';
+        if(intro)    intro.textContent    = "We've saved your progress and emailed you a link to continue when you're ready. You can also reopen your original invitation link any time.";
+        if(emailRow) emailRow.innerHTML   = '<i class="ti ti-mail" style="font-size:14px;color:var(--blue);margin-right:6px"></i>Email sent to <strong id="exit-client-email" style="color:var(--blue)">' + (window.currentInvitationEmail || 'your email') + '</strong>';
+        if(infoBox)  infoBox.innerHTML    = '<p style="margin:0;font-size:12px;line-height:1.55;color:var(--blue-dark)"><strong>Important:</strong> Your application link will remain accessible for 14 days from your original invitation. Don\'t see the email? Check your spam folder, or reuse the link you were sent originally.</p>';
+      } else {
+        // Subsequent save & exit — email already sent earlier
+        if(headline) headline.textContent = 'Your progress is saved';
+        if(intro)    intro.textContent    = "We've saved your latest progress. You can return to your application any time using your original invitation link, or the resume email we sent you earlier.";
+        if(emailRow) emailRow.innerHTML   = '<i class="ti ti-info-circle" style="font-size:14px;color:var(--blue);margin-right:6px"></i>A resume email was sent earlier to <strong style="color:var(--blue)">' + (window.currentInvitationEmail || 'your email') + '</strong>';
+        if(infoBox)  infoBox.innerHTML    = '<p style="margin:0;font-size:12px;line-height:1.55;color:var(--blue-dark)"><strong>Important:</strong> Your application link will remain accessible for 14 days from your original invitation. Can\'t find the earlier resume email? Check your spam folder, or reuse the original invitation link you were sent.</p>';
       }
       confirm.classList.add('active');
     }
