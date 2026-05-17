@@ -673,7 +673,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
           <option value="yes">Yes — please specify below</option>
         </select>
       </div>
-      <div class="fg" id="intro-by" style="display:none"><label class="lbl">Introduced by <span class="req">*</span></label><input placeholder="Name of person or firm who introduced Predeevo"></div>
+      <div class="fg" id="intro-by" style="display:none"><label class="lbl">Introduced by <span class="req">*</span></label><input placeholder="Name of person or firm who introduced Predeevo" id="introduced-by-name" oninput="saveProgress()"></div>
     </div>
   </div>
 
@@ -692,7 +692,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       <label class="svc-item" onclick="svcT(this,'reg')"><input type="checkbox" value="reg"><span class="svc-label">Registered office</span></label>
       <label class="svc-item" style="grid-column:1/-1" onclick="svcT(this,'other')"><input type="checkbox" value="other"><span class="svc-label">Other (describe below)</span></label>
     </div>
-    <div class="cond" id="other-svc" style="display:none"><div class="fg" style="margin-bottom:0"><label class="lbl">Describe other services</label><input placeholder="Other services required"></div></div>
+    <div class="cond" id="other-svc" style="display:none"><div class="fg" style="margin-bottom:0"><label class="lbl">Describe other services</label><input placeholder="Other services required" id="other-services-description" oninput="saveProgress()"></div></div>
   </div>
 
   <!-- SINGLE combined engagement card -->
@@ -706,9 +706,9 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 
       <div class="fgrid">
         <div class="fg full"><label class="lbl">Proposed company name <span class="req">*</span></label><input placeholder="Preferred name for the new company" id="incorp-company-name" oninput="saveProgress()"></div>
-        <div class="fg full"><label class="lbl">Alternative proposed name <span class="hint">(if preferred name unavailable)</span></label><input placeholder="Second choice name"></div>
+        <div class="fg full"><label class="lbl">Alternative proposed name <span class="hint">(if preferred name unavailable)</span></label><input placeholder="Second choice name" id="incorp-alt-name" oninput="saveProgress()"></div>
         <div class="fg"><label class="lbl">Type of company <span class="req">*</span></label>
-          <select>
+          <select id="incorp-company-type" onchange="saveProgress()">
             <option value="">Select...</option>
             <option>Private Limited Company (Ltd)</option>
             <option>Public Limited Company (Plc)</option>
@@ -719,16 +719,16 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
           </select>
         </div>
         <div class="fg"><label class="lbl">Country of incorporation <span class="req">*</span></label>
-          <div class="sw"><input class="si" placeholder="Type to search country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden"><div class="dropdown"></div></div>
+          <div class="sw"><input class="si" placeholder="Type to search country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" id="incorp-country"><div class="dropdown"></div></div>
         </div>
         <div class="fg full"><label class="lbl">Principal business activities <span class="req">*</span></label>
           <textarea placeholder="Describe the main business activities, products/services offered, target markets and countries of operation" id="incorp-activities"></textarea>
         </div>
         <div class="fg full"><label class="lbl">Economic rationale and purpose <span class="req">*</span></label>
-          <textarea placeholder="Why is this company being incorporated? Why this jurisdiction? What commercial or economic purpose does it serve?"></textarea>
+          <textarea placeholder="Why is this company being incorporated? Why this jurisdiction? What commercial or economic purpose does it serve?" id="incorp-economic-rationale" oninput="saveProgress()"></textarea>
         </div>
         <div class="fg full"><label class="lbl">Source of funds for the company <span class="req">*</span></label>
-          <textarea placeholder="Where will the company's operating funds come from? (e.g. capital injection from shareholders, bank loans, trading income)"></textarea>
+          <textarea placeholder="Where will the company's operating funds come from? (e.g. capital injection from shareholders, bank loans, trading income)" id="incorp-operating-funds" oninput="saveProgress()"></textarea>
         </div>
       </div><!-- close fgrid -->
       <div style="margin-top:14px">
@@ -779,12 +779,12 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
           <div class="field-example">Enter the full amount in EUR — e.g. 250000 for €250,000</div>
         </div>
         <div class="fg"><label class="lbl">Expected turnover Year 2 (EUR)</label>
-          <input type="number" min="0" step="1000" placeholder="e.g. 500000" oninput="saveProgress()">
+          <input type="number" min="0" step="1000" placeholder="e.g. 500000" id="incorp-turnover-y2" oninput="saveProgress()">
           <div class="field-example">Projected second-year turnover (estimated)</div>
         </div>
-        <div class="fg"><label class="lbl">Share capital (EUR) <span class="req">*</span></label><input placeholder="e.g. €1,000"></div>
+        <div class="fg"><label class="lbl">Share capital (EUR) <span class="req">*</span></label><input type="number" min="0" step="100" placeholder="e.g. 1000" id="incorp-share-capital" oninput="saveProgress()"></div>
         <div class="fg"><label class="lbl">Number of employees expected</label>
-          <select>
+          <select id="incorp-employees-count" onchange="saveProgress()">
             <option value="">Select...</option>
             <option>0 (holding / dormant)</option>
             <option>1–5</option>
@@ -794,7 +794,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
           </select>
         </div>
         <div class="fg"><label class="lbl">Expected countries of operation <span class="req">*</span></label>
-          <input placeholder="e.g. Cyprus, Greece, UAE">
+          <input placeholder="e.g. Cyprus, Greece, UAE" id="incorp-countries-operation" oninput="saveProgress()">
         </div>
 
       </div>
@@ -878,27 +878,27 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <div id="entity-f">
       <div class="sec-lbl" style="color:var(--blue);border-color:var(--blue-border)">Existing company / entity profile</div>
       <div class="fgrid">
-        <div class="fg full"><label class="lbl">Full registered name <span class="req">*</span></label><input placeholder="Full legal name as registered"></div>
+        <div class="fg full"><label class="lbl">Full registered name <span class="req">*</span></label><input placeholder="Full legal name as registered" id="entity-name" oninput="saveProgress()"></div>
         <div class="fg"><label class="lbl">Country of registration <span class="req">*</span></label>
-          <div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden"><div class="dropdown"></div></div>
+          <div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" id="entity-country"><div class="dropdown"></div></div>
         </div>
-        <div class="fg"><label class="lbl">Registration / company number <span class="req">*</span></label><input placeholder="e.g. HE 123456"></div>
-        <div class="fg"><label class="lbl">Date of incorporation</label><input type="date"></div>
+        <div class="fg"><label class="lbl">Registration / company number <span class="req">*</span></label><input placeholder="e.g. HE 123456" id="entity-reg-number" oninput="saveProgress()"></div>
+        <div class="fg"><label class="lbl">Date of incorporation</label><input type="date" id="entity-incorporation-date" oninput="saveProgress()"></div>
         <div class="fg full"><label class="lbl">Principal business activities <span class="req">*</span></label>
           <textarea placeholder="Describe the entity's main activities, products/services, markets and countries of operation" id="entity-activities"></textarea>
         </div>
         <div class="fg full"><label class="lbl">Economic rationale for engaging Predeevo <span class="req">*</span></label>
-          <textarea placeholder="Why is the entity engaging Predeevo for these services? What is the business purpose and expected benefit?"></textarea>
+          <textarea placeholder="Why is the entity engaging Predeevo for these services? What is the business purpose and expected benefit?" id="entity-rationale" oninput="saveProgress()"></textarea>
         </div>
         <div class="fg"><label class="lbl">Last year annual turnover (EUR) <span class="req">*</span></label>
-          <input type="number" min="0" step="1000" placeholder="e.g. 1500000" oninput="saveProgress()">
+          <input type="number" min="0" step="1000" placeholder="e.g. 1500000" id="entity-turnover-y1" oninput="saveProgress()">
           <div class="field-example">Most recent full financial year — enter full amount in EUR</div>
         </div>
         <div class="fg"><label class="lbl">Current year projected turnover (EUR)</label>
-          <input type="number" min="0" step="1000" placeholder="e.g. 2000000" oninput="saveProgress()">
+          <input type="number" min="0" step="1000" placeholder="e.g. 2000000" id="entity-turnover-y2" oninput="saveProgress()">
         </div>
         <div class="fg"><label class="lbl">Number of employees</label>
-          <select>
+          <select id="entity-employees-count" onchange="saveProgress()">
             <option value="">Select...</option>
             <option>0 (holding / dormant)</option>
             <option>1–5</option>
@@ -907,9 +907,9 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
             <option>Over 50</option>
           </select>
         </div>
-        <div class="fg full"><label class="lbl">Countries of operation</label><input placeholder="List the main countries where the entity operates"></div>
+        <div class="fg full"><label class="lbl">Countries of operation</label><input placeholder="List the main countries where the entity operates" id="entity-countries-operation" oninput="saveProgress()"></div>
         <div class="fg full"><label class="lbl">Source of funds / income of the entity</label>
-          <textarea placeholder="Describe how the entity generates income or receives funds"></textarea>
+          <textarea placeholder="Describe how the entity generates income or receives funds" id="entity-operating-funds" oninput="saveProgress()"></textarea>
         </div>
 
 
@@ -1319,7 +1319,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       <div class="sig-detail" id="sd-own">
         <div class="eidas-box"><i class="ti ti-shield-check"></i><div><div class="eidas-title">eIDAS Advanced or Qualified Electronic Signature</div><div class="eidas-sub">Upload your signed declaration PDF, or paste your certificate reference. Verified against the EU Trust List.</div></div></div>
         <div class="fg"><label class="lbl">Upload signed declaration PDF <span class="req">*</span></label><div class="upload-zone" onclick="alert('File picker in live app')"><i class="ti ti-upload" style="font-size:20px;color:var(--muted);display:block;margin-bottom:5px"></i><div style="font-size:12px;font-weight:600">Click to upload signed PDF</div><div style="font-size:10px;color:var(--subtle);margin-top:3px">PDF only · Max 10MB</div></div></div>
-        <div class="fg" style="margin-bottom:0"><label class="lbl">eIDAS certificate reference (optional)</label><input placeholder="Certificate serial number or provider reference"></div>
+        <div class="fg" style="margin-bottom:0"><label class="lbl">eIDAS certificate reference (optional)</label><input placeholder="Certificate serial number or provider reference" id="sig-eidas-reference" oninput="saveProgress()"></div>
       </div>
     </div>
 
@@ -1335,7 +1335,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       <div class="sig-detail" id="sd-physical">
         <button class="btn btn-sm" style="width:100%;justify-content:center;margin-bottom:12px" onclick="alert('PDF download in live app')"><i class="ti ti-download" style="font-size:13px"></i>Download declaration PDF</button>
         <div class="fg"><label class="lbl">Upload signed document <span class="req">*</span><span class="hint">Scan or clear photo — signature must be visible</span></label><div class="upload-zone" onclick="alert('File picker in live app')"><i class="ti ti-upload" style="font-size:20px;color:var(--muted);display:block;margin-bottom:5px"></i><div style="font-size:12px;font-weight:600">Click to upload</div><div style="font-size:10px;color:var(--subtle);margin-top:3px">PDF, JPG or PNG · Max 10MB</div></div></div>
-        <div class="fg" style="margin-bottom:0"><label class="lbl">Or — signing in person</label><input placeholder="Appointment date / confirmation reference (if applicable)"></div>
+        <div class="fg" style="margin-bottom:0"><label class="lbl">Or — signing in person</label><input placeholder="Appointment date / confirmation reference (if applicable)" id="sig-physical-appointment" oninput="saveProgress()"></div>
       </div>
     </div>
 
@@ -1354,7 +1354,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
         <div class="fg"><label class="lbl">Mobile number <span class="req">*</span></label>
           <div class="phone-row">
             <div style="position:relative"><input id="evro-cc" class="si" placeholder="+357" style="width:100%" oninput="spc(this)" onfocus="spdd(this)" onblur="sphdd(this)"><div class="dropdown" style="width:240px" id="dd-evro"></div></div>
-            <input placeholder="Mobile number" type="tel">
+            <input placeholder="Mobile number" type="tel" id="sig-evrotrust-mobile" oninput="saveProgress()">
           </div>
         </div>
         <div id="evro-sent" style="display:none"><div class="success-box" style="margin-bottom:0"><i class="ti ti-check-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Signing request sent. Open the Evrotrust app on your phone and complete the process.</div></div>
@@ -1584,12 +1584,10 @@ function svcT(el,val){
 }
 
 // ── PEP ──
-function pepSelectChange(v){
-  const isPEP=v.startsWith('yes');
-  document.getElementById('pep-detail').style.display=isPEP?'block':'none';
-  document.getElementById('sow-section').style.display=isPEP?'block':'none';
-  saveProgress();
-}
+// Legacy stub: kept as a no-op for backwards compatibility with any stale callers.
+// The original `#pep-select` / `#pep-detail` / `#sow-section` elements have been
+// replaced by per-UBO PEP fields and the conditional SoW step (s-sow).
+function pepSelectChange(v){ /* no-op — see _applicantIsPEP() and SoW step */ }
 function pepSel(v){}
 
 // ── SOURCE OF WEALTH (lightweight, conditional on applicant PEP=yes) ──
@@ -2708,8 +2706,26 @@ function validateStep(stepNum){
           if(!tinInp || !tinInp.value.trim()) errors.push(f.label);
           break;
         case 'pep':
-          const pepSel = document.getElementById('pep-select');
-          if(!pepSel || !pepSel.value) errors.push(f.label);
+          // PEP is now declared per-UBO inside Step 2 identity cards.
+          // Validate that the applicant has answered their PEP question.
+          {
+            const list = window._lastSavedShareholders || window._resumedShareholders;
+            let pepAnswered = false;
+            if(Array.isArray(list)){
+              const applicant = list.find(s => s.is_applicant);
+              if(applicant && (applicant.pep_status === 'yes' || applicant.pep_status === 'no')) pepAnswered = true;
+            }
+            // Also check live Step 2 cards (PEP may have been set but not yet saved)
+            if(!pepAnswered){
+              document.querySelectorAll('#ubo-identity-cards .ubo-id-card').forEach(card => {
+                if(card.dataset.applicant === 'true' || card.querySelector('.ubo-id-name')?.textContent?.includes('You')){
+                  const pep = card.querySelector('[data-field="pep_status"]')?.value;
+                  if(pep === 'yes' || pep === 'no') pepAnswered = true;
+                }
+              });
+            }
+            if(!pepAnswered) errors.push(f.label);
+          }
           break;
         case 'proof_address':
           // Check if proof of address doc row is done
@@ -3038,50 +3054,70 @@ async function resumeDraft(draftInfo){
     }
 
     // ── Restore introduced_by ──
+    // Helper used throughout this restore block
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if(el && val !== null && val !== undefined) el.value = val;
+    };
+
     if(app.introduced_by){
       const introSel = document.querySelector('select[onchange*="intro-by"]');
       if(introSel){
         introSel.value = 'yes';
         introSel.dispatchEvent(new Event('change', {bubbles:true}));
-        const introInp = document.querySelector('#intro-by input');
-        if(introInp) introInp.value = app.introduced_by;
       }
+      setVal('introduced-by-name', app.introduced_by);
     }
 
-    // ── Restore incorporation fields (when incorp service was selected) ──
-    const setVal = (id, val) => {
-      const el = document.getElementById(id);
-      if(el && val !== null && val !== undefined) el.value = val;
-    };
-    const setBySelector = (sel, val) => {
-      const el = document.querySelector(sel);
-      if(el && val !== null && val !== undefined) el.value = val;
-    };
+    // ── Restore "Other services" description ──
+    setVal('other-services-description', app.other_services_description);
+
+    // Helpers
+    const setVal_outer = setVal;  // (declared below also; this section uses the outer one)
+
+    // ── Restore incorporation fields ──
     setVal('incorp-company-name', app.company_name);
+    setVal('incorp-alt-name', app.alt_company_name);
+    setVal('incorp-company-type', app.company_type);
+    setVal('incorp-country', app.country_of_incorp);
     setVal('incorp-activities', app.principal_activities);
-    setBySelector('#incorp-f textarea[placeholder*="commercial"]', app.economic_rationale);
+    setVal('incorp-economic-rationale', app.economic_rationale);
+    setVal('incorp-operating-funds', app.operating_funds_source);
     setVal('incorp-turnover-y1', app.turnover_y1);
-    setBySelector('#incorp-f input[placeholder*="500000"]', app.turnover_y2);
-    setBySelector('#incorp-f input[placeholder*="1,000"]', app.share_capital);
+    setVal('incorp-turnover-y2', app.turnover_y2);
+    setVal('incorp-share-capital', app.share_capital);
+    setVal('incorp-employees-count', app.expected_employees);
+    setVal('incorp-countries-operation', app.countries_operation);
+    // Also reflect country hidden value into the visible search input
+    const incorpCountryHidden = document.getElementById('incorp-country');
+    if(incorpCountryHidden && incorpCountryHidden.value){
+      const visibleInp = incorpCountryHidden.previousElementSibling;
+      if(visibleInp && visibleInp.classList.contains('si')) visibleInp.value = incorpCountryHidden.value;
+    }
 
     // ── Restore entity fields (when incorp NOT selected) ──
-    setBySelector('#entity-f input[placeholder*="legal registered"]', app.entity_name);
-    setBySelector('#entity-f input[placeholder*="HE 123456"]', app.entity_reg_number);
+    setVal('entity-name', app.entity_name);
+    setVal('entity-country', app.entity_country);
+    setVal('entity-reg-number', app.entity_reg_number);
+    setVal('entity-incorporation-date', app.entity_incorporation_date);
     setVal('entity-activities', app.entity_activities);
-    setBySelector('#entity-f textarea[placeholder*="business purpose"]', app.entity_rationale);
-    setBySelector('#entity-f input[placeholder*="1500000"]', app.entity_turnover_y1);
-    setBySelector('#entity-f input[placeholder*="2000000"]', app.entity_turnover_y2);
-
-    // ── Restore PEP status ──
-    if(app.pep_status){
-      const pepSel = document.getElementById('pep-select');
-      if(pepSel){
-        pepSel.value = app.pep_status;
-        pepSelectChange(app.pep_status);
-      }
+    setVal('entity-rationale', app.entity_rationale);
+    setVal('entity-turnover-y1', app.entity_turnover_y1);
+    setVal('entity-turnover-y2', app.entity_turnover_y2);
+    setVal('entity-employees-count', app.expected_employees);
+    setVal('entity-countries-operation', app.countries_operation);
+    setVal('entity-operating-funds', app.operating_funds_source);
+    const entityCountryHidden = document.getElementById('entity-country');
+    if(entityCountryHidden && entityCountryHidden.value){
+      const visibleInp = entityCountryHidden.previousElementSibling;
+      if(visibleInp && visibleInp.classList.contains('si')) visibleInp.value = entityCountryHidden.value;
     }
 
-    // ── Restore signature method ──
+    // ── Restore controlling person selection ──
+    setVal('controlling-person-select', app.controlling_person_id);
+    setVal('entity-controlling-select', app.controlling_person_id);
+
+    // ── Restore signature method + related fields ──
     if(app.sig_method){
       const sigOpt = document.querySelector(`.sig-opt input[value="${app.sig_method}"]`);
       if(sigOpt){
@@ -3089,6 +3125,9 @@ async function resumeDraft(draftInfo){
         sigOpt.closest('.sig-opt')?.classList.add('on');
       }
     }
+    setVal('sig-eidas-reference', app.sig_reference);
+    setVal('sig-physical-appointment', app.physical_appointment_ref);
+    setVal('sig-evrotrust-mobile', app.evrotrust_mobile);
 
     // ── Restore declarations ──
     const setCheck = (id, val) => { const el = document.getElementById(id); if(el) el.checked = !!val; };
@@ -3214,64 +3253,11 @@ async function submit(){
   if(submitBtn){ submitBtn.disabled=true; submitBtn.innerHTML='<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0 4px 0 0;display:inline-block;vertical-align:middle"></div>Submitting...'; }
 
   try {
-    // ── Collect all form data ──
-    const services = Array.from(document.querySelectorAll('.svc-item.on')).map(e=>e.querySelector('input').value);
     const isIncorp = document.getElementById('incorp-f')?.style.display !== 'none';
 
-    const appData = {
-      reference: currentRef,
-      status: 'submitted',
-      submitted_at: new Date().toISOString(),
-
-      // Link to invitation (REQUIRED by RLS — anon writes are gated by this)
-      current_invitation_id: window.currentInvitationId || null,
-
-      // Services
-      services: services,
-      introduced_by: document.querySelector('#intro-by input')?.value || null,
-
-      // Company (incorp)
-      company_name: document.getElementById('incorp-company-name')?.value || null,
-      principal_activities: document.getElementById('incorp-activities')?.value || null,
-      economic_rationale: document.querySelector('#incorp-f textarea[placeholder*="commercial"]')?.value || null,
-      turnover_y1: parseFloat(document.getElementById('incorp-turnover-y1')?.value) || null,
-      turnover_y2: parseFloat(document.querySelector('#incorp-f input[placeholder*="500000"]')?.value) || null,
-      share_capital: parseFloat(document.querySelector('#incorp-f input[placeholder*="1,000"]')?.value) || null,
-
-      // Entity
-      entity_name: document.querySelector('#entity-f input[placeholder*="legal registered"]')?.value || null,
-      entity_reg_number: document.querySelector('#entity-f input[placeholder*="HE 123456"]')?.value || null,
-      entity_activities: document.getElementById('entity-activities')?.value || null,
-      entity_rationale: document.querySelector('#entity-f textarea[placeholder*="business purpose"]')?.value || null,
-      entity_turnover_y1: parseFloat(document.querySelector('#entity-f input[placeholder*="1500000"]')?.value) || null,
-      entity_turnover_y2: parseFloat(document.querySelector('#entity-f input[placeholder*="2000000"]')?.value) || null,
-
-      // Will be filled from UBO card (applicant)
-      pep_status: document.getElementById('pep-select')?.value || null,
-
-      // Biometric
-      biometric_ref: 'SUM-2026-AB7F291',
-      biometric_score: 98,
-      biometric_passed: true,
-
-      // Signature
-      sig_method: document.querySelector('.sig-opt.on input')?.value || null,
-
-      // Declarations
-      decl_accuracy: document.getElementById('dc2')?.checked || false,
-      decl_funds: document.getElementById('dc3')?.checked || false,
-      decl_pep: document.getElementById('dc4')?.checked || false,
-      decl_update: document.getElementById('dc5')?.checked || false,
-      decl_mokas: document.getElementById('dc6')?.checked || false,
-      decl_aml: document.getElementById('dc7')?.checked || false,
-      decl_gdpr: document.getElementById('dc1')?.checked || false,
-      express_consent: document.getElementById('dc1')?.checked || false,
-
-      // Source of Wealth (only filled in if applicant is PEP)
-      ..._collectSOW(),
-
-      form_version: '2.0'
-    };
+    // Build the application payload using the same canonical collector as draft save.
+    // Single source of truth — if a field saves on draft, it saves on submit.
+    const appData = _collectAppData(true);
 
     // ── Insert or update application ──
     let appId = currentAppId;
@@ -3416,6 +3402,12 @@ window._saveInFlight = false;
 // Build the appData object from current form state. Shared by submit() and saveDraftToDB().
 function _collectAppData(forSubmit){
   const services = Array.from(document.querySelectorAll('.svc-item.on')).map(e=>e.querySelector('input').value);
+
+  // Helpers — short, defensive readers
+  const txt = (id) => document.getElementById(id)?.value?.trim() || null;
+  const num = (id) => { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? null : v; };
+  const chk = (id) => document.getElementById(id)?.checked || false;
+
   return {
     reference: currentRef,
     status: forSubmit ? 'submitted' : 'draft',
@@ -3424,43 +3416,56 @@ function _collectAppData(forSubmit){
 
     // Services
     services: services.length ? services : null,
-    introduced_by: document.querySelector('#intro-by input')?.value || null,
+    other_services_description: txt('other-services-description'),
+    introduced_by: txt('introduced-by-name'),
 
-    // Company (incorp)
-    company_name: document.getElementById('incorp-company-name')?.value || null,
-    principal_activities: document.getElementById('incorp-activities')?.value || null,
-    economic_rationale: document.querySelector('#incorp-f textarea[placeholder*="commercial"]')?.value || null,
-    turnover_y1: parseFloat(document.getElementById('incorp-turnover-y1')?.value) || null,
-    turnover_y2: parseFloat(document.querySelector('#incorp-f input[placeholder*="500000"]')?.value) || null,
-    share_capital: parseFloat(document.querySelector('#incorp-f input[placeholder*="1,000"]')?.value) || null,
+    // Incorporation form
+    company_name: txt('incorp-company-name'),
+    alt_company_name: txt('incorp-alt-name'),
+    company_type: txt('incorp-company-type') || txt('entity-company-type'),  // either form's select
+    country_of_incorp: txt('incorp-country'),
+    principal_activities: txt('incorp-activities'),
+    economic_rationale: txt('incorp-economic-rationale'),
+    operating_funds_source: txt('incorp-operating-funds') || txt('entity-operating-funds'),
+    turnover_y1: num('incorp-turnover-y1'),
+    turnover_y2: num('incorp-turnover-y2'),
+    share_capital: num('incorp-share-capital'),
+    expected_employees: txt('incorp-employees-count') || txt('entity-employees-count'),
+    countries_operation: txt('incorp-countries-operation') || txt('entity-countries-operation'),
 
-    // Entity
-    entity_name: document.querySelector('#entity-f input[placeholder*="legal registered"]')?.value || null,
-    entity_reg_number: document.querySelector('#entity-f input[placeholder*="HE 123456"]')?.value || null,
-    entity_activities: document.getElementById('entity-activities')?.value || null,
-    entity_rationale: document.querySelector('#entity-f textarea[placeholder*="business purpose"]')?.value || null,
-    entity_turnover_y1: parseFloat(document.querySelector('#entity-f input[placeholder*="1500000"]')?.value) || null,
-    entity_turnover_y2: parseFloat(document.querySelector('#entity-f input[placeholder*="2000000"]')?.value) || null,
+    // Entity form
+    entity_name: txt('entity-name'),
+    entity_country: txt('entity-country'),
+    entity_reg_number: txt('entity-reg-number'),
+    entity_incorporation_date: txt('entity-incorporation-date'),
+    entity_activities: txt('entity-activities'),
+    entity_rationale: txt('entity-rationale'),
+    entity_turnover_y1: num('entity-turnover-y1'),
+    entity_turnover_y2: num('entity-turnover-y2'),
 
-    pep_status: document.getElementById('pep-select')?.value || null,
+    // Controlling person (when no UBO ≥25%)
+    controlling_person_id: txt('controlling-person-select') || txt('entity-controlling-select'),
 
-    // Biometric (only filled on actual submit in this version)
+    // Biometric (filled on actual submit in this version)
     biometric_ref: forSubmit ? 'SUM-2026-AB7F291' : null,
     biometric_score: forSubmit ? 98 : null,
     biometric_passed: forSubmit ? true : null,
 
     // Signature
     sig_method: document.querySelector('.sig-opt.on input')?.value || null,
+    sig_reference: txt('sig-eidas-reference'),
+    physical_appointment_ref: txt('sig-physical-appointment'),
+    evrotrust_mobile: txt('sig-evrotrust-mobile'),
 
     // Declarations
-    decl_accuracy: document.getElementById('dc2')?.checked || false,
-    decl_funds: document.getElementById('dc3')?.checked || false,
-    decl_pep: document.getElementById('dc4')?.checked || false,
-    decl_update: document.getElementById('dc5')?.checked || false,
-    decl_mokas: document.getElementById('dc6')?.checked || false,
-    decl_aml: document.getElementById('dc7')?.checked || false,
-    decl_gdpr: document.getElementById('dc1')?.checked || false,
-    express_consent: document.getElementById('dc1')?.checked || false,
+    decl_gdpr: chk('dc1'),
+    express_consent: chk('dc1'),
+    decl_accuracy: chk('dc2'),
+    decl_funds: chk('dc3'),
+    decl_pep: chk('dc4'),
+    decl_update: chk('dc5'),
+    decl_mokas: chk('dc6'),
+    decl_aml: chk('dc7'),
 
     // Source of Wealth (lightweight; only meaningful when applicant is PEP)
     ..._collectSOW(),
