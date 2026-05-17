@@ -294,7 +294,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .dropdown{position:absolute;top:calc(100% + 2px);left:0;right:0;background:var(--card);border:0.5px solid var(--blue-border);border-radius:8px;max-height:200px;overflow-y:auto;z-index:100;display:none;box-shadow:0 4px 20px rgba(0,0,0,.12)}
 .dropdown.open{display:block}
 .dd-item{padding:8px 11px;font-size:13px;cursor:pointer;color:var(--text)}
-.dd-item:hover{background:var(--blue-pale);color:var(--blue)}
+.dd-item:hover,.dd-item.highlighted{background:var(--blue-pale);color:var(--blue)}
 .dd-empty{padding:10px 11px;font-size:12px;color:var(--subtle)}
 
 /* BOXES */
@@ -344,9 +344,9 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .qb{flex:1;padding:0 14px;font-size:11px;font-weight:700;cursor:pointer;background:none;border:none;font-family:'Manrope',sans-serif;color:var(--subtle);transition:all .13s;display:flex;align-items:center;justify-content:center;gap:4px}
 .qb:first-child{border-bottom:0.5px solid rgba(0,0,0,.08)}
 .qb:hover{background:var(--blue-pale);color:var(--blue)}
-.qb.sel-no{background:var(--teal-light);color:var(--teal)}
-.qb.sel-yes{background:var(--red-light);color:var(--red)}
-.q-expand{display:none;padding:10px 14px;border-top:0.5px solid rgba(0,0,0,.07);background:var(--red-light)}
+.qb.sel-no{background:var(--blue-pale);color:var(--blue)}
+.qb.sel-yes{background:var(--blue-pale);color:var(--blue)}
+.q-expand{display:none;padding:10px 14px;border-top:0.5px solid rgba(0,0,0,.07);background:var(--blue-pale)}
 .q-expand.show{display:block}
 .q-expand textarea{font-size:12px;min-height:56px;background:white}
 
@@ -2775,8 +2775,8 @@ function validateStep(stepNum){
           if(!addrRow?.classList.contains('done')) errors.push(f.label);
           break;
         case 'cv':
-          const cvDone = document.getElementById('cv-row')?.classList.contains('done');
-          // Also accept if employment form has at least employer filled
+          // CV is satisfied EITHER by uploading a CV file OR by filling the inline employment form
+          const cvDone = document.getElementById('dr-cv')?.classList.contains('done');
           const empInp = document.querySelector('#emp-list input[placeholder*="Company"]');
           if(!cvDone && (!empInp || !empInp.value.trim())) errors.push(f.label);
           break;
@@ -3421,7 +3421,7 @@ async function submit(){
     if(sb) await sb.from('kyc_audit_log').insert({
       application_id: appId,
       event: 'kyc_submitted',
-      details: { services, sig_method: appData.sig_method, biometric_ref: appData.biometric_ref }
+      details: { services: appData.services, sig_method: appData.sig_method, biometric_ref: appData.biometric_ref }
     });
 
     // ── Clear localStorage draft ──
