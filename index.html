@@ -166,6 +166,8 @@
     window.currentToken = token;
     window.currentInvitationId = data.id;
     window.currentInvitationExpiresAt = data.expires_at;
+    window.currentInvitationEmail = data.client_email;
+    window.currentInvitationName  = data.client_name;
 
     // Check for an existing draft for this invitation
     try {
@@ -639,6 +641,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <img src="https://predeevo.com/wp-content/uploads/2026/02/logo-1.png" class="logo-white" alt="Predeevo">
     <div class="hdr-actions">
       <button class="btn-save-hdr" id="hdr-save-btn" onclick="saveDraftToDB()" title="Save your progress so you can continue later"><i class="ti ti-device-floppy"></i>Save draft</button>
+      <button class="btn-save-hdr" id="hdr-exit-btn" onclick="saveAndExit()" title="Save and exit — we'll email you a link to continue later" style="margin-left:6px"><i class="ti ti-mail-forward"></i>Save & exit</button>
       <span class="hdr-secure"><i class="ti ti-lock" style="font-size:12px"></i>Secure · Encrypted</span>
     </div>
   </div>
@@ -992,6 +995,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <span class="step-count">Step 1 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
+    <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
     <button class="btn btn-blue" onclick="validateAndProceed(1,2)">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
@@ -1028,6 +1032,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <span class="step-count">Step 2 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
+    <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
     <button class="btn btn-blue" onclick="validateAndProceed(2,3)">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
@@ -1061,6 +1066,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <span class="step-count">Step 3 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
+    <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
     <button class="btn btn-blue" id="v-next" onclick="gs(4)" disabled style="opacity:.4;cursor:not-allowed">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
@@ -1119,6 +1125,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <span class="step-count">Step 4 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
+    <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
     <button class="btn btn-blue" onclick="validateAndProceed(4, _applicantIsPEP() ? 's-sow' : 5)">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
@@ -1218,6 +1225,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <span class="step-count" id="sow-step-count">Step 5 of 8</span>
     <span class="save-indicator"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
+    <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
     <button class="btn btn-blue" onclick="validateAndProceed('s-sow',5)">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
@@ -1242,6 +1250,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <span class="step-count" id="s5-step-count">Step 5 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
+    <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
     <button class="btn btn-blue" onclick="validateAndProceed(5,6)">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
@@ -1292,6 +1301,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <span class="step-count" id="s6-step-count">Step 6 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
+    <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
     <button class="btn btn-blue" id="d-next" onclick="validateAndProceed(6,7)">Continue to signature <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
@@ -1370,6 +1380,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <span class="step-count" id="s7-step-count">Step 7 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
+    <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
     <button class="btn btn-blue" onclick="validateAndProceed(7,'submit')"><i class="ti ti-send" style="font-size:13px"></i>Submit KYC</button>
   </div>
 </div>
@@ -1387,6 +1398,30 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
         
       </div>
       <div style="margin-top:16px;font-size:11px;color:var(--subtle)">Predeevo Ltd · Sintika Hanum 58, 6051 Larnaca, Cyprus<br>Tel: +357 24255858 · info@predeevo.com</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SAVED & EXIT CONFIRMATION ══ -->
+<!-- Shown after the client clicks "Save & exit" and the draft has been saved + email sent. -->
+<div class="step" id="s-saved-exit">
+  <div class="card">
+    <div class="success-wrap">
+      <div class="success-icon" style="background:var(--blue-light);color:var(--blue)"><i class="ti ti-mail-check"></i></div>
+      <div style="font-size:19px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-.3px">Your application is saved</div>
+      <div style="font-size:13px;color:var(--muted);max-width:440px;margin:0 auto;line-height:1.65">We've saved your progress and emailed you a link to continue when you're ready. You can also reopen your original invitation link any time.</div>
+
+      <div class="ref-box"><div class="ref-lbl">Your reference</div><div class="ref-num" id="exit-ref-num">—</div></div>
+
+      <div id="exit-email-row" style="margin-top:16px;font-size:13px;color:var(--text)">
+        <i class="ti ti-mail" style="font-size:14px;color:var(--blue);margin-right:6px"></i>Email sent to <strong id="exit-client-email" style="color:var(--blue)">—</strong>
+      </div>
+
+      <div style="margin-top:14px;background:var(--blue-light);border-radius:8px;padding:12px 16px;max-width:440px;margin-left:auto;margin-right:auto;text-align:left">
+        <p style="margin:0;font-size:12px;line-height:1.55;color:var(--blue-dark)"><strong>Important:</strong> Your application link will remain accessible for 14 days from your original invitation. Don't see the email? Check your spam folder, or reuse the link you were sent originally.</p>
+      </div>
+
+      <div style="margin-top:18px;font-size:11px;color:var(--subtle);line-height:1.55">You can close this tab. Predeevo Ltd · Sintika Hanum 58, 6051 Larnaca, Cyprus</div>
     </div>
   </div>
 </div>
@@ -3720,6 +3755,76 @@ async function saveDraftToDB(){
     window._saveInFlight = false;
     if(hdrBtn){ hdrBtn.disabled = false; }
     document.querySelectorAll('.btn-save-row').forEach(b => b.disabled = false);
+  }
+}
+
+// ── SAVE & EXIT ──
+// Saves the draft, calls the kyc-draft-saved-email edge function to send the
+// client their resume link, then shows the confirmation screen.
+// The edge function is idempotent — it won't re-email if last_save_exit_email_at is set.
+async function saveAndExit(){
+  // Disable buttons to prevent double-clicks
+  const exitBtns = document.querySelectorAll('button[onclick="saveAndExit()"]');
+  exitBtns.forEach(b => { b.disabled = true; b.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;margin:0 4px 0 0;display:inline-block;vertical-align:middle"></div>Saving...'; });
+
+  try {
+    // 1. Save the draft using the existing pipeline
+    const appId = await saveDraftToDB();
+    if(!appId){
+      // saveDraftToDB already showed an error. Restore buttons.
+      exitBtns.forEach(b => { b.disabled = false; b.innerHTML = '<i class="ti ti-mail-forward"></i>Save &amp; exit'; });
+      return;
+    }
+
+    // 2. Call the edge function to send the email (best effort; failure won't stop us showing confirmation)
+    let emailSent = false;
+    try {
+      const fnUrl = SUPABASE_URL + '/functions/v1/kyc-draft-saved-email';
+      const resp = await fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          'apikey': SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ application_id: appId })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if(resp.ok && data.ok){
+        emailSent = !data.skipped;
+        console.log('Save-exit email:', data);
+      } else {
+        console.warn('Save-exit email failed:', data);
+      }
+    } catch(emailErr){
+      console.warn('Save-exit email exception (non-fatal):', emailErr);
+    }
+
+    // 3. Show the confirmation screen
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    const confirm = document.getElementById('s-saved-exit');
+    if(confirm){
+      // Populate reference + email (read from invitation we cached at load)
+      const refEl   = document.getElementById('exit-ref-num');
+      const emailEl = document.getElementById('exit-client-email');
+      if(refEl)   refEl.textContent   = currentRef || '—';
+      if(emailEl) emailEl.textContent = (window.currentInvitationEmail || 'your email');
+      // If email wasn't actually sent (idempotency), soften the message
+      const row = document.getElementById('exit-email-row');
+      if(row && !emailSent){
+        row.innerHTML = '<i class="ti ti-info-circle" style="font-size:14px;color:var(--blue);margin-right:6px"></i>You\'ve already received a resume email for this application. Check your inbox or use your original invitation link.';
+      }
+      confirm.classList.add('active');
+    }
+    // Hide progress bar (we're outside the normal step flow)
+    const prog = document.getElementById('prog');
+    if(prog) prog.style.width = '100%';
+    window.scrollTo(0, 0);
+
+  } catch(e){
+    console.error('saveAndExit error:', e);
+    alert('Could not save and exit: ' + (e.message || 'Please try again.'));
+    exitBtns.forEach(b => { b.disabled = false; b.innerHTML = '<i class="ti ti-mail-forward"></i>Save &amp; exit'; });
   }
 }
 </script>
