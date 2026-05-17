@@ -1080,30 +1080,38 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <div class="doc-row locked"><div class="doc-icon done"><i class="ti ti-check"></i></div><div class="doc-info"><div class="doc-name">Passport / National ID</div><div class="doc-desc">Captured and verified via biometric scan in Step 3</div></div><span class="doc-st ds-done">Verified ✓</span></div>
     <div class="doc-row" id="dr-proof_of_address" data-doc-type="proof_of_address" data-required="true" data-default-icon="ti-home" data-default-desc="Utility bill or bank statement — dated within 6 months · Full name and address visible" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-home"></i></div><div class="doc-info"><div class="doc-name">Proof of residential address <span style="color:var(--red)">*</span></div><div class="doc-desc">Utility bill or bank statement — dated within 6 months · Full name and address visible</div></div><span class="doc-st ds-req">Required</span></div>
 
-    <div class="sec-lbl" style="margin-top:16px">Curriculum Vitae</div>
-    <div class="doc-row" id="dr-cv" data-doc-type="cv" data-required="true" data-default-icon="ti-id-badge" data-default-desc="Upload your CV — or complete the employment history form below. <strong>Required for all clients.</strong>" onclick="initUpload(this)"><div class="doc-icon" id="cv-icon"><i class="ti ti-id-badge"></i></div><div class="doc-info"><div class="doc-name">Curriculum Vitae <span style="color:var(--red)">*</span></div><div class="doc-desc">Upload your CV — or complete the employment history form below. <strong>Required for all clients.</strong></div></div><span class="doc-st ds-req" id="cv-st">Required</span></div>
-    <div id="cv-form" style="display:block;border:0.5px solid rgba(0,0,0,.1);border-radius:10px;padding:14px;margin-top:8px;background:var(--surface)">
-      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">Employment history <button class="btn btn-sm" onclick="addEmp()"><i class="ti ti-plus" style="font-size:12px"></i>Add previous</button></div>
-      <div id="emp-list">
-        <div style="border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)">
-          <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue)">Current / most recent</div>
-          <div class="fgrid">
-            <div class="fg"><label class="lbl">Employer name</label><input placeholder="Company or organisation"></div>
-            <div class="fg"><label class="lbl">Position / title</label><input placeholder="Job title"></div>
-            <div class="fg"><label class="lbl">From</label><input type="month"></div>
-            <div class="fg"><label class="lbl">To (leave blank if current)</label><input type="month"></div>
-            <div class="fg full"><label class="lbl">Nature of work</label><input placeholder="Brief description of role and responsibilities"></div>
+    <div class="sec-lbl" style="margin-top:16px">Curriculum Vitae <span style="color:var(--red)">*</span></div>
+    <div style="border:0.5px solid rgba(0,0,0,.1);border-radius:10px;padding:10px;background:var(--surface);margin-bottom:8px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 4px">Either upload a CV file <em>or</em> complete the employment history form below.</div>
+      <div class="doc-row" id="dr-cv" data-doc-type="cv" data-required="true" data-default-icon="ti-id-badge" data-default-desc="Upload your CV (PDF, JPG or PNG · Max 10MB)" onclick="initUpload(this)" style="margin-bottom:10px">
+        <div class="doc-icon" id="cv-icon"><i class="ti ti-id-badge"></i></div>
+        <div class="doc-info">
+          <div class="doc-name">Curriculum Vitae</div>
+          <div class="doc-desc">Upload your CV (PDF, JPG or PNG · Max 10MB)</div>
+        </div>
+        <span class="doc-st ds-req" id="cv-st">Required</span>
+      </div>
+      <div id="cv-form" style="display:block;border-top:0.5px solid rgba(0,0,0,.07);padding-top:12px;margin-top:4px">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">Or — complete employment history <button class="btn btn-sm" onclick="addEmp()"><i class="ti ti-plus" style="font-size:12px"></i>Add previous</button></div>
+        <div id="emp-list">
+          <div style="border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)">
+            <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue)">Current / most recent</div>
+            <div class="fgrid">
+              <div class="fg"><label class="lbl">Employer name</label><input placeholder="Company or organisation"></div>
+              <div class="fg"><label class="lbl">Position / title</label><input placeholder="Job title"></div>
+              <div class="fg"><label class="lbl">From</label><input type="month"></div>
+              <div class="fg"><label class="lbl">To (leave blank if current)</label><input type="month"></div>
+              <div class="fg full"><label class="lbl">Nature of work</label><input placeholder="Brief description of role and responsibilities"></div>
+            </div>
           </div>
         </div>
       </div>
+    </div>
 
     <div class="sec-lbl" style="margin-top:16px">Optional — recommended</div>
     <div class="doc-row" id="dr-source_of_funds_evidence" data-doc-type="source_of_funds_evidence" data-required="false" data-default-icon="ti-cash" data-default-desc="Payslips, employment contract, audited accounts, sale agreement" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-cash"></i></div><div class="doc-info"><div class="doc-name">Source of funds evidence</div><div class="doc-desc">Payslips, employment contract, audited accounts, sale agreement</div></div><span class="doc-st ds-opt">Optional</span></div>
     <div class="doc-row" id="dr-bank_statement" data-doc-type="bank_statement" data-required="false" data-default-icon="ti-building-bank" data-default-desc="From your main account" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-building-bank"></i></div><div class="doc-info"><div class="doc-name">Bank statement (last 3 months)</div><div class="doc-desc">From your main account</div></div><span class="doc-st ds-opt">Optional</span></div>
     <div class="doc-row" id="dr-tin_document" data-doc-type="tin_document" data-required="false" data-default-icon="ti-file-text" data-default-desc="Official document showing your TIN / AFM" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-file-text"></i></div><div class="doc-info"><div class="doc-name">Tax Identification Number document</div><div class="doc-desc">Official document showing your TIN / AFM</div></div><span class="doc-st ds-opt">Optional</span></div>
-
-    <div class="sec-lbl" style="margin-top:16px">Curriculum Vitae (Employment history)</div>
-    </div>
 
     <!-- Source of Wealth — PEP only -->
     <div id="sow-section" style="display:none;margin-top:12px">
@@ -1814,38 +1822,38 @@ function renderUBOIdentityCards(){
         <div class="ubo-id-form" id="ubo-form-${i}">
           ${!ubo.isApplicant ? `<div class="warn-box" style="margin-bottom:14px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>You are completing this on behalf of <strong>${firstName}</strong>. Pre-fill their details here to save them time. <strong>Biometric identity verification (facial recognition) and the declaration signature must be completed by ${firstName} personally</strong> via their own secure KYC link — this cannot be done on their behalf.</div>` : `<div class="info-box" style="margin-bottom:14px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Your details have been pre-filled from Step 2. Please review and complete any missing fields.</div>`}
           <div class="fgrid">
-            <div class="fg"><label class="lbl">Title</label><select><option value="">Select...</option><option>Mr</option><option>Mrs</option><option>Miss</option><option>Ms</option><option>Dr</option><option>Prof</option></select></div>
-            <div class="fg"><label class="lbl">Marital status</label><select><option value="">Select...</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option><option>Other</option></select></div>
-            <div class="fg"><label class="lbl">First name(s) <span class="req">*</span></label><input placeholder="As on passport" value="${firstName}" oninput="updateUBOStatus(${i})"></div>
-            <div class="fg"><label class="lbl">Surname <span class="req">*</span></label><input placeholder="As on passport" value="${lastName}" oninput="updateUBOStatus(${i})"></div>
-            <div class="fg full"><label class="lbl">Previous or other surname</label><input placeholder="Maiden name or other legal name"></div>
-            <div class="fg"><label class="lbl">Date of birth <span class="req">*</span></label><input type="date" value="${prefillDOB}" oninput="updateUBOStatus(${i})"></div>
-            <div class="fg"><label class="lbl">Place / country of birth</label><input placeholder="e.g. Nicosia, Cyprus"></div>
-            <div class="fg"><label class="lbl">Nationality <span class="req">*</span></label><div class="sw"><input class="si" placeholder="${prefillNat||'Type country...'}" oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" value="${prefillNat}"><div class="dropdown"></div></div></div>
-            <div class="fg"><label class="lbl">Dual nationality?</label><select><option value="no">No</option><option value="yes">Yes</option></select></div>
+            <div class="fg"><label class="lbl">Title</label><select data-field="title"><option value="">Select...</option><option>Mr</option><option>Mrs</option><option>Miss</option><option>Ms</option><option>Dr</option><option>Prof</option></select></div>
+            <div class="fg"><label class="lbl">Marital status</label><select data-field="marital_status"><option value="">Select...</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option><option>Other</option></select></div>
+            <div class="fg"><label class="lbl">First name(s) <span class="req">*</span></label><input data-field="first_name" placeholder="As on passport" value="${firstName}" oninput="updateUBOStatus(${i})"></div>
+            <div class="fg"><label class="lbl">Surname <span class="req">*</span></label><input data-field="surname" placeholder="As on passport" value="${lastName}" oninput="updateUBOStatus(${i})"></div>
+            <div class="fg full"><label class="lbl">Previous or other surname</label><input data-field="prev_surname" placeholder="Maiden name or other legal name"></div>
+            <div class="fg"><label class="lbl">Date of birth <span class="req">*</span></label><input data-field="dob" type="date" value="${prefillDOB}" oninput="updateUBOStatus(${i})"></div>
+            <div class="fg"><label class="lbl">Place / country of birth</label><input data-field="place_of_birth" placeholder="e.g. Nicosia, Cyprus"></div>
+            <div class="fg"><label class="lbl">Nationality <span class="req">*</span></label><div class="sw"><input class="si" placeholder="${prefillNat||'Type country...'}" oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" data-field="nationality" value="${prefillNat}"><div class="dropdown"></div></div></div>
+            <div class="fg"><label class="lbl">Dual nationality?</label><select data-field="dual_nationality"><option value="no">No</option><option value="yes">Yes</option></select></div>
             <div class="fg full" style="grid-column:1/-1">
               <div style="background:var(--blue-pale);border:0.5px solid var(--blue-border);border-radius:9px;padding:12px 14px;margin-bottom:0">
                 <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Identity document — at least one required <span style="color:var(--red)">*</span></div>
                 <div class="fgrid" style="gap:8px">
-                  <div class="fg" style="margin-bottom:0"><label class="lbl">Passport number</label><input class="doc-passport-num" placeholder="Passport number" value="${prefillPassport}" oninput="checkDocRequired(this)"></div>
-                  <div class="fg" style="margin-bottom:0"><label class="lbl">Passport expiry date</label><input type="date" class="doc-passport-exp" min="${new Date().toISOString().split('T')[0]}" oninput="checkDocRequired(this)"></div>
-                  <div class="fg" style="margin-bottom:0"><label class="lbl">National ID card number</label><input class="doc-id-num" placeholder="ID card number (if applicable)" oninput="checkDocRequired(this)"></div>
-                  <div class="fg" style="margin-bottom:0"><label class="lbl">ID card expiry date</label><input type="date" class="doc-id-exp" min="${new Date().toISOString().split('T')[0]}" oninput="checkDocRequired(this)"></div>
+                  <div class="fg" style="margin-bottom:0"><label class="lbl">Passport number</label><input data-field="passport_number" class="doc-passport-num" placeholder="Passport number" value="${prefillPassport}" oninput="checkDocRequired(this)"></div>
+                  <div class="fg" style="margin-bottom:0"><label class="lbl">Passport expiry date</label><input data-field="passport_expiry" type="date" class="doc-passport-exp" min="${new Date().toISOString().split('T')[0]}" oninput="checkDocRequired(this)"></div>
+                  <div class="fg" style="margin-bottom:0"><label class="lbl">National ID card number</label><input data-field="id_card_number" class="doc-id-num" placeholder="ID card number (if applicable)" oninput="checkDocRequired(this)"></div>
+                  <div class="fg" style="margin-bottom:0"><label class="lbl">ID card expiry date</label><input data-field="id_card_expiry" type="date" class="doc-id-exp" min="${new Date().toISOString().split('T')[0]}" oninput="checkDocRequired(this)"></div>
                 </div>
                 <div class="doc-req-warn" style="display:none;margin-top:8px;font-size:11px;color:var(--red);font-weight:600"><i class="ti ti-alert-circle"></i> Please provide either passport details or national ID card details</div>
               </div>
             </div>
-            <div class="fg full"><label class="lbl">Country of residence <span class="req">*</span></label><div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden"><div class="dropdown"></div></div></div>
-            <div class="fg full"><label class="lbl">Street address</label><input placeholder="Street name and number" value="${prefillAddrStr}"></div>
-            <div class="fg"><label class="lbl">Town / City</label><input placeholder="Town or city" value="${prefillAddrTown}"></div>
-            <div class="fg"><label class="lbl">Postcode</label><input placeholder="Postcode / ZIP" value="${prefillAddrPC}"></div>
-            <div class="fg"><label class="lbl">Email address <span class="req">*</span></label><input type="email" placeholder="email@domain.com" value="${prefillEmail}" oninput="updateUBOStatus(${i})"></div>
-            <div class="fg"><label class="lbl">Mobile</label><div class="phone-row"><div style="position:relative"><input class="si" placeholder="+357" style="width:100%" oninput="spc(this)" onfocus="spdd(this)" onblur="sphdd(this)"><div class="dropdown" style="width:200px"></div></div><input placeholder="Number" type="tel"></div></div>
-            <div class="fg"><label class="lbl">Occupation / profession</label><input placeholder="e.g. Director, Investor" value="${prefillOccup}"></div>
-            <div class="fg"><label class="lbl">Employment status</label><select><option value="">Select...</option><option>Self-employed</option><option>Employed</option><option>Business owner</option><option>Retired</option><option>Investor</option><option>Other</option></select></div>
-            <div class="fg"><label class="lbl">Country of tax residence</label><div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden"><div class="dropdown"></div></div></div>
-            <div class="fg"><label class="lbl">TIN / AFM</label><input placeholder="Tax identification number" value="${prefillTIN}"></div>
-            <div class="fg"><label class="lbl">Annual income (EUR)</label><select><option value="">Select...</option><option>Under €30,000</option><option>€30,000–€100,000</option><option>€100,000–€500,000</option><option>€500,000–€2,000,000</option><option>Over €2,000,000</option></select></div>
+            <div class="fg full"><label class="lbl">Country of residence <span class="req">*</span></label><div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" data-field="country_of_residence"><div class="dropdown"></div></div></div>
+            <div class="fg full"><label class="lbl">Street address</label><input data-field="addr_street" placeholder="Street name and number" value="${prefillAddrStr}"></div>
+            <div class="fg"><label class="lbl">Town / City</label><input data-field="addr_town" placeholder="Town or city" value="${prefillAddrTown}"></div>
+            <div class="fg"><label class="lbl">Postcode</label><input data-field="addr_postcode" placeholder="Postcode / ZIP" value="${prefillAddrPC}"></div>
+            <div class="fg"><label class="lbl">Email address <span class="req">*</span></label><input data-field="email" type="email" placeholder="email@domain.com" value="${prefillEmail}" oninput="updateUBOStatus(${i})"></div>
+            <div class="fg"><label class="lbl">Mobile</label><div class="phone-row"><div style="position:relative"><input class="si" placeholder="+357" style="width:100%" oninput="spc(this)" onfocus="spdd(this)" onblur="sphdd(this)"><div class="dropdown" style="width:200px"></div></div><input data-field="mobile" placeholder="Number" type="tel"></div></div>
+            <div class="fg"><label class="lbl">Occupation / profession</label><input data-field="occupation" placeholder="e.g. Director, Investor" value="${prefillOccup}"></div>
+            <div class="fg"><label class="lbl">Employment status</label><select data-field="employment_status"><option value="">Select...</option><option>Self-employed</option><option>Employed</option><option>Business owner</option><option>Retired</option><option>Investor</option><option>Other</option></select></div>
+            <div class="fg"><label class="lbl">Country of tax residence</label><div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" data-field="tax_country"><div class="dropdown"></div></div></div>
+            <div class="fg"><label class="lbl">TIN / AFM</label><input data-field="tin" placeholder="Tax identification number" value="${prefillTIN}"></div>
+            <div class="fg"><label class="lbl">Annual income (EUR)</label><select data-field="annual_income"><option value="">Select...</option><option>Under €30,000</option><option>€30,000–€100,000</option><option>€100,000–€500,000</option><option>€500,000–€2,000,000</option><option>Over €2,000,000</option></select></div>
           </div>
           <hr>
           <div class="sec-lbl" style="display:flex;align-items:center;gap:6px">
@@ -1854,7 +1862,7 @@ function renderUBOIdentityCards(){
           </div>
           <div class="fg">
             <label class="lbl">Is ${firstName||'this person'} a Politically Exposed Person (PEP)? <span class="req">*</span> <button type="button" onclick="document.getElementById('pep-modal').classList.add('open')" style="background:none;border:none;color:var(--blue);font-size:11px;cursor:pointer;font-family:'Manrope',sans-serif;font-weight:600;padding:0;text-decoration:underline">What is a PEP?</button></label>
-            <select>
+            <select data-field="pep_status">
               <option value="">Please select...</option>
               <option value="no">No — not a PEP</option>
               <option value="yes">Yes — is or has been a PEP</option>
@@ -1867,6 +1875,38 @@ function renderUBOIdentityCards(){
         </div>
       </div>`;
     container.appendChild(card);
+
+    // Resume restore: if we have a saved shareholder row matching this UBO by name,
+    // populate the data-field inputs from it. Match by full_name (the canonical link).
+    if(Array.isArray(window._resumedShareholders)){
+      const saved = window._resumedShareholders.find(s =>
+        (s.full_name||'').trim() === (ubo.name||'').trim()
+      );
+      if(saved){
+        card.querySelectorAll('[data-field]').forEach(el => {
+          const key = el.dataset.field;
+          const val = saved[key];
+          if(val === null || val === undefined || val === '') return;
+          el.value = val;
+        });
+        // Also reflect the nationality into the visible search input next to the hidden input
+        const natHidden = card.querySelector('input[type=hidden][data-field="nationality"]');
+        if(natHidden && natHidden.value){
+          const natVisible = natHidden.previousElementSibling;
+          if(natVisible && natVisible.classList.contains('si')) natVisible.value = natHidden.value;
+        }
+        const resHidden = card.querySelector('input[type=hidden][data-field="country_of_residence"]');
+        if(resHidden && resHidden.value){
+          const resVisible = resHidden.previousElementSibling;
+          if(resVisible && resVisible.classList.contains('si')) resVisible.value = resHidden.value;
+        }
+        const taxHidden = card.querySelector('input[type=hidden][data-field="tax_country"]');
+        if(taxHidden && taxHidden.value){
+          const taxVisible = taxHidden.previousElementSibling;
+          if(taxVisible && taxVisible.classList.contains('si')) taxVisible.value = taxHidden.value;
+        }
+      }
+    }
   });
 }
 
@@ -2848,6 +2888,9 @@ async function resumeDraft(draftInfo){
         if(apEl)    apEl.value    = sh.is_applicant ? 'yes' : 'no';
         if(emailEl) emailEl.value = sh.email || '';
       });
+      // Stash the saved shareholder list so renderUBOIdentityCards can populate
+      // Step 2 identity card fields when the user navigates to Step 2.
+      window._resumedShareholders = shList;
     }
 
     // ── Restore source-of-funds rows ──
@@ -3161,7 +3204,41 @@ function _collectAppData(forSubmit){
   };
 }
 
+// Collect a Step 2 UBO identity card's filled-in fields by their data-field attributes.
+// Returns an object whose keys are kyc_shareholders columns.
+function _collectUBOCardFields(card){
+  if(!card) return {};
+  const out = {};
+  card.querySelectorAll('[data-field]').forEach(el => {
+    const key = el.dataset.field;
+    if(!key) return;
+    const val = (el.value || '').trim();
+    if(val === '') return;
+    // Cast known fields appropriately
+    out[key] = val;
+  });
+  return out;
+}
+
+// Find the Step 2 UBO identity card whose visible name matches the given Step 1 UBO name.
+// Returns the card element or null.
+function _findUBOCardByName(name){
+  if(!name) return null;
+  const trimmed = name.trim();
+  let match = null;
+  document.querySelectorAll('#ubo-identity-cards .ubo-id-card').forEach(card => {
+    const nameEl = card.querySelector('.ubo-id-name');
+    if(!nameEl) return;
+    // Strip the "You" badge / whitespace; take just the leading text
+    const cardName = nameEl.textContent.replace(/\s*You\s*$/i,'').trim();
+    if(cardName === trimmed) match = card;
+  });
+  return match;
+}
+
 // Collect shareholders rows. Returns array. application_id is filled in by the caller.
+// Merges Step 1 shareholder row data (name/pct/email/etc.) with Step 2 UBO card details
+// (DOB, passport, address, PEP, etc.) for each matching person.
 function _collectShareholders(){
   // Detect which form is visible (incorp vs entity)
   const isIncorp = document.getElementById('incorp-f')?.style.display !== 'none';
@@ -3176,7 +3253,9 @@ function _collectShareholders(){
     const name = b.querySelector(nameCls)?.value?.trim();
     if(!name) return;  // skip empty rows
     const pct = parseFloat(b.querySelector(pctCls)?.value) || 0;
-    rows.push({
+
+    // Base row from Step 1 shareholder block
+    const row = {
       full_name: name,
       shareholding_pct: pct,
       ownership_type: b.querySelector('select')?.value || null,
@@ -3185,7 +3264,21 @@ function _collectShareholders(){
       is_ubo: pct > 25,
       email: b.querySelector(emailCls)?.value || null,
       kyc_status: 'draft'
-    });
+    };
+
+    // Merge in Step 2 UBO identity card fields (if a card exists for this person)
+    const card = _findUBOCardByName(name);
+    if(card){
+      const cardFields = _collectUBOCardFields(card);
+      // Step 1 values win for shared fields (name, email, nationality) — they're authoritative
+      // Step 2 card fields fill in the rest (dob, passport, address, PEP, etc.)
+      Object.keys(cardFields).forEach(k => {
+        if(row[k] === undefined || row[k] === null || row[k] === '' || row[k] === 0){
+          row[k] = cardFields[k];
+        }
+      });
+    }
+    rows.push(row);
   });
   return rows;
 }
