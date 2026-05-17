@@ -883,7 +883,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
           <div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" id="entity-country"><div class="dropdown"></div></div>
         </div>
         <div class="fg"><label class="lbl">Registration / company number <span class="req">*</span></label><input placeholder="e.g. HE 123456" id="entity-reg-number" oninput="saveProgress()"></div>
-        <div class="fg"><label class="lbl">Date of incorporation</label><input type="date" id="entity-incorporation-date" oninput="saveProgress()"></div>
+        <div class="fg"><label class="lbl">Date of incorporation</label><input type="date" id="entity-incorporation-date" min="1900-01-01" max="2099-12-31" oninput="saveProgress()"></div>
         <div class="fg full"><label class="lbl">Principal business activities <span class="req">*</span></label>
           <textarea placeholder="Describe the entity's main activities, products/services, markets and countries of operation" id="entity-activities"></textarea>
         </div>
@@ -1354,7 +1354,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
         <div class="fg"><label class="lbl">Mobile number <span class="req">*</span></label>
           <div class="phone-row">
             <div style="position:relative"><input id="evro-cc" class="si" placeholder="+357" style="width:100%" oninput="spc(this)" onfocus="spdd(this)" onblur="sphdd(this)"><div class="dropdown" style="width:240px" id="dd-evro"></div></div>
-            <input placeholder="Mobile number" type="tel" id="sig-evrotrust-mobile" oninput="saveProgress()">
+            <input placeholder="Mobile number" type="tel" id="sig-evrotrust-mobile" inputmode="numeric" pattern="[0-9 +()-]*" oninput="this.value=this.value.replace(/[^0-9 +()-]/g,'');saveProgress()">
           </div>
         </div>
         <div id="evro-sent" style="display:none"><div class="success-box" style="margin-bottom:0"><i class="ti ti-check-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Signing request sent. Open the Evrotrust app on your phone and complete the process.</div></div>
@@ -1919,18 +1919,21 @@ function renderUBOIdentityCards(){
       const pct  = parseFloat(b.querySelector('.ubo-pct')?.value) || 0;
       const isMe = b.querySelector('.ubo-is-applicant')?.value === 'yes';
       const email= b.querySelector('.ubo-email')?.value?.trim() || '';
-      if (name && pct > 25) ubosForKYC.push({name, pct, email, isApplicant: isMe, reason:`${pct}% shareholder · Auto-UBO`});
+      // Capture nationality from the hidden input next to the country search
+      const nat  = b.querySelector('input[type=hidden]')?.value?.trim() || '';
+      if (name && pct > 25) ubosForKYC.push({name, pct, email, nationality: nat, isApplicant: isMe, reason:`${pct}% shareholder · Auto-UBO`});
     });
     const ctrl = document.getElementById('controlling-person-select')?.value;
     if (ctrl && !ubosForKYC.find(u => u.name === ctrl)) {
-      let ctrlEmail=''; let ctrlIsMe=false;
+      let ctrlEmail=''; let ctrlIsMe=false; let ctrlNat='';
       document.querySelectorAll('#ubo-list .ubo-block').forEach(b => {
         if(b.querySelector('.ubo-name')?.value?.trim()===ctrl){
           ctrlEmail=b.querySelector('.ubo-email')?.value||'';
           ctrlIsMe=b.querySelector('.ubo-is-applicant')?.value==='yes';
+          ctrlNat =b.querySelector('input[type=hidden]')?.value||'';
         }
       });
-      ubosForKYC.push({name:ctrl, pct:null, email:ctrlEmail, isApplicant:ctrlIsMe, reason:'Designated controlling person'});
+      ubosForKYC.push({name:ctrl, pct:null, email:ctrlEmail, nationality: ctrlNat, isApplicant:ctrlIsMe, reason:'Designated controlling person'});
     }
   } else {
     document.querySelectorAll('#entity-ubo-list .entity-ubo-block').forEach(b => {
@@ -1938,18 +1941,20 @@ function renderUBOIdentityCards(){
       const pct  = parseFloat(b.querySelector('.entity-ubo-pct')?.value) || 0;
       const isMe = b.querySelector('.entity-ubo-is-applicant')?.value === 'yes';
       const email= b.querySelector('.entity-ubo-email')?.value?.trim() || '';
-      if (name && pct > 25) ubosForKYC.push({name, pct, email, isApplicant: isMe, reason:`${pct}% shareholder · Auto-UBO`});
+      const nat  = b.querySelector('input[type=hidden]')?.value?.trim() || '';
+      if (name && pct > 25) ubosForKYC.push({name, pct, email, nationality: nat, isApplicant: isMe, reason:`${pct}% shareholder · Auto-UBO`});
     });
     const ctrl = document.getElementById('entity-controlling-select')?.value;
     if (ctrl && !ubosForKYC.find(u => u.name === ctrl)) {
-      let ctrlEmail=''; let ctrlIsMe=false;
+      let ctrlEmail=''; let ctrlIsMe=false; let ctrlNat='';
       document.querySelectorAll('#entity-ubo-list .entity-ubo-block').forEach(b => {
         if(b.querySelector('.entity-ubo-name')?.value?.trim()===ctrl){
           ctrlEmail=b.querySelector('.entity-ubo-email')?.value||'';
           ctrlIsMe=b.querySelector('.entity-ubo-is-applicant')?.value==='yes';
+          ctrlNat =b.querySelector('input[type=hidden]')?.value||'';
         }
       });
-      ubosForKYC.push({name:ctrl, pct:null, email:ctrlEmail, isApplicant:ctrlIsMe, reason:'Designated controlling person'});
+      ubosForKYC.push({name:ctrl, pct:null, email:ctrlEmail, nationality: ctrlNat, isApplicant:ctrlIsMe, reason:'Designated controlling person'});
     }
   }
 
@@ -1980,7 +1985,8 @@ function renderUBOIdentityCards(){
     const firstName = ubo.isApplicant ? (apd.firstName || ubo.name.split(' ')[0]) : ubo.name.split(' ')[0];
     const lastName  = ubo.isApplicant ? (apd.surname  || ubo.name.split(' ').slice(1).join(' ')) : ubo.name.split(' ').slice(1).join(' ');
     const prefillDOB      = ubo.isApplicant ? apd.dob        : '';
-    const prefillNat      = ubo.isApplicant ? apd.nationality: '';
+    // Nationality: prefer Step 1 value captured per-UBO; fall back to applicant's full apd.nationality
+    const prefillNat      = ubo.nationality || (ubo.isApplicant ? apd.nationality : '');
     const prefillPassport = ubo.isApplicant ? apd.passport   : '';
     const prefillEmail    = ubo.isApplicant ? (apd.email || ubo.email) : ubo.email;
     const prefillOccup    = ubo.isApplicant ? apd.occupation  : '';
@@ -2027,18 +2033,18 @@ function renderUBOIdentityCards(){
             <div class="fg"><label class="lbl">First name(s) <span class="req">*</span></label><input data-field="first_name" placeholder="As on passport" value="${firstName}" oninput="updateUBOStatus(${i})"></div>
             <div class="fg"><label class="lbl">Surname <span class="req">*</span></label><input data-field="surname" placeholder="As on passport" value="${lastName}" oninput="updateUBOStatus(${i})"></div>
             <div class="fg full"><label class="lbl">Previous or other surname</label><input data-field="prev_surname" placeholder="Maiden name or other legal name"></div>
-            <div class="fg"><label class="lbl">Date of birth <span class="req">*</span></label><input data-field="dob" type="date" value="${prefillDOB}" oninput="updateUBOStatus(${i})"></div>
+            <div class="fg"><label class="lbl">Date of birth <span class="req">*</span></label><input data-field="dob" type="date" value="${prefillDOB}" min="1900-01-01" max="2099-12-31" oninput="updateUBOStatus(${i})"></div>
             <div class="fg"><label class="lbl">Place / country of birth</label><input data-field="place_of_birth" placeholder="e.g. Nicosia, Cyprus"></div>
-            <div class="fg"><label class="lbl">Nationality <span class="req">*</span></label><div class="sw"><input class="si" placeholder="${prefillNat||'Type country...'}" oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" data-field="nationality" value="${prefillNat}"><div class="dropdown"></div></div></div>
+            <div class="fg"><label class="lbl">Nationality <span class="req">*</span></label><div class="sw"><input class="si" placeholder="Type country..." value="${prefillNat||''}" oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" data-field="nationality" value="${prefillNat||''}"><div class="dropdown"></div></div></div>
             <div class="fg"><label class="lbl">Dual nationality?</label><select data-field="dual_nationality"><option value="no">No</option><option value="yes">Yes</option></select></div>
             <div class="fg full" style="grid-column:1/-1">
               <div style="background:var(--blue-pale);border:0.5px solid var(--blue-border);border-radius:9px;padding:12px 14px;margin-bottom:0">
                 <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Identity document — at least one required <span style="color:var(--red)">*</span></div>
                 <div class="fgrid" style="gap:8px">
                   <div class="fg" style="margin-bottom:0"><label class="lbl">Passport number</label><input data-field="passport_number" class="doc-passport-num" placeholder="Passport number" value="${prefillPassport}" oninput="checkDocRequired(this)"></div>
-                  <div class="fg" style="margin-bottom:0"><label class="lbl">Passport expiry date</label><input data-field="passport_expiry" type="date" class="doc-passport-exp" min="${new Date().toISOString().split('T')[0]}" oninput="checkDocRequired(this)"></div>
+                  <div class="fg" style="margin-bottom:0"><label class="lbl">Passport expiry date</label><input data-field="passport_expiry" type="date" class="doc-passport-exp" min="${new Date().toISOString().split('T')[0]}" max="2099-12-31" oninput="checkDocRequired(this)"></div>
                   <div class="fg" style="margin-bottom:0"><label class="lbl">National ID card number</label><input data-field="id_card_number" class="doc-id-num" placeholder="ID card number (if applicable)" oninput="checkDocRequired(this)"></div>
-                  <div class="fg" style="margin-bottom:0"><label class="lbl">ID card expiry date</label><input data-field="id_card_expiry" type="date" class="doc-id-exp" min="${new Date().toISOString().split('T')[0]}" oninput="checkDocRequired(this)"></div>
+                  <div class="fg" style="margin-bottom:0"><label class="lbl">ID card expiry date</label><input data-field="id_card_expiry" type="date" class="doc-id-exp" min="${new Date().toISOString().split('T')[0]}" max="2099-12-31" oninput="checkDocRequired(this)"></div>
                 </div>
                 <div class="doc-req-warn" style="display:none;margin-top:8px;font-size:11px;color:var(--red);font-weight:600"><i class="ti ti-alert-circle"></i> Please provide either passport details or national ID card details</div>
               </div>
@@ -2048,7 +2054,7 @@ function renderUBOIdentityCards(){
             <div class="fg"><label class="lbl">Town / City</label><input data-field="addr_town" placeholder="Town or city" value="${prefillAddrTown}"></div>
             <div class="fg"><label class="lbl">Postcode</label><input data-field="addr_postcode" placeholder="Postcode / ZIP" value="${prefillAddrPC}"></div>
             <div class="fg"><label class="lbl">Email address <span class="req">*</span></label><input data-field="email" type="email" placeholder="email@domain.com" value="${prefillEmail}" oninput="updateUBOStatus(${i})"></div>
-            <div class="fg"><label class="lbl">Mobile</label><div class="phone-row"><div style="position:relative"><input data-field="mobile_country_code" class="si" placeholder="+357" style="width:100%" oninput="spc(this)" onfocus="spdd(this)" onblur="sphdd(this)"><div class="dropdown" style="width:200px"></div></div><input data-field="mobile" placeholder="Number" type="tel"></div></div>
+            <div class="fg"><label class="lbl">Mobile</label><div class="phone-row"><div style="position:relative"><input data-field="mobile_country_code" class="si" placeholder="+357" style="width:100%" oninput="spc(this)" onfocus="spdd(this)" onblur="sphdd(this)"><div class="dropdown" style="width:200px"></div></div><input data-field="mobile" placeholder="Number" type="tel" inputmode="numeric" pattern="[0-9 +()-]*" oninput="this.value=this.value.replace(/[^0-9 +()-]/g,'')"></div></div>
             <div class="fg"><label class="lbl">Occupation / profession</label><input data-field="occupation" placeholder="e.g. Director, Investor" value="${prefillOccup}"></div>
             <div class="fg"><label class="lbl">Employment status</label><select data-field="employment_status"><option value="">Select...</option><option>Self-employed</option><option>Employed</option><option>Business owner</option><option>Retired</option><option>Investor</option><option>Other</option></select></div>
             <div class="fg"><label class="lbl">Country of tax residence</label><div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" data-field="tax_country"><div class="dropdown"></div></div></div>
