@@ -1876,10 +1876,15 @@ function renderUBOIdentityCards(){
       </div>`;
     container.appendChild(card);
 
-    // Resume restore: if we have a saved shareholder row matching this UBO by name,
-    // populate the data-field inputs from it. Match by full_name (the canonical link).
-    if(Array.isArray(window._resumedShareholders)){
-      const saved = window._resumedShareholders.find(s =>
+    // Repopulate card fields from the most recent saved state (if any).
+    // Priority: _lastSavedShareholders (set after every successful save) wins;
+    // _resumedShareholders (set during resume) is the fallback.
+    // This makes back-navigation to Step 2 preserve previously-entered data.
+    const savedSource = Array.isArray(window._lastSavedShareholders) && window._lastSavedShareholders.length
+                          ? window._lastSavedShareholders
+                          : (Array.isArray(window._resumedShareholders) ? window._resumedShareholders : null);
+    if(savedSource){
+      const saved = savedSource.find(s =>
         (s.full_name||'').trim() === (ubo.name||'').trim()
       );
       if(saved){
@@ -1889,7 +1894,7 @@ function renderUBOIdentityCards(){
           if(val === null || val === undefined || val === '') return;
           el.value = val;
         });
-        // Also reflect the nationality into the visible search input next to the hidden input
+        // Reflect hidden country-search values into their visible inputs
         const natHidden = card.querySelector('input[type=hidden][data-field="nationality"]');
         if(natHidden && natHidden.value){
           const natVisible = natHidden.previousElementSibling;
@@ -3405,6 +3410,11 @@ async function saveDraftToDB(){
     if(sh.length)  { const { error } = await sb.from('kyc_shareholders').insert(sh);     if(error) console.warn('Draft shareholders error:', error.message); }
     if(sof.length) { const { error } = await sb.from('kyc_source_of_funds').insert(sof); if(error) console.warn('Draft SOF error:', error.message); }
     if(q.length)   { const { error } = await sb.from('kyc_questionnaire').insert(q);     if(error) console.warn('Draft questionnaire error:', error.message); }
+
+    // Stash the just-saved shareholders so subsequent re-renders of Step 2
+    // (e.g. when client navigates back) can repopulate the identity cards
+    // with current data instead of re-rendering them blank.
+    window._lastSavedShareholders = sh;
 
     _flashSaved('Saved');
     return appId;
