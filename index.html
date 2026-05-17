@@ -1134,7 +1134,106 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <span class="step-count">Step 4 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
-    <button class="btn btn-blue" onclick="validateAndProceed(4,5)">Continue <i class="ti ti-arrow-right"></i></button>
+    <button class="btn btn-blue" onclick="validateAndProceed(4, _applicantIsPEP() ? 's-sow' : 5)">Continue <i class="ti ti-arrow-right"></i></button>
+  </div>
+</div>
+
+<!-- ══ STEP 5a (CONDITIONAL) — SOURCE OF WEALTH ══ -->
+<!-- Only shown when applicant's pep_status == 'yes'. Step counter and navigation handle this dynamically. -->
+<div class="step" id="s-sow">
+
+  <div class="validation-banner" id="val-banner-s-sow">
+    <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following before continuing:</div>
+    <ul class="validation-list" id="val-list-s-sow"></ul>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-coin"></i>Source of wealth</div>
+    <div class="info-box" style="margin-bottom:12px">
+      <i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>
+      As you have declared a politically exposed person (PEP) status, AML regulations require us to understand how your wealth has been accumulated over your lifetime. Please indicate your primary sources of wealth and the approximate value from each. This takes about a minute.
+    </div>
+
+    <div class="sec-lbl" style="color:var(--blue);border-color:var(--blue-border);margin-top:8px">Wealth sources</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.55">Tick all that apply. Enter an approximate value in EUR for each one you select.</p>
+
+    <div id="sow-list" style="margin-bottom:8px">
+      <!-- Source rows: tick to enable, then enter value -->
+      <div class="sow-row" data-sow-key="employment" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:0.5px solid rgba(0,0,0,.08);border-radius:9px;margin-bottom:8px;background:var(--card)">
+        <input type="checkbox" class="sow-check" onchange="sowToggle(this)" style="width:18px;height:18px;cursor:pointer;flex-shrink:0">
+        <label style="flex:1;font-size:13px;color:var(--text);cursor:pointer" onclick="this.previousElementSibling.click()">Long-term employment / professional income</label>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:12px;color:var(--muted)">€</span>
+          <input type="number" class="sow-val" placeholder="0" min="0" step="1" disabled oninput="sowCalc()" style="width:140px">
+        </div>
+      </div>
+
+      <div class="sow-row" data-sow-key="business" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:0.5px solid rgba(0,0,0,.08);border-radius:9px;margin-bottom:8px;background:var(--card)">
+        <input type="checkbox" class="sow-check" onchange="sowToggle(this)" style="width:18px;height:18px;cursor:pointer;flex-shrink:0">
+        <label style="flex:1;font-size:13px;color:var(--text);cursor:pointer" onclick="this.previousElementSibling.click()">Business ownership or sale of business</label>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:12px;color:var(--muted)">€</span>
+          <input type="number" class="sow-val" placeholder="0" min="0" step="1" disabled oninput="sowCalc()" style="width:140px">
+        </div>
+      </div>
+
+      <div class="sow-row" data-sow-key="inheritance" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:0.5px solid rgba(0,0,0,.08);border-radius:9px;margin-bottom:8px;background:var(--card)">
+        <input type="checkbox" class="sow-check" onchange="sowToggle(this)" style="width:18px;height:18px;cursor:pointer;flex-shrink:0">
+        <label style="flex:1;font-size:13px;color:var(--text);cursor:pointer" onclick="this.previousElementSibling.click()">Inheritance or family wealth</label>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:12px;color:var(--muted)">€</span>
+          <input type="number" class="sow-val" placeholder="0" min="0" step="1" disabled oninput="sowCalc()" style="width:140px">
+        </div>
+      </div>
+
+      <div class="sow-row" data-sow-key="property" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:0.5px solid rgba(0,0,0,.08);border-radius:9px;margin-bottom:8px;background:var(--card)">
+        <input type="checkbox" class="sow-check" onchange="sowToggle(this)" style="width:18px;height:18px;cursor:pointer;flex-shrink:0">
+        <label style="flex:1;font-size:13px;color:var(--text);cursor:pointer" onclick="this.previousElementSibling.click()">Sale of property or other assets</label>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:12px;color:var(--muted)">€</span>
+          <input type="number" class="sow-val" placeholder="0" min="0" step="1" disabled oninput="sowCalc()" style="width:140px">
+        </div>
+      </div>
+
+      <div class="sow-row" data-sow-key="investments" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:0.5px solid rgba(0,0,0,.08);border-radius:9px;margin-bottom:8px;background:var(--card)">
+        <input type="checkbox" class="sow-check" onchange="sowToggle(this)" style="width:18px;height:18px;cursor:pointer;flex-shrink:0">
+        <label style="flex:1;font-size:13px;color:var(--text);cursor:pointer" onclick="this.previousElementSibling.click()">Investment returns over time</label>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:12px;color:var(--muted)">€</span>
+          <input type="number" class="sow-val" placeholder="0" min="0" step="1" disabled oninput="sowCalc()" style="width:140px">
+        </div>
+      </div>
+
+      <div class="sow-row" data-sow-key="other" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:0.5px solid rgba(0,0,0,.08);border-radius:9px;margin-bottom:8px;background:var(--card)">
+        <input type="checkbox" class="sow-check" onchange="sowToggle(this)" style="width:18px;height:18px;cursor:pointer;flex-shrink:0">
+        <label style="flex:1;font-size:13px;color:var(--text);cursor:pointer" onclick="this.previousElementSibling.click()">Other (describe below)</label>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:12px;color:var(--muted)">€</span>
+          <input type="number" class="sow-val" placeholder="0" min="0" step="1" disabled oninput="sowCalc()" style="width:140px">
+        </div>
+      </div>
+    </div>
+
+    <!-- Other description, appears only if "Other" is ticked -->
+    <div id="sow-other-desc-wrap" style="display:none;margin-bottom:10px">
+      <div class="fg" style="margin-bottom:0">
+        <label class="lbl">Describe other source of wealth <span class="req">*</span></label>
+        <textarea id="sow-other-desc" placeholder="e.g. Lottery winnings, legal settlement, etc." rows="2" oninput="saveProgress()"></textarea>
+      </div>
+    </div>
+
+    <div class="sof-total" style="margin-top:10px">
+      <span class="sof-total-lbl">Total declared wealth (EUR)</span>
+      <span class="sof-total-val" id="sow-total">0</span>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-back" onclick="gs(4)"><i class="ti ti-arrow-left"></i> Back</button>
+    <span class="step-count" id="sow-step-count">Step 5 of 8</span>
+    <span class="save-indicator"><span class="save-dot"></span>Saved</span>
+    <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
+    <button class="btn btn-blue" onclick="validateAndProceed('s-sow',5)">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
 
@@ -1154,8 +1253,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     </div>
   </div>
   <div class="btn-row">
-    <button class="btn-back" onclick="gs(4)"><i class="ti ti-arrow-left"></i> Back</button>
-    <span class="step-count">Step 5 of 7</span>
+    <button class="btn-back" onclick="gs(_applicantIsPEP() ? 's-sow' : 4)"><i class="ti ti-arrow-left"></i> Back</button>
+    <span class="step-count" id="s5-step-count">Step 5 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn btn-blue" onclick="validateAndProceed(5,6)">Continue <i class="ti ti-arrow-right"></i></button>
@@ -1205,7 +1304,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 
   <div class="btn-row">
     <button class="btn-back" onclick="gs(5)"><i class="ti ti-arrow-left"></i> Back</button>
-    <span class="step-count">Step 6 of 7</span>
+    <span class="step-count" id="s6-step-count">Step 6 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn btn-blue" id="d-next" onclick="validateAndProceed(6,7)">Continue to signature <i class="ti ti-arrow-right"></i></button>
@@ -1283,7 +1382,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 
   <div class="btn-row">
     <button class="btn-back" onclick="gs(6)"><i class="ti ti-arrow-left"></i> Back</button>
-    <span class="step-count">Step 7 of 7</span>
+    <span class="step-count" id="s7-step-count">Step 7 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn btn-blue" onclick="validateAndProceed(7,'submit')"><i class="ti ti-send" style="font-size:13px"></i>Submit KYC</button>
@@ -1393,21 +1492,83 @@ function sphdd(inp){setTimeout(()=>{const dd=inp.parentElement.querySelector('.d
 
 // ── NAVIGATION ──
 let currentStep=1;
+// Returns true if the applicant's PEP status is 'yes' — used to decide whether the
+// optional Source of Wealth step shows up in navigation.
+function _applicantIsPEP(){
+  // Check the most recent saved state first
+  const list = window._lastSavedShareholders || window._resumedShareholders;
+  if(Array.isArray(list)){
+    const applicant = list.find(s => s.is_applicant);
+    if(applicant && applicant.pep_status === 'yes') return true;
+  }
+  // Also check the current Step 2 card live (in case PEP was just changed but not yet saved)
+  const cards = document.querySelectorAll('#ubo-identity-cards .ubo-id-card');
+  for(const card of cards){
+    const isAp = card.dataset.applicant === 'true' || card.querySelector('.ubo-id-name')?.textContent?.includes('You');
+    if(isAp){
+      const pep = card.querySelector('[data-field="pep_status"]')?.value;
+      if(pep === 'yes') return true;
+    }
+  }
+  return false;
+}
+
+// Updates the step counter text on the SoW step (shows "Step 5 of 8")
+function _updateSowStepCounter(){
+  const el = document.getElementById('sow-step-count');
+  if(el) el.textContent = 'Step 5 of 8';
+}
+
+// Resolves the "next" step after a given step. Inserts s-sow between 4 and 5 when applicant is PEP.
+function _nextStepAfter(current){
+  if(current === 4 && _applicantIsPEP()) return 's-sow';
+  if(current === 's-sow') return 5;
+  return (typeof current === 'number') ? current + 1 : 5;
+}
+
+// Resolves the "previous" step before a given step. Inserts s-sow between 5 and 4 when applicant is PEP.
+function _prevStepBefore(current){
+  if(current === 5 && _applicantIsPEP()) return 's-sow';
+  if(current === 's-sow') return 4;
+  return (typeof current === 'number') ? current - 1 : 4;
+}
+
 function gs(n){
   if(n>1&&n!=='success'){
     // Save before moving forward
     saveProgress();
   }
   document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
-  const id=n==='success'?'s-success':'s'+n;
-  document.getElementById(id).classList.add('active');
-  const total=7;
+  const id = (n === 'success') ? 's-success' : (typeof n === 'string' ? n : ('s'+n));
+  const target = document.getElementById(id);
+  if(!target){ console.warn('Step not found:', id); return; }
+  target.classList.add('active');
+  const total = _applicantIsPEP() ? 8 : 7;
   if(n!=='success'){
-    currentStep=n;
-    document.getElementById('prog').style.width=(n/total*100)+'%';
-    for(let i=1;i<=total;i++){const el=document.getElementById('sl'+i);if(el)el.className='slbl'+(i===n?' active':i<n?' done':'');}
+    currentStep = n;
+    // Progress bar: when applicant is PEP, SoW counts as step 5 of 8
+    let progressIdx;
+    if(n === 's-sow') progressIdx = 5;
+    else if(typeof n === 'number' && _applicantIsPEP() && n >= 5) progressIdx = n + 1;
+    else if(typeof n === 'number') progressIdx = n;
+    else progressIdx = 1;
+    document.getElementById('prog').style.width = (progressIdx/total*100)+'%';
+    // Update visible sidebar labels (use original numbering, not adjusted)
+    if(typeof n === 'number'){
+      for(let i=1;i<=7;i++){const el=document.getElementById('sl'+i);if(el)el.className='slbl'+(i===n?' active':i<n?' done':'');}
+    }
     // Populate UBO identity cards when entering Step 2
-    if(n===2)renderUBOIdentityCards();
+    if(n===2) renderUBOIdentityCards();
+    // Update SoW step counter dynamically (always says "Step 5 of 8" when shown)
+    if(n === 's-sow') _updateSowStepCounter();
+    // Update step counters for steps 5/6/7 based on whether SoW is in the flow
+    const pepYes = _applicantIsPEP();
+    const s5c = document.getElementById('s5-step-count');
+    if(s5c) s5c.textContent = pepYes ? 'Step 6 of 8' : 'Step 5 of 7';
+    const s6c = document.getElementById('s6-step-count');
+    if(s6c) s6c.textContent = pepYes ? 'Step 7 of 8' : 'Step 6 of 7';
+    const s7c = document.getElementById('s7-step-count');
+    if(s7c) s7c.textContent = pepYes ? 'Step 8 of 8' : 'Step 7 of 7';
   } else {
     document.getElementById('prog').style.width='100%';
   }
@@ -1445,6 +1606,62 @@ function pepSelectChange(v){
   saveProgress();
 }
 function pepSel(v){}
+
+// ── SOURCE OF WEALTH (lightweight, conditional on applicant PEP=yes) ──
+
+// Enables/disables the value input next to a SoW source when its checkbox is toggled.
+function sowToggle(checkbox){
+  const row = checkbox.closest('.sow-row');
+  if(!row) return;
+  const valInput = row.querySelector('.sow-val');
+  if(valInput){
+    valInput.disabled = !checkbox.checked;
+    if(!checkbox.checked) valInput.value = '';
+  }
+  // Show/hide "Other" description textarea
+  if(row.dataset.sowKey === 'other'){
+    const wrap = document.getElementById('sow-other-desc-wrap');
+    if(wrap) wrap.style.display = checkbox.checked ? 'block' : 'none';
+    if(!checkbox.checked){
+      const desc = document.getElementById('sow-other-desc');
+      if(desc) desc.value = '';
+    }
+  }
+  sowCalc();
+  saveProgress();
+}
+
+// Re-calculates and displays the total declared wealth.
+function sowCalc(){
+  let total = 0;
+  document.querySelectorAll('#sow-list .sow-row').forEach(row => {
+    const cb = row.querySelector('.sow-check');
+    const v  = row.querySelector('.sow-val');
+    if(cb && cb.checked && v && v.value){
+      total += parseFloat(v.value) || 0;
+    }
+  });
+  const totalEl = document.getElementById('sow-total');
+  if(totalEl) totalEl.textContent = total.toLocaleString('en-GB');
+}
+
+// Returns the SoW data as it should be stored in kyc_applications.
+function _collectSOW(){
+  const sources = {};
+  document.querySelectorAll('#sow-list .sow-row').forEach(row => {
+    const cb = row.querySelector('.sow-check');
+    const v  = row.querySelector('.sow-val');
+    if(cb && cb.checked){
+      sources[row.dataset.sowKey] = parseFloat(v?.value) || 0;
+    }
+  });
+  const hasAny = Object.keys(sources).length > 0;
+  return {
+    sow_sources: hasAny ? sources : null,
+    sow_other_description: sources.other !== undefined ? (document.getElementById('sow-other-desc')?.value?.trim() || null) : null,
+    sow_total_declared: hasAny ? Object.values(sources).reduce((a,b)=>a+b, 0) : null
+  };
+}
 
 // ── UBO DETERMINATION ENGINE ──
 
@@ -2575,6 +2792,39 @@ function clearHighlight(el){
 }
 
 function validateAndProceed(fromStep, toStep){
+  // For SoW step — custom check
+  if(fromStep === 's-sow'){
+    const sow = _collectSOW();
+    const sowErrors = [];
+    if(!sow.sow_sources || Object.keys(sow.sow_sources).length === 0){
+      sowErrors.push('Select at least one source of wealth and enter a value');
+    }
+    if(sow.sow_sources && sow.sow_sources.other !== undefined && !sow.sow_other_description){
+      sowErrors.push('Describe your other source of wealth');
+    }
+    // Check that every selected source has a positive value
+    if(sow.sow_sources){
+      const zeros = Object.entries(sow.sow_sources).filter(([k,v]) => !v || v <= 0);
+      if(zeros.length){
+        sowErrors.push('Enter an approximate value for each selected source');
+      }
+    }
+    if(sowErrors.length){
+      const banner = document.getElementById('val-banner-s-sow');
+      const list = document.getElementById('val-list-s-sow');
+      if(banner && list){
+        list.innerHTML = sowErrors.map(e => `<li>${e}</li>`).join('');
+        banner.classList.add('show');
+        banner.scrollIntoView({behavior:'smooth',block:'start'});
+      }
+      return;
+    }
+    // Save progress, then go forward
+    saveProgress();
+    gs(toStep);
+    return;
+  }
+
   // For questionnaire step - custom check
   if(fromStep === 5){
     const unanswered = QS.filter(q => {
@@ -2942,6 +3192,25 @@ async function resumeDraft(draftInfo){
       });
     }
 
+    // ── Restore Source of Wealth (lightweight) ──
+    if(app.sow_sources){
+      Object.entries(app.sow_sources).forEach(([key, val]) => {
+        const row = document.querySelector(`#sow-list .sow-row[data-sow-key="${key}"]`);
+        if(!row) return;
+        const cb = row.querySelector('.sow-check');
+        const v  = row.querySelector('.sow-val');
+        if(cb) cb.checked = true;
+        if(v){ v.disabled = false; v.value = val; }
+      });
+      sowCalc();
+    }
+    if(app.sow_other_description){
+      const wrap = document.getElementById('sow-other-desc-wrap');
+      const desc = document.getElementById('sow-other-desc');
+      if(wrap) wrap.style.display = 'block';
+      if(desc) desc.value = app.sow_other_description;
+    }
+
     console.log('Draft resumed:', app.reference);
   } catch(e){
     console.warn('Resume error:', e);
@@ -3012,6 +3281,9 @@ async function submit(){
       decl_aml: document.getElementById('dc7')?.checked || false,
       decl_gdpr: document.getElementById('dc1')?.checked || false,
       express_consent: document.getElementById('dc1')?.checked || false,
+
+      // Source of Wealth (only filled in if applicant is PEP)
+      ..._collectSOW(),
 
       form_version: '2.0'
     };
@@ -3204,6 +3476,9 @@ function _collectAppData(forSubmit){
     decl_aml: document.getElementById('dc7')?.checked || false,
     decl_gdpr: document.getElementById('dc1')?.checked || false,
     express_consent: document.getElementById('dc1')?.checked || false,
+
+    // Source of Wealth (lightweight; only meaningful when applicant is PEP)
+    ..._collectSOW(),
 
     form_version: '2.0'
   };
