@@ -3801,6 +3801,9 @@ async function saveAndExit(){
     }
 
     // 3. Show the confirmation screen
+    // First, reset button state (otherwise buttons remain stuck in "Saving..." mode in the DOM)
+    exitBtns.forEach(b => { b.disabled = false; b.innerHTML = '<i class="ti ti-mail-forward"></i>Save &amp; exit'; });
+
     document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
     const confirm = document.getElementById('s-saved-exit');
     if(confirm){
