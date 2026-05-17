@@ -3173,10 +3173,29 @@ async function resumeDraft(draftInfo){
         if(pctEl)   pctEl.value   = sh.shareholding_pct ?? '';
         if(apEl)    apEl.value    = sh.is_applicant ? 'yes' : 'no';
         if(emailEl) emailEl.value = sh.email || '';
+        // Restore ownership type (the first select in the block)
+        if(sh.ownership_type){
+          const typeSel = b.querySelector('select');
+          if(typeSel) typeSel.value = sh.ownership_type;
+        }
+        // Restore nationality (visible search input + hidden value input)
+        if(sh.nationality){
+          const natHidden  = b.querySelector('input[type=hidden]');
+          const natVisible = b.querySelector('.si');
+          if(natHidden)  natHidden.value  = sh.nationality;
+          if(natVisible) natVisible.value = sh.nationality;
+        }
       });
       // Stash the saved shareholder list so renderUBOIdentityCards can populate
       // Step 2 identity card fields when the user navigates to Step 2.
       window._resumedShareholders = shList;
+      // Trigger the percentage total + UBO determination panel to recompute
+      // (otherwise the 100% total banner and Auto-UBO tags don't appear after resume)
+      const isIncorpVisible = document.getElementById('incorp-f')?.style.display !== 'none';
+      try {
+        if(isIncorpVisible) calcUBOPct();
+        else calcEntityPct();
+      } catch(e){ console.warn('UBO recompute after resume:', e); }
     }
 
     // ── Restore source-of-funds rows ──
