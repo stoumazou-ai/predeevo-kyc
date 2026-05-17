@@ -1081,8 +1081,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <div class="doc-row" id="dr-proof_of_address" data-doc-type="proof_of_address" data-required="true" data-default-icon="ti-home" data-default-desc="Utility bill or bank statement — dated within 6 months · Full name and address visible" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-home"></i></div><div class="doc-info"><div class="doc-name">Proof of residential address <span style="color:var(--red)">*</span></div><div class="doc-desc">Utility bill or bank statement — dated within 6 months · Full name and address visible</div></div><span class="doc-st ds-req">Required</span></div>
 
     <div class="sec-lbl" style="margin-top:16px">Curriculum Vitae</div>
-    <div class="doc-row" id="cv-row" onclick="cvT()"><div class="doc-icon" id="cv-icon"><i class="ti ti-id-badge"></i></div><div class="doc-info"><div class="doc-name">Curriculum Vitae <span style="color:var(--red)">*</span></div><div class="doc-desc">Upload your CV — or complete the employment history form below. <strong>Required for all clients.</strong></div></div><span class="doc-st ds-req" id="cv-st">Required</span></div>
-    <div id="cv-form" style="display:none;border:0.5px solid rgba(0,0,0,.1);border-radius:10px;padding:14px;margin-top:8px;background:var(--surface)">
+    <div class="doc-row" id="dr-cv" data-doc-type="cv" data-required="true" data-default-icon="ti-id-badge" data-default-desc="Upload your CV — or complete the employment history form below. <strong>Required for all clients.</strong>" onclick="initUpload(this)"><div class="doc-icon" id="cv-icon"><i class="ti ti-id-badge"></i></div><div class="doc-info"><div class="doc-name">Curriculum Vitae <span style="color:var(--red)">*</span></div><div class="doc-desc">Upload your CV — or complete the employment history form below. <strong>Required for all clients.</strong></div></div><span class="doc-st ds-req" id="cv-st">Required</span></div>
+    <div id="cv-form" style="display:block;border:0.5px solid rgba(0,0,0,.1);border-radius:10px;padding:14px;margin-top:8px;background:var(--surface)">
       <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">Employment history <button class="btn btn-sm" onclick="addEmp()"><i class="ti ti-plus" style="font-size:12px"></i>Add previous</button></div>
       <div id="emp-list">
         <div style="border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)">
@@ -1098,9 +1098,9 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       </div>
 
     <div class="sec-lbl" style="margin-top:16px">Optional — recommended</div>
-    <div class="doc-row" onclick="dT(this,false)"><div class="doc-icon"><i class="ti ti-cash"></i></div><div class="doc-info"><div class="doc-name">Source of funds evidence</div><div class="doc-desc">Payslips, employment contract, audited accounts, sale agreement</div></div><span class="doc-st ds-opt">Optional</span></div>
-    <div class="doc-row" onclick="dT(this,false)"><div class="doc-icon"><i class="ti ti-building-bank"></i></div><div class="doc-info"><div class="doc-name">Bank statement (last 3 months)</div><div class="doc-desc">From your main account</div></div><span class="doc-st ds-opt">Optional</span></div>
-    <div class="doc-row" onclick="dT(this,false)"><div class="doc-icon"><i class="ti ti-file-text"></i></div><div class="doc-info"><div class="doc-name">Tax Identification Number document</div><div class="doc-desc">Official document showing your TIN / AFM</div></div><span class="doc-st ds-opt">Optional</span></div>
+    <div class="doc-row" id="dr-source_of_funds_evidence" data-doc-type="source_of_funds_evidence" data-required="false" data-default-icon="ti-cash" data-default-desc="Payslips, employment contract, audited accounts, sale agreement" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-cash"></i></div><div class="doc-info"><div class="doc-name">Source of funds evidence</div><div class="doc-desc">Payslips, employment contract, audited accounts, sale agreement</div></div><span class="doc-st ds-opt">Optional</span></div>
+    <div class="doc-row" id="dr-bank_statement" data-doc-type="bank_statement" data-required="false" data-default-icon="ti-building-bank" data-default-desc="From your main account" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-building-bank"></i></div><div class="doc-info"><div class="doc-name">Bank statement (last 3 months)</div><div class="doc-desc">From your main account</div></div><span class="doc-st ds-opt">Optional</span></div>
+    <div class="doc-row" id="dr-tin_document" data-doc-type="tin_document" data-required="false" data-default-icon="ti-file-text" data-default-desc="Official document showing your TIN / AFM" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-file-text"></i></div><div class="doc-info"><div class="doc-name">Tax Identification Number document</div><div class="doc-desc">Official document showing your TIN / AFM</div></div><span class="doc-st ds-opt">Optional</span></div>
 
     <div class="sec-lbl" style="margin-top:16px">Curriculum Vitae (Employment history)</div>
     </div>
@@ -2014,6 +2014,11 @@ function _resetDocRow(row){
   // Strip any actions UI we previously added
   const actions = row.querySelector('.doc-actions');
   if(actions) actions.remove();
+  // Special case: CV row shows the inline employment-history form again when CV is removed
+  if(row.id === 'dr-cv'){
+    const form = document.getElementById('cv-form');
+    if(form) form.style.display = 'block';
+  }
 }
 
 // Render a doc-row as "uploaded": filename, size, Replace/Remove actions
@@ -2039,6 +2044,11 @@ function _renderDocRowUploaded(row, fileName, fileSize, docId){
       '<button type="button" class="btn btn-sm" onclick="event.stopPropagation();replaceDoc(this.closest(\'.doc-row\'))" style="font-size:11px"><i class="ti ti-refresh" style="font-size:12px"></i>Replace</button>' +
       '<button type="button" class="btn btn-sm" onclick="event.stopPropagation();removeDoc(this.closest(\'.doc-row\'))" style="font-size:11px;color:var(--red)"><i class="ti ti-trash" style="font-size:12px"></i>Remove</button>';
     row.appendChild(actions);
+  }
+  // Special case: CV row hides the inline employment-history form when a CV is uploaded
+  if(row.id === 'dr-cv'){
+    const form = document.getElementById('cv-form');
+    if(form) form.style.display = 'none';
   }
 }
 
@@ -2729,10 +2739,11 @@ async function resumeDraft(draftInfo){
     currentRef = app.reference;
 
     // Fetch child rows in parallel
-    const [{ data: shList }, { data: sofList }, { data: qList }] = await Promise.all([
+    const [{ data: shList }, { data: sofList }, { data: qList }, { data: docList }] = await Promise.all([
       sb.from('kyc_shareholders').select('*').eq('application_id', app.id),
       sb.from('kyc_source_of_funds').select('*').eq('application_id', app.id),
       sb.from('kyc_questionnaire').select('*').eq('application_id', app.id),
+      sb.from('kyc_documents').select('id,doc_type,file_name,file_size,storage_path').eq('application_id', app.id),
     ]);
 
     // ── Restore Step 1: services (and trigger conditional incorp/entity forms) ──
@@ -2869,6 +2880,16 @@ async function resumeDraft(draftInfo){
           const exp = document.getElementById('qe-' + q.question_id);
           const ta  = exp?.querySelector('textarea');
           if(ta) ta.value = q.details;
+        }
+      });
+    }
+
+    // ── Restore uploaded documents ──
+    if(Array.isArray(docList) && docList.length){
+      docList.forEach(doc => {
+        const row = document.getElementById('dr-' + doc.doc_type);
+        if(row && !row.classList.contains('locked')){
+          _renderDocRowUploaded(row, doc.file_name || 'document', doc.file_size || 0, doc.id);
         }
       });
     }
