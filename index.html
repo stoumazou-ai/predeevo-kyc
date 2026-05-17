@@ -1113,21 +1113,6 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <div class="doc-row" id="dr-bank_statement" data-doc-type="bank_statement" data-required="false" data-default-icon="ti-building-bank" data-default-desc="From your main account" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-building-bank"></i></div><div class="doc-info"><div class="doc-name">Bank statement (last 3 months)</div><div class="doc-desc">From your main account</div></div><span class="doc-st ds-opt">Optional</span></div>
     <div class="doc-row" id="dr-tin_document" data-doc-type="tin_document" data-required="false" data-default-icon="ti-file-text" data-default-desc="Official document showing your TIN / AFM" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-file-text"></i></div><div class="doc-info"><div class="doc-name">Tax Identification Number document</div><div class="doc-desc">Official document showing your TIN / AFM</div></div><span class="doc-st ds-opt">Optional</span></div>
 
-    <!-- Source of Wealth — PEP only -->
-    <div id="sow-section" style="display:none;margin-top:12px">
-      <div class="sec-lbl">Source of wealth — EDD required (PEP declared)</div>
-      <div class="alert-box"><i class="ti ti-alert-triangle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>As a declared PEP, you must provide details of how your total net worth was accumulated. Add each source separately.</div>
-      <div id="sow-rows">
-        <div class="wealth-row">
-          <div class="fg" style="margin-bottom:0"><label class="lbl">Type of wealth</label><select class="sow-type" onchange="calcSOW()"><option value="">Select...</option><option>Immovable property (land / buildings owned)</option><option>Cash at bank / savings</option><option>Movable property (vehicles, vessels, aircraft, art, jewellery)</option><option>Shares / stocks / equity investments</option><option>Bonds / fixed income investments</option><option>Investment funds / unit trusts</option><option>Cryptocurrency / digital assets</option><option>Pension / retirement fund</option><option>Business ownership (company equity / shareholding)</option><option>Inheritance received</option><option>Gift received</option><option>Insurance policy / surrender value</option><option>Intellectual property / royalties</option><option>Other (describe below)</option></select></div>
-          <div class="fg" style="margin-bottom:0"><label class="lbl">Est. value (EUR)</label><input type="number" class="sow-val" placeholder="0" oninput="calcSOW()" min="0"></div>
-          <div style="padding-bottom:1px"><button onclick="this.closest('.wealth-row').remove();calcSOW()" style="width:34px;height:40px;border:0.5px solid var(--red-border);border-radius:8px;background:var(--red-light);color:var(--red);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">×</button></div>
-        </div>
-      </div>
-      <div id="sow-other" style="display:none;margin-bottom:8px"><div class="fg" style="margin-bottom:0"><label class="lbl">Describe other source of wealth</label><textarea placeholder="Provide full details including counterparties, dates, amounts"></textarea></div></div>
-      <button class="btn btn-sm" onclick="addSOW()" style="margin-bottom:10px"><i class="ti ti-plus" style="font-size:12px"></i>Add another source</button>
-      <div class="wealth-total"><span class="wt-lbl">Total estimated net worth</span><span class="wt-val" id="sow-total">€0</span></div>
-    </div>
   </div>
   <div class="btn-row">
     <button class="btn-back" onclick="gs(3)"><i class="ti ti-arrow-left"></i> Back</button>
