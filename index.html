@@ -1097,7 +1097,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 <div class="step" id="s4">
   <div class="card">
     <div class="card-title"><i class="ti ti-fingerprint"></i>Identity verification — applicant only</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">This step verifies <strong>your identity only</strong> as the applicant. Other UBOs or shareholders listed in Step 2 will complete their own biometric verification via their individual KYC links. Please have your passport or national ID ready — this takes under 2 minutes.</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">This step verifies <strong>your identity only</strong> as the applicant. Other UBOs or shareholders listed in Step 2 will complete their own identity verification via their individual KYC links. Please have your passport or national ID ready — this takes under 2 minutes.</p>
     <div class="alert-box"><i class="ti ti-shield" style="font-size:14px;flex-shrink:0;margin-top:1px"></i><strong>Biometric data consent (GDPR Art. 9).</strong> Facial recognition is special category data. Your biometric data is processed solely for identity verification and deleted immediately after the check is complete.</div>
     <div style="border:0.5px solid var(--blue-border);border-radius:9px;padding:12px 14px;background:var(--blue-pale);margin-bottom:14px">
       <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer">
@@ -1108,12 +1108,11 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <div id="vsteps">
       <div class="vs-row act" id="vs1"><div class="vs-icon vsi-act"><i class="ti ti-id-badge-2"></i></div><div><div class="vs-title">Document scan</div><div class="vs-desc">Photograph your passport or national ID. All four corners visible, no glare.</div><div class="vs-tag vst-a"><i class="ti ti-upload" style="font-size:10px"></i>Ready to upload</div></div></div>
       <div class="vs-row" id="vs2"><div class="vs-icon vsi-pend"><i class="ti ti-camera-selfie"></i></div><div><div class="vs-title">Liveness check &amp; selfie</div><div class="vs-desc">Follow on-screen prompts. Your face is matched to your document photograph.</div><div class="vs-tag vst-w">Waiting</div></div></div>
-      <div class="vs-row" id="vs3"><div class="vs-icon vsi-pend"><i class="ti ti-world-search"></i></div><div><div class="vs-title">AML screening</div><div class="vs-desc">Checked against PEP lists, global sanctions databases, and adverse media.</div><div class="vs-tag vst-w">Waiting</div></div></div>
     </div>
     <div id="v-running" style="display:none;text-align:center;padding:18px 0"><div class="spinner"></div><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Verifying identity...</div><div style="font-size:11px;color:var(--muted)">Please keep this window open. Usually 10–30 seconds.</div></div>
     <div id="v-result" style="display:none">
-      <div class="vr-box"><div><div class="vr-num">98%</div><div class="vr-lbl">Match score</div></div><div class="vr-bars"><div class="vr-bar-row"><span class="vr-bar-lbl">Document</span><div class="vr-track"><div class="vr-fill" style="width:100%"></div></div></div><div class="vr-bar-row"><span class="vr-bar-lbl">Face match</span><div class="vr-track"><div class="vr-fill" style="width:98%"></div></div></div><div class="vr-bar-row"><span class="vr-bar-lbl">Liveness</span><div class="vr-track"><div class="vr-fill" style="width:100%"></div></div></div><div class="vr-bar-row"><span class="vr-bar-lbl">AML screen</span><div class="vr-track"><div class="vr-fill" style="width:100%"></div></div></div></div></div>
-      <div class="success-box" style="margin-top:10px;margin-bottom:0"><i class="ti ti-circle-check" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Identity verified · Document authentic · Face matched · AML clear. Ref: <strong style="font-family:monospace">SUM-2026-AB7F291</strong></div>
+      <div class="vr-box"><div><div class="vr-num">98%</div><div class="vr-lbl">Match score</div></div><div class="vr-bars"><div class="vr-bar-row"><span class="vr-bar-lbl">Document</span><div class="vr-track"><div class="vr-fill" style="width:100%"></div></div></div><div class="vr-bar-row"><span class="vr-bar-lbl">Face match</span><div class="vr-track"><div class="vr-fill" style="width:98%"></div></div></div><div class="vr-bar-row"><span class="vr-bar-lbl">Liveness</span><div class="vr-track"><div class="vr-fill" style="width:100%"></div></div></div></div></div>
+      <div class="success-box" style="margin-top:10px;margin-bottom:0"><i class="ti ti-circle-check" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Identity verified · Document authentic · Face matched. Ref: <strong style="font-family:monospace">SUM-2026-AB7F291</strong></div>
     </div>
     <button class="btn btn-blue" style="width:100%;justify-content:center;margin-top:14px" id="v-btn" onclick="runV()"><i class="ti ti-fingerprint" style="font-size:14px"></i>Start verification</button>
     <div style="text-align:center;margin-top:8px;font-size:10px;color:var(--subtle)">Powered by Sumsub · eIDAS compliant · GDPR Art. 9 · Biometric data deleted after verification</div>
@@ -1137,15 +1136,14 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   </div>
 <div class="card">
     <div class="card-title"><i class="ti ti-folder"></i>Supporting documents</div>
-    <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Your passport/ID was captured in Step 3. Only proof of address is additionally required. All other items are optional but recommended.</div>
+    <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Upload the required supporting documents below. Your passport will be captured separately during identity verification (Step 4). Optional items are recommended where applicable.</div>
 
     <div class="sec-lbl">Required</div>
-    <div class="doc-row locked"><div class="doc-icon done"><i class="ti ti-check"></i></div><div class="doc-info"><div class="doc-name">Passport / National ID</div><div class="doc-desc">Captured and verified via biometric scan in Step 3</div></div><span class="doc-st ds-done">Verified ✓</span></div>
     <div class="doc-row" id="dr-proof_of_address" data-doc-type="proof_of_address" data-required="true" data-default-icon="ti-home" data-default-desc="Utility bill or bank statement — dated within 6 months · Full name and address visible" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-home"></i></div><div class="doc-info"><div class="doc-name">Proof of residential address <span style="color:var(--red)">*</span></div><div class="doc-desc">Utility bill or bank statement — dated within 6 months · Full name and address visible</div></div><span class="doc-st ds-req">Required</span></div>
 
     <div class="sec-lbl" style="margin-top:16px">Curriculum Vitae <span style="color:var(--red)">*</span></div>
     <div style="border:0.5px solid rgba(0,0,0,.1);border-radius:10px;padding:10px;background:var(--surface);margin-bottom:8px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 4px">Either upload a CV file <em>or</em> complete the employment history form below.</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 4px">Upload a CV file <em>or</em> click "fill in manually" below to complete a brief work and education history.</div>
       <div class="doc-row" id="dr-cv" data-doc-type="cv" data-required="true" data-default-icon="ti-id-badge" data-default-desc="Upload your CV (PDF, JPG or PNG · Max 10MB)" onclick="initUpload(this)" style="margin-bottom:10px">
         <div class="doc-icon" id="cv-icon"><i class="ti ti-id-badge"></i></div>
         <div class="doc-info">
@@ -1154,8 +1152,14 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
         </div>
         <span class="doc-st ds-req" id="cv-st">Required</span>
       </div>
-      <div id="cv-form" style="display:block;border-top:0.5px solid rgba(0,0,0,.07);padding-top:12px;margin-top:4px">
-        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">Or — complete employment history <button class="btn btn-sm" onclick="addEmp()"><i class="ti ti-plus" style="font-size:12px"></i>Add previous</button></div>
+      <!-- Collapsible manual-fill toggle (closed by default; CV upload most common path) -->
+      <div id="cv-form-toggle" style="text-align:center;padding:4px 0">
+        <button type="button" onclick="toggleCvManual()" id="cv-toggle-btn" style="background:none;border:none;color:var(--blue);font-family:'Manrope',sans-serif;font-size:11.5px;font-weight:600;cursor:pointer;text-decoration:underline;padding:6px 8px">Or fill in manually <i class="ti ti-chevron-down" style="font-size:11px;vertical-align:-1px"></i></button>
+      </div>
+      <div id="cv-form" style="display:none;border-top:0.5px solid rgba(0,0,0,.07);padding-top:12px;margin-top:4px">
+
+        <!-- Employment history sub-section -->
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">Employment history <button class="btn btn-sm" onclick="addEmp()" type="button"><i class="ti ti-plus" style="font-size:12px"></i>Add previous</button></div>
         <div id="emp-list">
           <div style="border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)">
             <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue)">Current / most recent</div>
@@ -1165,6 +1169,21 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
               <div class="fg"><label class="lbl">From</label><input type="month"></div>
               <div class="fg"><label class="lbl">To (leave blank if current)</label><input type="month"></div>
               <div class="fg full"><label class="lbl">Nature of work</label><input placeholder="Brief description of role and responsibilities"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Education sub-section -->
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin:18px 0 10px;display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:0.5px solid rgba(0,0,0,.06)">Education <button class="btn btn-sm" onclick="addEdu()" type="button"><i class="ti ti-plus" style="font-size:12px"></i>Add another</button></div>
+        <div id="edu-list">
+          <div style="border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)">
+            <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue)">Highest qualification</div>
+            <div class="fgrid">
+              <div class="fg"><label class="lbl">Institution</label><input placeholder="University or college name"></div>
+              <div class="fg"><label class="lbl">Qualification</label><input placeholder="e.g. BSc Economics, MBA"></div>
+              <div class="fg"><label class="lbl">From</label><input type="month"></div>
+              <div class="fg"><label class="lbl">To</label><input type="month"></div>
+              <div class="fg full"><label class="lbl">Field of study</label><input placeholder="e.g. Finance, Computer Science"></div>
             </div>
           </div>
         </div>
@@ -2302,16 +2321,15 @@ function runV(){
   function sv(n,lbl){const el=document.getElementById('vs'+n);el.className='vs-row done';el.querySelector('.vs-icon').className='vs-icon vsi-done';el.querySelector('.vs-icon').innerHTML='<i class="ti ti-check"></i>';el.querySelector('.vs-tag').className='vs-tag vst-d';el.querySelector('.vs-tag').innerHTML='<i class="ti ti-check" style="font-size:10px"></i>'+lbl;}
   function av(n,lbl){const el=document.getElementById('vs'+n);el.className='vs-row act';el.querySelector('.vs-icon').className='vs-icon vsi-act';el.querySelector('.vs-tag').className='vs-tag vst-a';el.querySelector('.vs-tag').textContent=lbl;}
   setTimeout(()=>{sv(1,'Document extracted');av(2,'Processing...');},1500);
-  setTimeout(()=>{sv(2,'Face matched');av(3,'Screening...');},3200);
   setTimeout(()=>{
-    sv(3,'AML clear');
+    sv(2,'Face matched');
     document.getElementById('v-running').style.display='none';
     document.getElementById('v-result').style.display='block';
     btn.disabled=false;btn.style.opacity='1';btn.innerHTML='<i class="ti ti-check" style="font-size:14px"></i>Verification complete';
     const next=document.getElementById('v-next');
     next.disabled=false;next.style.opacity='1';next.style.cursor='pointer';
     saveProgress();
-  },5200);
+  },3200);
 }
 
 // ── DOCUMENTS ──
@@ -2358,10 +2376,14 @@ function _resetDocRow(row){
   // Strip any actions UI we previously added
   const actions = row.querySelector('.doc-actions');
   if(actions) actions.remove();
-  // Special case: CV row shows the inline employment-history form again when CV is removed
+  // Special case: CV row — when CV is removed, re-collapse the manual form and re-show its toggle.
   if(row.id === 'dr-cv'){
-    const form = document.getElementById('cv-form');
-    if(form) form.style.display = 'block';
+    const form   = document.getElementById('cv-form');
+    const toggle = document.getElementById('cv-form-toggle');
+    const btn    = document.getElementById('cv-toggle-btn');
+    if(form) form.style.display = 'none';
+    if(toggle) toggle.style.display = 'block';
+    if(btn) btn.innerHTML = 'Or fill in manually <i class="ti ti-chevron-down" style="font-size:11px;vertical-align:-1px"></i>';
   }
 }
 
@@ -2389,10 +2411,12 @@ function _renderDocRowUploaded(row, fileName, fileSize, docId){
       '<button type="button" class="btn btn-sm" onclick="event.stopPropagation();removeDoc(this.closest(\'.doc-row\'))" style="font-size:11px;color:var(--red)"><i class="ti ti-trash" style="font-size:12px"></i>Remove</button>';
     row.appendChild(actions);
   }
-  // Special case: CV row hides the inline employment-history form when a CV is uploaded
+  // Special case: CV row — when uploaded, hide both the manual form AND its toggle.
   if(row.id === 'dr-cv'){
-    const form = document.getElementById('cv-form');
+    const form   = document.getElementById('cv-form');
+    const toggle = document.getElementById('cv-form-toggle');
     if(form) form.style.display = 'none';
+    if(toggle) toggle.style.display = 'none';
   }
 }
 
@@ -2578,6 +2602,32 @@ function addEmp(){
   const b=document.createElement('div');b.style.cssText='border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)';
   b.innerHTML=`<div style="font-size:11px;font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between">Previous employment ${empN-1}<button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;font-family:Manrope,sans-serif" onclick="this.closest('[style]').remove()">Remove</button></div><div class="fgrid"><div class="fg"><label class="lbl">Employer</label><input placeholder="Company or organisation"></div><div class="fg"><label class="lbl">Position</label><input placeholder="Job title"></div><div class="fg"><label class="lbl">From</label><input type="month"></div><div class="fg"><label class="lbl">To</label><input type="month"></div><div class="fg full"><label class="lbl">Nature of work</label><input placeholder="Brief description"></div></div>`;
   list.appendChild(b);
+}
+
+// ── EDUCATION ROWS ──
+let eduN=1;
+function addEdu(){
+  eduN++;
+  const list=document.getElementById('edu-list');
+  const b=document.createElement('div');b.style.cssText='border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)';
+  b.innerHTML=`<div style="font-size:11px;font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between">Qualification ${eduN-1}<button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;font-family:Manrope,sans-serif" onclick="this.closest('[style]').remove()">Remove</button></div><div class="fgrid"><div class="fg"><label class="lbl">Institution</label><input placeholder="University or college name"></div><div class="fg"><label class="lbl">Qualification</label><input placeholder="e.g. BSc Economics, MBA"></div><div class="fg"><label class="lbl">From</label><input type="month"></div><div class="fg"><label class="lbl">To</label><input type="month"></div><div class="fg full"><label class="lbl">Field of study</label><input placeholder="e.g. Finance, Computer Science"></div></div>`;
+  list.appendChild(b);
+}
+
+// ── TOGGLE MANUAL CV FORM ──
+// CV form starts collapsed because most users upload a PDF. Click the link to expand.
+function toggleCvManual(){
+  const form = document.getElementById('cv-form');
+  const btn  = document.getElementById('cv-toggle-btn');
+  if(!form || !btn) return;
+  const isOpen = form.style.display !== 'none';
+  if(isOpen){
+    form.style.display = 'none';
+    btn.innerHTML = 'Or fill in manually <i class="ti ti-chevron-down" style="font-size:11px;vertical-align:-1px"></i>';
+  } else {
+    form.style.display = 'block';
+    btn.innerHTML = 'Hide manual fields <i class="ti ti-chevron-up" style="font-size:11px;vertical-align:-1px"></i>';
+  }
 }
 
 // ── DECLARATIONS ──
