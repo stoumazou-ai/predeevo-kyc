@@ -96,6 +96,10 @@
         const firstNameInp = document.querySelector('.ubo-name');
         const emailInp = document.querySelector('.ubo-email');
         const compNameInp = document.getElementById('incorp-company-name');
+        const entityNameInp = document.getElementById('entity-name');
+        const introByInp = document.getElementById('introduced-by-name');
+
+        // ── Basic client identity ──
         if(firstNameInp && (force || !firstNameInp.value) && invitation.client_name){
           firstNameInp.value = invitation.client_name;
           firstNameInp.dispatchEvent(new Event('input', {bubbles:true}));
@@ -104,9 +108,62 @@
           emailInp.value = invitation.client_email;
           emailInp.dispatchEvent(new Event('input', {bubbles:true}));
         }
-        if(compNameInp && (force || !compNameInp.value) && invitation.client_company){
-          compNameInp.value = invitation.client_company;
-          compNameInp.dispatchEvent(new Event('input', {bubbles:true}));
+
+        const prefill = {
+          services:    Array.isArray(invitation.services) ? invitation.services : [],
+          entity_type: invitation.entity_type || null,
+          company:     invitation.pre_filled_company_name || invitation.client_company || null,
+          introduced:  invitation.pre_filled_introduced_by || null,
+          language:    invitation.language || 'en',
+        };
+
+        // ── Services: tick the AMLCO-preselected services (only on force pass, to avoid stomping client edits mid-load) ──
+        if(force && Array.isArray(prefill.services) && prefill.services.length){
+          prefill.services.forEach(svcVal => {
+            const cb = document.querySelector(`.svc-item input[type=checkbox][value="${svcVal}"]`);
+            if(cb && !cb.checked){
+              const label = cb.closest('.svc-item');
+              if(label) label.click();  // svcT() handles toggle + engagement section reveal
+            }
+          });
+        }
+
+        // ── Entity type: force the right engagement form to show ──
+        // (only on force pass, to avoid mid-load flicker)
+        if(force && prefill.entity_type){
+          const incorpF = document.getElementById('incorp-f');
+          const entityF = document.getElementById('entity-f');
+          if(prefill.entity_type === 'incorp'){
+            if(incorpF) incorpF.style.display = 'block';
+            if(entityF) entityF.style.display = 'none';
+          } else if(prefill.entity_type === 'entity'){
+            if(incorpF) incorpF.style.display = 'none';
+            if(entityF) entityF.style.display = 'block';
+          }
+        }
+
+        // ── Company name pre-fill: routed to incorp or entity name field based on entity_type ──
+        if(prefill.company){
+          if(prefill.entity_type === 'entity' && entityNameInp && (force || !entityNameInp.value)){
+            entityNameInp.value = prefill.company;
+            entityNameInp.dispatchEvent(new Event('input', {bubbles:true}));
+          } else if(compNameInp && (force || !compNameInp.value)){
+            // Default to incorp company name (most common case)
+            compNameInp.value = prefill.company;
+            compNameInp.dispatchEvent(new Event('input', {bubbles:true}));
+          }
+        }
+
+        // ── Introduced by pre-fill: ALSO needs to flip the "introduced?" select to 'yes' so the input is shown ──
+        if(prefill.introduced && introByInp && (force || !introByInp.value)){
+          // Find the "Was Predeevo introduced to you" select and flip it to yes
+          const introSel = document.querySelector('select[onchange*="intro-by"]');
+          if(introSel && introSel.value !== 'yes'){
+            introSel.value = 'yes';
+            introSel.dispatchEvent(new Event('change', {bubbles:true}));
+          }
+          introByInp.value = prefill.introduced;
+          introByInp.dispatchEvent(new Event('input', {bubbles:true}));
         }
       }
       // Run after form is ready - force fill at 2s to override any localStorage load
