@@ -708,8 +708,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   <div class="step-lbls">
     <span class="slbl active" id="sl1">Services</span>
     <span class="slbl" id="sl2">Identity</span>
-    <span class="slbl" id="sl3">Verify</span>
-    <span class="slbl" id="sl4">Documents</span>
+    <span class="slbl" id="sl3">Documents</span>
+    <span class="slbl" id="sl4">Verify</span>
     <span class="slbl" id="sl5">Questionnaire</span>
     <span class="slbl" id="sl6">Consent</span>
     <span class="slbl" id="sl7">Sign</span>
@@ -1094,7 +1094,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   </div>
 </div>
 <!-- ══ STEP 3 — VERIFICATION ══ -->
-<div class="step" id="s3">
+<div class="step" id="s4">
   <div class="card">
     <div class="card-title"><i class="ti ti-fingerprint"></i>Identity verification — applicant only</div>
     <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">This step verifies <strong>your identity only</strong> as the applicant. Other UBOs or shareholders listed in Step 2 will complete their own biometric verification via their individual KYC links. Please have your passport or national ID ready — this takes under 2 minutes.</p>
@@ -1119,19 +1119,19 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <div style="text-align:center;margin-top:8px;font-size:10px;color:var(--subtle)">Powered by Sumsub · eIDAS compliant · GDPR Art. 9 · Biometric data deleted after verification</div>
   </div>
   <div class="btn-row">
-    <button class="btn-back" onclick="gs(2)"><i class="ti ti-arrow-left"></i> Back</button>
-    <span class="step-count">Step 3 of 7</span>
+    <button class="btn-back" onclick="gs(3)"><i class="ti ti-arrow-left"></i> Back</button>
+    <span class="step-count">Step 4 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
-    <button class="btn btn-blue" id="v-next" onclick="gs(4)" disabled style="opacity:.4;cursor:not-allowed">Continue <i class="ti ti-arrow-right"></i></button>
+    <button class="btn btn-blue" id="v-next" onclick="gs(_applicantIsPEP() ? 's-sow' : 5)" disabled style="opacity:.4;cursor:not-allowed">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
 
-<!-- ══ STEP 4 — DOCUMENTS ══ -->
-<div class="step" id="s4">
+<!-- ══ STEP 3 — DOCUMENTS ══ -->
+<div class="step" id="s3">
   
-  <div class="validation-banner" id="val-banner-s4">
+  <div class="validation-banner" id="val-banner-s3">
     <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following required fields before continuing:</div>
     <ul class="validation-list" id="val-list-s4"></ul>
   </div>
@@ -1178,12 +1178,12 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 
   </div>
   <div class="btn-row">
-    <button class="btn-back" onclick="gs(3)"><i class="ti ti-arrow-left"></i> Back</button>
-    <span class="step-count">Step 4 of 7</span>
+    <button class="btn-back" onclick="gs(2)"><i class="ti ti-arrow-left"></i> Back</button>
+    <span class="step-count">Step 3 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
-    <button class="btn btn-blue" onclick="validateAndProceed(4, _applicantIsPEP() ? 's-sow' : 5)">Continue <i class="ti ti-arrow-right"></i></button>
+    <button class="btn btn-blue" onclick="validateAndProceed(3, 4)">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
 
@@ -2622,7 +2622,7 @@ const STEP_REQUIRED = {
   2: [
     {check:'ubo_cards_started', label:'Please complete the identity form for each UBO — at minimum first name, surname, date of birth, and email are required for each person'},
   ],
-  4: [
+  3: [
     {check:'proof_address', label:'Proof of residential address'},
     {check:'cv', label:'Curriculum Vitae (or employment history form)'},
   ],
