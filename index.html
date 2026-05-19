@@ -1093,7 +1093,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 <div class="step" id="s4">
   <div class="card">
     <div class="card-title"><i class="ti ti-fingerprint"></i>Identity verification — applicant only</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">This step verifies <strong>your identity only</strong> as the applicant. Other UBOs or shareholders listed in Step 2 will complete their own identity verification via their individual KYC links. Please have your passport or national ID ready — this takes under 2 minutes.</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">This is a quick liveness check to confirm you are the person whose documents were uploaded in Step 3. Other UBOs or shareholders listed in Step 2 will complete their own identity verification via their individual KYC links. Takes under 2 minutes.</p>
     <div class="alert-box"><i class="ti ti-shield" style="font-size:14px;flex-shrink:0;margin-top:1px"></i><strong>Biometric data consent (GDPR Art. 9).</strong> Facial recognition is special category data. Your biometric data is processed solely for identity verification and deleted immediately after the check is complete.</div>
     <div style="border:0.5px solid var(--blue-border);border-radius:9px;padding:12px 14px;background:var(--blue-pale);margin-bottom:14px">
       <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer">
@@ -1102,16 +1102,15 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       </label>
     </div>
     <div id="vsteps">
-      <div class="vs-row act" id="vs1"><div class="vs-icon vsi-act"><i class="ti ti-id-badge-2"></i></div><div><div class="vs-title">Document scan</div><div class="vs-desc">Photograph your passport or national ID. All four corners visible, no glare.</div><div class="vs-tag vst-a"><i class="ti ti-upload" style="font-size:10px"></i>Ready to upload</div></div></div>
-      <div class="vs-row" id="vs2"><div class="vs-icon vsi-pend"><i class="ti ti-camera-selfie"></i></div><div><div class="vs-title">Liveness check &amp; selfie</div><div class="vs-desc">Follow on-screen prompts. Your face is matched to your document photograph.</div><div class="vs-tag vst-w">Waiting</div></div></div>
+      <div class="vs-row act" id="vs2"><div class="vs-icon vsi-act"><i class="ti ti-camera-selfie"></i></div><div><div class="vs-title">Liveness check &amp; selfie</div><div class="vs-desc">Follow on-screen prompts. Your face is matched to the photo ID you uploaded in Step 3.</div><div class="vs-tag vst-a"><i class="ti ti-camera" style="font-size:10px"></i>Ready to start</div></div></div>
     </div>
     <div id="v-running" style="display:none;text-align:center;padding:18px 0"><div class="spinner"></div><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Verifying identity...</div><div style="font-size:11px;color:var(--muted)">Please keep this window open. Usually 10–30 seconds.</div></div>
     <div id="v-result" style="display:none">
-      <div class="vr-box"><div><div class="vr-num">98%</div><div class="vr-lbl">Match score</div></div><div class="vr-bars"><div class="vr-bar-row"><span class="vr-bar-lbl">Document</span><div class="vr-track"><div class="vr-fill" style="width:100%"></div></div></div><div class="vr-bar-row"><span class="vr-bar-lbl">Face match</span><div class="vr-track"><div class="vr-fill" style="width:98%"></div></div></div><div class="vr-bar-row"><span class="vr-bar-lbl">Liveness</span><div class="vr-track"><div class="vr-fill" style="width:100%"></div></div></div></div></div>
-      <div class="success-box" style="margin-top:10px;margin-bottom:0"><i class="ti ti-circle-check" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Identity verified · Document authentic · Face matched. Ref: <strong style="font-family:monospace">SUM-2026-AB7F291</strong></div>
+      <div class="vr-box"><div><div class="vr-num">98%</div><div class="vr-lbl">Match score</div></div><div class="vr-bars"><div class="vr-bar-row"><span class="vr-bar-lbl">Face match</span><div class="vr-track"><div class="vr-fill" style="width:98%"></div></div></div><div class="vr-bar-row"><span class="vr-bar-lbl">Liveness</span><div class="vr-track"><div class="vr-fill" style="width:100%"></div></div></div></div></div>
+      <div class="success-box" style="margin-top:10px;margin-bottom:0"><i class="ti ti-circle-check" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Identity verified · Face matched · Liveness confirmed. Ref: <strong style="font-family:monospace">SUM-2026-AB7F291</strong></div>
     </div>
-    <button class="btn btn-blue" style="width:100%;justify-content:center;margin-top:14px" id="v-btn" onclick="runV()"><i class="ti ti-fingerprint" style="font-size:14px"></i>Start verification</button>
-    <div style="text-align:center;margin-top:8px;font-size:10px;color:var(--subtle)">Powered by Sumsub · eIDAS compliant · GDPR Art. 9 · Biometric data deleted after verification</div>
+    <button class="btn btn-blue" style="width:100%;justify-content:center;margin-top:14px" id="v-btn" onclick="runV()"><i class="ti ti-camera-selfie" style="font-size:14px"></i>Start liveness check</button>
+    <div style="text-align:center;margin-top:8px;font-size:10px;color:var(--subtle)">eIDAS compliant · GDPR Art. 9 · Biometric data deleted after verification</div>
   </div>
   <div class="btn-row">
     <button class="btn-back" onclick="gs(3)"><i class="ti ti-arrow-left"></i> Back</button>
@@ -2262,17 +2261,15 @@ function runV(){
   btn.disabled=true;btn.style.opacity='.5';btn.innerHTML='<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0 4px 0 0;display:inline-block;vertical-align:middle"></div>Verifying...';
   document.getElementById('v-running').style.display='block';
   function sv(n,lbl){const el=document.getElementById('vs'+n);el.className='vs-row done';el.querySelector('.vs-icon').className='vs-icon vsi-done';el.querySelector('.vs-icon').innerHTML='<i class="ti ti-check"></i>';el.querySelector('.vs-tag').className='vs-tag vst-d';el.querySelector('.vs-tag').innerHTML='<i class="ti ti-check" style="font-size:10px"></i>'+lbl;}
-  function av(n,lbl){const el=document.getElementById('vs'+n);el.className='vs-row act';el.querySelector('.vs-icon').className='vs-icon vsi-act';el.querySelector('.vs-tag').className='vs-tag vst-a';el.querySelector('.vs-tag').textContent=lbl;}
-  setTimeout(()=>{sv(1,'Document extracted');av(2,'Processing...');},1500);
   setTimeout(()=>{
-    sv(2,'Face matched');
+    sv(2,'Face matched · Liveness confirmed');
     document.getElementById('v-running').style.display='none';
     document.getElementById('v-result').style.display='block';
     btn.disabled=false;btn.style.opacity='1';btn.innerHTML='<i class="ti ti-check" style="font-size:14px"></i>Verification complete';
     const next=document.getElementById('v-next');
     next.disabled=false;next.style.opacity='1';next.style.cursor='pointer';
     saveProgress();
-  },3200);
+  },2500);
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -4112,11 +4109,22 @@ function _collectShareholders(){
     const card = _findUBOCardByName(name);
     if(card){
       const cardFields = _collectUBOCardFields(card);
-      // Step 1 values win for shared fields (name, email, nationality) — they're authoritative
-      // Step 2 card fields fill in the rest (dob, passport, address, PEP, etc.)
+      // Step 1 values win for: name, email (those are the user-typed primary identifiers there).
+      // Step 2 values win for: nationality (and all other detail fields) — Step 2 is where the
+      // user fills detailed personal info, and Step 1 nationality is just a quick-fill shorthand.
+      const STEP1_AUTHORITATIVE = ['full_name', 'email', 'shareholding_pct', 'is_applicant', 'is_ubo'];
       Object.keys(cardFields).forEach(k => {
-        if(row[k] === undefined || row[k] === null || row[k] === '' || row[k] === 0){
-          row[k] = cardFields[k];
+        const cardVal = cardFields[k];
+        if(STEP1_AUTHORITATIVE.includes(k)){
+          // Only fill if Step 1 was empty
+          if(row[k] === undefined || row[k] === null || row[k] === '' || row[k] === 0){
+            row[k] = cardVal;
+          }
+        } else {
+          // Step 2 wins — but only if Step 2 actually has a value (don't overwrite Step 1 with empty)
+          if(cardVal !== undefined && cardVal !== null && cardVal !== ''){
+            row[k] = cardVal;
+          }
         }
       });
     }
