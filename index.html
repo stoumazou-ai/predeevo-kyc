@@ -2510,6 +2510,86 @@ function buildDocRulesContext(){
 
 window.buildDocRulesContext = buildDocRulesContext;
 
+// ════════════════════════════════════════════════════════════════════
+// Fetch document rules from the DB and cache for the lifetime of the form session.
+// Rules don't change while the user is filling out the form, so one fetch is enough.
+//
+// Stores result on window.docRules (array of joined rule + doc_type rows).
+// On failure (offline, RLS issue, etc.), window.docRules stays null and the
+// renderer falls back to the static doc list.
+// ════════════════════════════════════════════════════════════════════
+window.docRules = null;
+window.docRulesFetchStatus = 'pending';  // 'pending' | 'ok' | 'failed'
+
+async function fetchDocRules(){
+  if(!sb){
+    console.warn('fetchDocRules: Supabase client not available');
+    window.docRulesFetchStatus = 'failed';
+    return;
+  }
+
+  try {
+    // Joined query — pull rules + their doc_type metadata in a single fetch.
+    // Supabase PostgREST embed syntax: kyc_document_types is the parent table referenced via FK.
+    const { data, error } = await sb
+      .from('kyc_document_rules')
+      .select(`
+        id,
+        doc_type,
+        when_clause,
+        state,
+        priority,
+        is_active,
+        kyc_document_types (
+          category,
+          label_en,
+          label_el,
+          guidance_en,
+          guidance_el,
+          sort_order
+        )
+      `)
+      .eq('is_active', true);
+
+    if(error){
+      console.warn('fetchDocRules: error:', error);
+      window.docRulesFetchStatus = 'failed';
+      return;
+    }
+
+    // Flatten the joined structure — pull doc_type fields up to the rule level
+    // so the evaluator can read them directly without a second lookup.
+    window.docRules = (data || []).map(r => ({
+      id:           r.id,
+      doc_type:     r.doc_type,
+      when_clause:  r.when_clause,
+      state:        r.state,
+      priority:     r.priority,
+      category:     r.kyc_document_types?.category   || 'other',
+      label_en:     r.kyc_document_types?.label_en   || r.doc_type,
+      label_el:     r.kyc_document_types?.label_el   || null,
+      guidance_en:  r.kyc_document_types?.guidance_en || '',
+      guidance_el:  r.kyc_document_types?.guidance_el || null,
+      sort_order:   r.kyc_document_types?.sort_order || 100,
+    }));
+
+    window.docRulesFetchStatus = 'ok';
+    console.log('fetchDocRules: loaded ' + window.docRules.length + ' rules');
+  } catch(e){
+    console.warn('fetchDocRules: exception:', e);
+    window.docRulesFetchStatus = 'failed';
+  }
+}
+
+window.fetchDocRules = fetchDocRules;
+
+// Kick off the fetch now — we're past the function definition so it's safe.
+// Fire-and-forget: form load doesn't wait for rules. The renderer will check
+// docRulesFetchStatus when Step 3 is entered.
+if(sb){
+  fetchDocRules().catch(e => console.warn('Rules fetch failed:', e));
+}
+
 // ── DOCUMENTS ──
 // ════════════════════════════════════════════════
 // DB-backed file upload pipeline (Slice 2)
