@@ -1135,58 +1135,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>The required documents below are determined by the information you provided in Steps 1 and 2. Your passport will be captured separately during identity verification (Step 4).</div>
 
     <!-- Renderer outputs the dynamic doc list here, grouped into Required + Additional sections. -->
+    <!-- CV is rendered inline with its manual-fill toggle + collapsible employment/education sub-form. -->
     <div id="dynamic-doc-rows"></div>
-
-    <!-- CV is a special case: it has a collapsible manual-fill form below the upload row,
-         so we keep it as a static block. The renderer's skip-list includes 'cv'. -->
-    <div class="sec-lbl" style="margin-top:16px">Curriculum Vitae <span style="color:var(--red)">*</span></div>
-    <div style="border:0.5px solid rgba(0,0,0,.1);border-radius:10px;padding:10px;background:var(--surface);margin-bottom:8px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 4px">Upload a CV file <em>or</em> click "fill in manually" below to complete a brief work and education history.</div>
-      <div class="doc-row" id="dr-cv" data-doc-type="cv" data-required="true" data-default-icon="ti-id-badge" data-default-desc="Upload your CV (PDF, JPG or PNG · Max 10MB)" onclick="initUpload(this)" style="margin-bottom:10px">
-        <div class="doc-icon" id="cv-icon"><i class="ti ti-id-badge"></i></div>
-        <div class="doc-info">
-          <div class="doc-name">Curriculum Vitae</div>
-          <div class="doc-desc">Upload your CV (PDF, JPG or PNG · Max 10MB)</div>
-        </div>
-        <span class="doc-st ds-req" id="cv-st">Required</span>
-      </div>
-      <!-- Collapsible manual-fill toggle (closed by default; CV upload most common path) -->
-      <div id="cv-form-toggle" style="text-align:center;padding:4px 0">
-        <button type="button" onclick="toggleCvManual()" id="cv-toggle-btn" style="background:none;border:none;color:var(--blue);font-family:'Manrope',sans-serif;font-size:11.5px;font-weight:600;cursor:pointer;text-decoration:underline;padding:6px 8px">Or fill in manually <i class="ti ti-chevron-down" style="font-size:11px;vertical-align:-1px"></i></button>
-      </div>
-      <div id="cv-form" style="display:none;border-top:0.5px solid rgba(0,0,0,.07);padding-top:12px;margin-top:4px">
-
-        <!-- Employment history sub-section -->
-        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">Employment history <button class="btn btn-sm" onclick="addEmp()" type="button"><i class="ti ti-plus" style="font-size:12px"></i>Add previous</button></div>
-        <div id="emp-list">
-          <div style="border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)">
-            <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue)">Current / most recent</div>
-            <div class="fgrid">
-              <div class="fg"><label class="lbl">Employer name</label><input placeholder="Company or organisation"></div>
-              <div class="fg"><label class="lbl">Position / title</label><input placeholder="Job title"></div>
-              <div class="fg"><label class="lbl">From</label><input type="month"></div>
-              <div class="fg"><label class="lbl">To (leave blank if current)</label><input type="month"></div>
-              <div class="fg full"><label class="lbl">Nature of work</label><input placeholder="Brief description of role and responsibilities"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Education sub-section -->
-        <div style="font-size:12px;font-weight:700;color:var(--text);margin:18px 0 10px;display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:0.5px solid rgba(0,0,0,.06)">Education <button class="btn btn-sm" onclick="addEdu()" type="button"><i class="ti ti-plus" style="font-size:12px"></i>Add another</button></div>
-        <div id="edu-list">
-          <div style="border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)">
-            <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue)">Highest qualification</div>
-            <div class="fgrid">
-              <div class="fg"><label class="lbl">Institution</label><input placeholder="University or college name"></div>
-              <div class="fg"><label class="lbl">Qualification</label><input placeholder="e.g. BSc Economics, MBA"></div>
-              <div class="fg"><label class="lbl">From</label><input type="month"></div>
-              <div class="fg"><label class="lbl">To</label><input type="month"></div>
-              <div class="fg full"><label class="lbl">Field of study</label><input placeholder="e.g. Finance, Computer Science"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
   </div>
   <div class="btn-row">
@@ -2640,8 +2590,8 @@ const DOC_ICONS = {
 };
 
 // Doc types that the renderer should skip (handled by static HTML elsewhere).
-// Currently just 'cv' — it has the manual-fill form attached and lives in a static block.
-const RENDERER_SKIP_DOC_TYPES = ['cv'];
+// Currently empty — CV used to live here, but is now rendered inline with its manual-fill toggle.
+const RENDERER_SKIP_DOC_TYPES = [];
 
 // Reads the previous render's uploaded state (if any) so we don't lose it when
 // rerendering. Returns a map: { doc_type: { fileName, fileSize, docId } }
@@ -2660,8 +2610,71 @@ function _snapshotUploadedDocs(){
   return snap;
 }
 
+// CV gets a special HTML block — it has a manual-fill fallback (employment + education form)
+// that no other doc has. Renderer emits this whole block for the cv doc_type instead of the
+// generic row.
+function _buildCvRowHTML(docItem){
+  const isReq    = docItem.state === 'required';
+  const stateLbl = isReq ? 'Required' : 'Additional';
+  const stateCls = isReq ? 'ds-req' : 'ds-opt';
+  const reqMark  = isReq ? ' <span style="color:var(--red)">*</span>' : '';
+  return `
+    <div style="border:0.5px solid rgba(0,0,0,.1);border-radius:10px;padding:10px;background:var(--surface);margin-bottom:8px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 4px">Upload a CV file <em>or</em> click "fill in manually" below to complete a brief work and education history.</div>
+      <div class="doc-row"
+           id="dr-cv"
+           data-doc-type="cv"
+           data-required="${isReq}"
+           data-default-icon="ti-id-badge"
+           data-default-desc="Upload your CV (PDF, JPG or PNG · Max 10MB)"
+           onclick="initUpload(this)"
+           style="margin-bottom:10px">
+        <div class="doc-icon" id="cv-icon"><i class="ti ti-id-badge"></i></div>
+        <div class="doc-info">
+          <div class="doc-name">${docItem.label}${reqMark}</div>
+          <div class="doc-desc">Upload your CV (PDF, JPG or PNG · Max 10MB)</div>
+        </div>
+        <span class="doc-st ${stateCls}" id="cv-st">${stateLbl}</span>
+      </div>
+      <div id="cv-form-toggle" style="text-align:center;padding:4px 0">
+        <button type="button" onclick="toggleCvManual()" id="cv-toggle-btn" style="background:none;border:none;color:var(--blue);font-family:'Manrope',sans-serif;font-size:11.5px;font-weight:600;cursor:pointer;text-decoration:underline;padding:6px 8px">Or fill in manually <i class="ti ti-chevron-down" style="font-size:11px;vertical-align:-1px"></i></button>
+      </div>
+      <div id="cv-form" style="display:none;border-top:0.5px solid rgba(0,0,0,.07);padding-top:12px;margin-top:4px">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">Employment history <button class="btn btn-sm" onclick="addEmp()" type="button"><i class="ti ti-plus" style="font-size:12px"></i>Add previous</button></div>
+        <div id="emp-list">
+          <div style="border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)">
+            <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue)">Current / most recent</div>
+            <div class="fgrid">
+              <div class="fg"><label class="lbl">Employer name</label><input placeholder="Company or organisation"></div>
+              <div class="fg"><label class="lbl">Position / title</label><input placeholder="Job title"></div>
+              <div class="fg"><label class="lbl">From</label><input type="month"></div>
+              <div class="fg"><label class="lbl">To (leave blank if current)</label><input type="month"></div>
+              <div class="fg full"><label class="lbl">Nature of work</label><input placeholder="Brief description of role and responsibilities"></div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin:18px 0 10px;display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:0.5px solid rgba(0,0,0,.06)">Education <button class="btn btn-sm" onclick="addEdu()" type="button"><i class="ti ti-plus" style="font-size:12px"></i>Add another</button></div>
+        <div id="edu-list">
+          <div style="border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)">
+            <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue)">Highest qualification</div>
+            <div class="fgrid">
+              <div class="fg"><label class="lbl">Institution</label><input placeholder="University or college name"></div>
+              <div class="fg"><label class="lbl">Qualification</label><input placeholder="e.g. BSc Economics, MBA"></div>
+              <div class="fg"><label class="lbl">From</label><input type="month"></div>
+              <div class="fg"><label class="lbl">To</label><input type="month"></div>
+              <div class="fg full"><label class="lbl">Field of study</label><input placeholder="e.g. Finance, Computer Science"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
 // Build the HTML for a single doc row.
 function _buildDocRowHTML(docItem){
+  // CV has a unique inline manual-fill form — different builder
+  if(docItem.doc_type === 'cv') return _buildCvRowHTML(docItem);
+
   const iconClass = DOC_ICONS[docItem.doc_type] || 'ti-file-text';
   const isReq     = docItem.state === 'required';
   const stateLbl  = isReq ? 'Required' : 'Additional';
@@ -3293,9 +3306,10 @@ function validateStep(stepNum){
         case 'dynamic_required_docs':
           // Walk every required doc-row in the dynamic container.
           // CV is checked separately (its case follows below) because CV can be
-          // satisfied by manual form OR upload.
+          // satisfied by manual form OR upload — so we skip it here.
           const missing = [];
           document.querySelectorAll('#dynamic-doc-rows .doc-row[data-required="true"]').forEach(r => {
+            if(r.dataset.docType === 'cv') return;  // CV handled by separate 'cv' check
             if(!r.classList.contains('done')){
               const name = r.querySelector('.doc-name')?.textContent?.replace(/\s*\*\s*$/, '').trim() || r.dataset.docType;
               missing.push(name);
