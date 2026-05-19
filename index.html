@@ -1132,11 +1132,13 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   </div>
 <div class="card">
     <div class="card-title"><i class="ti ti-folder"></i>Supporting documents</div>
-    <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Upload the required supporting documents below. Your passport will be captured separately during identity verification (Step 4). Optional items are recommended where applicable.</div>
+    <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-up:1px"></i>The required documents below are determined by the information you provided in Steps 1 and 2. Your passport will be captured separately during identity verification (Step 4).</div>
 
-    <div class="sec-lbl">Required</div>
-    <div class="doc-row" id="dr-proof_of_address" data-doc-type="proof_of_address" data-required="true" data-default-icon="ti-home" data-default-desc="Utility bill or bank statement — dated within 6 months · Full name and address visible" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-home"></i></div><div class="doc-info"><div class="doc-name">Proof of residential address <span style="color:var(--red)">*</span></div><div class="doc-desc">Utility bill or bank statement — dated within 6 months · Full name and address visible</div></div><span class="doc-st ds-req">Required</span></div>
+    <!-- Renderer outputs the dynamic doc list here, grouped into Required + Additional sections. -->
+    <div id="dynamic-doc-rows"></div>
 
+    <!-- CV is a special case: it has a collapsible manual-fill form below the upload row,
+         so we keep it as a static block. The renderer's skip-list includes 'cv'. -->
     <div class="sec-lbl" style="margin-top:16px">Curriculum Vitae <span style="color:var(--red)">*</span></div>
     <div style="border:0.5px solid rgba(0,0,0,.1);border-radius:10px;padding:10px;background:var(--surface);margin-bottom:8px">
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 4px">Upload a CV file <em>or</em> click "fill in manually" below to complete a brief work and education history.</div>
@@ -1185,11 +1187,6 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
         </div>
       </div>
     </div>
-
-    <div class="sec-lbl" style="margin-top:16px">Optional — recommended</div>
-    <div class="doc-row" id="dr-source_of_funds_evidence" data-doc-type="source_of_funds_evidence" data-required="false" data-default-icon="ti-cash" data-default-desc="Payslips, employment contract, audited accounts, sale agreement" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-cash"></i></div><div class="doc-info"><div class="doc-name">Source of funds evidence</div><div class="doc-desc">Payslips, employment contract, audited accounts, sale agreement</div></div><span class="doc-st ds-opt">Optional</span></div>
-    <div class="doc-row" id="dr-bank_statement" data-doc-type="bank_statement" data-required="false" data-default-icon="ti-building-bank" data-default-desc="From your main account" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-building-bank"></i></div><div class="doc-info"><div class="doc-name">Bank statement (last 3 months)</div><div class="doc-desc">From your main account</div></div><span class="doc-st ds-opt">Optional</span></div>
-    <div class="doc-row" id="dr-tin_document" data-doc-type="tin_document" data-required="false" data-default-icon="ti-file-text" data-default-desc="Official document showing your TIN / AFM" onclick="initUpload(this)"><div class="doc-icon"><i class="ti ti-file-text"></i></div><div class="doc-info"><div class="doc-name">Tax Identification Number document</div><div class="doc-desc">Official document showing your TIN / AFM</div></div><span class="doc-st ds-opt">Optional</span></div>
 
   </div>
   <div class="btn-row">
@@ -1652,6 +1649,10 @@ function gs(n){
     }
     // Populate UBO identity cards when entering Step 2
     if(n===2) renderUBOIdentityCards();
+    // Build the dynamic doc list when entering Step 3 (Documents)
+    if(n===3 && typeof renderDocRows === 'function'){
+      try { renderDocRows(); } catch(e){ console.warn('renderDocRows failed:', e); }
+    }
     // Update SoW step counter dynamically (always says "Step 5 of 8" when shown)
     if(n === 's-sow') _updateSowStepCounter();
     // Update step counters for steps 5/6/7 based on whether SoW is in the flow
@@ -2590,6 +2591,161 @@ if(sb){
   fetchDocRules().catch(e => console.warn('Rules fetch failed:', e));
 }
 
+// ════════════════════════════════════════════════════════════════════
+// Dynamic Doc-Row Renderer
+//
+// Builds the doc-row HTML inside #dynamic-doc-rows based on the evaluator's
+// output. Called every time the user enters Step 3 (Documents).
+//
+// Behavior:
+//   - Skips 'cv' — that's a special block with the manual-fill form, handled separately in HTML.
+//   - Groups output into "Required" and "Additional" sections.
+//   - Preserves upload state: if a doc was already uploaded in a previous Step 3 visit
+//     (e.g. user navigated back and forth), the new row reflects that state.
+//   - If fetch failed, falls back to a minimal static list (proof_of_address only).
+//     CV's static block always renders regardless.
+//
+// HTML structure built per row matches the original static doc-row format, so
+// initUpload(this), _renderDocRowUploaded, replaceDoc, removeDoc all work as-is.
+// ════════════════════════════════════════════════════════════════════
+
+// Icon mapping per doc_type (Tabler icon class fragments).
+// Falls back to ti-file-text for any unmapped doc_type.
+const DOC_ICONS = {
+  passport:                  'ti-id',
+  id_card:                   'ti-license',
+  proof_of_address:          'ti-home',
+  cv:                        'ti-id-badge',
+  reference_letter:          'ti-mail',
+  sow_declaration:           'ti-wallet',
+  sof_employment_income:     'ti-briefcase',
+  sof_savings_deposits:      'ti-pig-money',
+  sof_property_sale:         'ti-building-skyscraper',
+  sof_share_sale:            'ti-chart-line',
+  sof_loan:                  'ti-cash-banknote',
+  sof_company_sale:          'ti-building-store',
+  sof_company_dividends:     'ti-receipt',
+  sof_inheritance:           'ti-gift',
+  sof_other:                 'ti-coin',
+  cert_incorporation:        'ti-certificate',
+  cert_directors:            'ti-users',
+  cert_shareholders:         'ti-users-group',
+  cert_registered_office:    'ti-building',
+  memorandum_articles:       'ti-book',
+  latest_audited_fs:         'ti-report-money',
+  ownership_structure_chart: 'ti-binary-tree',
+  declaration_of_trust:      'ti-file-signature',
+  trust_deed:                'ti-scale',
+  trust_registration:        'ti-stamp',
+};
+
+// Doc types that the renderer should skip (handled by static HTML elsewhere).
+// Currently just 'cv' — it has the manual-fill form attached and lives in a static block.
+const RENDERER_SKIP_DOC_TYPES = ['cv'];
+
+// Reads the previous render's uploaded state (if any) so we don't lose it when
+// rerendering. Returns a map: { doc_type: { fileName, fileSize, docId } }
+function _snapshotUploadedDocs(){
+  const snap = {};
+  document.querySelectorAll('#dynamic-doc-rows .doc-row.done').forEach(row => {
+    const docType = row.dataset.docType;
+    if(!docType) return;
+    snap[docType] = {
+      docId:    row.dataset.docId,
+      fileName: row.querySelector('.doc-desc strong')?.textContent || null,
+      // file_size isn't preserved verbatim from the rendered text — but we can leave it null
+      // and the user only sees the size when initially uploaded. Acceptable trade-off.
+    };
+  });
+  return snap;
+}
+
+// Build the HTML for a single doc row.
+function _buildDocRowHTML(docItem){
+  const iconClass = DOC_ICONS[docItem.doc_type] || 'ti-file-text';
+  const isReq     = docItem.state === 'required';
+  const stateLbl  = isReq ? 'Required' : 'Additional';
+  const stateCls  = isReq ? 'ds-req' : 'ds-opt';
+  const reqMark   = isReq ? ' <span style="color:var(--red)">*</span>' : '';
+  return `
+    <div class="doc-row"
+         id="dr-${docItem.doc_type}"
+         data-doc-type="${docItem.doc_type}"
+         data-required="${isReq}"
+         data-default-icon="${iconClass}"
+         data-default-desc="${docItem.guidance.replace(/"/g, '&quot;')}"
+         onclick="initUpload(this)">
+      <div class="doc-icon"><i class="ti ${iconClass}"></i></div>
+      <div class="doc-info">
+        <div class="doc-name">${docItem.label}${reqMark}</div>
+        <div class="doc-desc">${docItem.guidance}</div>
+      </div>
+      <span class="doc-st ${stateCls}">${stateLbl}</span>
+    </div>`;
+}
+
+// Main render: replace the contents of #dynamic-doc-rows with rule-evaluated rows.
+function renderDocRows(){
+  const container = document.getElementById('dynamic-doc-rows');
+  if(!container){
+    console.warn('renderDocRows: #dynamic-doc-rows container not found');
+    return;
+  }
+
+  // Snapshot upload state before clearing the container
+  const uploadedSnap = _snapshotUploadedDocs();
+
+  // Determine the doc list to render
+  let docList = [];
+  if(window.docRulesFetchStatus === 'ok' && Array.isArray(window.docRules)){
+    const ctx = buildDocRulesContext();
+    docList = evaluateDocRules(window.docRules, ctx);
+  } else {
+    // Fallback: rules didn't load. Show only proof_of_address as a safe minimum.
+    // (CV is always shown via its static block.)
+    console.warn('renderDocRows: docRules not available (status=' + window.docRulesFetchStatus + '), using fallback');
+    docList = [{
+      doc_type: 'proof_of_address',
+      state:    'required',
+      label:    'Proof of address',
+      guidance: 'Utility bill — issued within the last 6 months.',
+      category: 'identity',
+      sort_order: 12,
+    }];
+  }
+
+  // Filter out doc types we skip (CV)
+  docList = docList.filter(d => !RENDERER_SKIP_DOC_TYPES.includes(d.doc_type));
+
+  // Separate into required and additional
+  const required   = docList.filter(d => d.state === 'required');
+  const additional = docList.filter(d => d.state === 'optional');
+
+  // Build HTML
+  let html = '';
+  if(required.length){
+    html += '<div class="sec-lbl">Required</div>';
+    html += required.map(_buildDocRowHTML).join('');
+  }
+  if(additional.length){
+    html += '<div class="sec-lbl" style="margin-top:16px">Additional</div>';
+    html += additional.map(_buildDocRowHTML).join('');
+  }
+
+  container.innerHTML = html;
+
+  // Restore upload state for any doc that was uploaded before this rerender
+  for(const docType in uploadedSnap){
+    const snap = uploadedSnap[docType];
+    const row = document.getElementById('dr-' + docType);
+    if(row && snap.docId){
+      _renderDocRowUploaded(row, snap.fileName || 'document', 0, snap.docId);
+    }
+  }
+}
+
+window.renderDocRows = renderDocRows;
+
 // ── DOCUMENTS ──
 // ════════════════════════════════════════════════
 // DB-backed file upload pipeline (Slice 2)
@@ -2931,7 +3087,7 @@ const STEP_REQUIRED = {
     {check:'ubo_cards_started', label:'Please complete the identity form for each UBO — at minimum first name, surname, date of birth, and email are required for each person'},
   ],
   3: [
-    {check:'proof_address', label:'Proof of residential address'},
+    {check:'dynamic_required_docs', label:'Required documents are not yet uploaded'},
     {check:'cv', label:'Curriculum Vitae (or employment history form)'},
   ],
   5: [
@@ -3134,10 +3290,21 @@ function validateStep(stepNum){
             if(!pepAnswered) errors.push(f.label);
           }
           break;
-        case 'proof_address':
-          // Check if proof of address doc row is done
-          const addrRow = Array.from(document.querySelectorAll('.doc-row')).find(r=>r.querySelector('.doc-name')?.textContent?.includes('Proof of residential'));
-          if(!addrRow?.classList.contains('done')) errors.push(f.label);
+        case 'dynamic_required_docs':
+          // Walk every required doc-row in the dynamic container.
+          // CV is checked separately (its case follows below) because CV can be
+          // satisfied by manual form OR upload.
+          const missing = [];
+          document.querySelectorAll('#dynamic-doc-rows .doc-row[data-required="true"]').forEach(r => {
+            if(!r.classList.contains('done')){
+              const name = r.querySelector('.doc-name')?.textContent?.replace(/\s*\*\s*$/, '').trim() || r.dataset.docType;
+              missing.push(name);
+            }
+          });
+          if(missing.length){
+            // Replace the generic label with a specific missing-doc list
+            errors.push(missing.map(n => 'Required: ' + n).join(' · '));
+          }
           break;
         case 'cv':
           // CV is satisfied EITHER by uploading a CV file OR by filling the inline employment form
