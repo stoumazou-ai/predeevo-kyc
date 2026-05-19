@@ -800,19 +800,15 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
               <label class="lbl">Source</label>
               <select class="sof-type" onchange="calcSOF()">
                 <option value="">Select source...</option>
-                <option>Employment income / salary</option>
-                <option>Business trading income / revenues</option>
-                <option>Share capital injection from shareholders</option>
-                <option>Director loans</option>
-                <option>Bank financing / loans</option>
-                <option>Sale of property or assets</option>
-                <option>Investment returns / dividends</option>
-                <option>Intercompany transfers / group funding</option>
-                <option>Grant or government funding</option>
-                <option>Third party investor funding</option>
-                <option>Inheritance or gift</option>
-                <option>Cryptocurrency liquidation</option>
-                <option>Other (describe below)</option>
+                <option value="employment_income">Employment income / salary</option>
+                <option value="savings_deposits">Savings / accumulated deposits</option>
+                <option value="property_sale">Sale of property or assets</option>
+                <option value="share_sale">Sale of shares or investments</option>
+                <option value="loan">Loan (director, bank, or other)</option>
+                <option value="company_sale">Sale of business or company</option>
+                <option value="company_dividends">Company dividends / profits</option>
+                <option value="inheritance">Inheritance or gift</option>
+                <option value="other">Other (please specify)</option>
               </select>
             </div>
             <div class="fg" style="margin-bottom:0">
@@ -1970,7 +1966,7 @@ function calcSOF(){
   document.querySelectorAll('.sof-val').forEach(i=>{t+=parseFloat(i.value)||0;});
   const el=document.getElementById('sof-total');
   if(el)el.textContent=Math.round(t).toLocaleString('en');
-  const hasOther=Array.from(document.querySelectorAll('.sof-type')).some(s=>s.value&&s.value.startsWith('Other'));
+  const hasOther=Array.from(document.querySelectorAll('.sof-type')).some(s=>s.value==='other');
   const othEl=document.getElementById('sof-other');
   if(othEl)othEl.style.display=hasOther?'block':'none';
   saveProgress();
@@ -1982,19 +1978,15 @@ function addSOF(){
   r.innerHTML=`<div class="fg" style="margin-bottom:0">
     <select class="sof-type" onchange="calcSOF()">
       <option value="">Select source...</option>
-      <option>Employment income / salary</option>
-      <option>Business trading income / revenues</option>
-      <option>Share capital injection from shareholders</option>
-      <option>Director loans</option>
-      <option>Bank financing / loans</option>
-      <option>Sale of property or assets</option>
-      <option>Investment returns / dividends</option>
-      <option>Intercompany transfers / group funding</option>
-      <option>Grant or government funding</option>
-      <option>Third party investor funding</option>
-      <option>Inheritance or gift</option>
-      <option>Cryptocurrency liquidation</option>
-      <option>Other (describe below)</option>
+      <option value="employment_income">Employment income / salary</option>
+      <option value="savings_deposits">Savings / accumulated deposits</option>
+      <option value="property_sale">Sale of property or assets</option>
+      <option value="share_sale">Sale of shares or investments</option>
+      <option value="loan">Loan (director, bank, or other)</option>
+      <option value="company_sale">Sale of business or company</option>
+      <option value="company_dividends">Company dividends / profits</option>
+      <option value="inheritance">Inheritance or gift</option>
+      <option value="other">Other (please specify)</option>
     </select>
   </div>
   <div class="fg" style="margin-bottom:0">
@@ -2331,6 +2323,192 @@ function runV(){
     saveProgress();
   },3200);
 }
+
+// ════════════════════════════════════════════════════════════════════
+// DOCUMENT RULES ENGINE
+// ════════════════════════════════════════════════════════════════════
+// Given a list of rules (from kyc_document_rules joined to kyc_document_types)
+// and an application context object, returns the list of doc rows to render
+// on Step 3 (Documents).
+//
+// when_clause grammar:
+//   {"always": true}                  — always matches
+//   {"field": value}                  — equality check
+//   {"field": {"!=": value}}          — inequality
+//   {"field": {">": n}}               — comparator: > < >= <=
+//   {"field.contains": value}         — array contains value (suffix .contains)
+//   {"AND": [{...}, {...}]}           — all child clauses match
+//   {"OR":  [{...}, {...}]}           — any child clause matches
+//   {"NOT": {...}}                    — negation
+//
+// For each doc_type, multiple rules may match. The matching rule with the
+// LOWEST priority value wins (priority=10 beats priority=50). This lets us
+// have a default "optional" rule (priority 50) and override with a specific
+// "required" rule (priority 10) under certain conditions.
+//
+// Doc types with no matching rule are treated as state='hidden' (not returned).
+//
+// Pure function — no DOM, no side effects. Safe to test in browser console:
+//   evaluateDocRules(rules, {applicant_nationality: 'Cyprus', ...})
+
+// Walks a when_clause against a context object. Returns true if the clause matches.
+function _evaluateWhenClause(clause, ctx){
+  if(!clause || typeof clause !== 'object') return false;
+
+  // Logical operators
+  if(clause.always === true) return true;
+  if(Array.isArray(clause.AND)) return clause.AND.every(c => _evaluateWhenClause(c, ctx));
+  if(Array.isArray(clause.OR))  return clause.OR.some(c  => _evaluateWhenClause(c, ctx));
+  if(clause.NOT)                return !_evaluateWhenClause(clause.NOT, ctx);
+
+  // Field-condition pairs (AND across all keys in the same object)
+  for(const [field, value] of Object.entries(clause)){
+    // Skip already-handled operator keys (defensive — shouldn't reach here)
+    if(field === 'always' || field === 'AND' || field === 'OR' || field === 'NOT') continue;
+
+    // .contains suffix: check that ctx[base_field] is an array containing the value
+    if(field.endsWith('.contains')){
+      const baseField = field.slice(0, -('.contains'.length));
+      const ctxVal = ctx[baseField];
+      if(!Array.isArray(ctxVal) || !ctxVal.includes(value)) return false;
+      continue;
+    }
+
+    const ctxVal = ctx[field];
+
+    // Comparator object: { "!=": "Cyprus" } or { ">": 6 }
+    if(value !== null && typeof value === 'object'){
+      const ops = Object.entries(value);
+      if(ops.length !== 1) return false;  // malformed
+      const [op, opVal] = ops[0];
+      switch(op){
+        case '!=': if(ctxVal === opVal) return false; break;
+        case '>':  if(!(typeof ctxVal === 'number' && ctxVal >  opVal)) return false; break;
+        case '<':  if(!(typeof ctxVal === 'number' && ctxVal <  opVal)) return false; break;
+        case '>=': if(!(typeof ctxVal === 'number' && ctxVal >= opVal)) return false; break;
+        case '<=': if(!(typeof ctxVal === 'number' && ctxVal <= opVal)) return false; break;
+        default: return false;
+      }
+    } else {
+      // Plain equality
+      if(ctxVal !== value) return false;
+    }
+  }
+  return true;
+}
+
+// Main evaluator. Takes the rules array and a context object, returns the list
+// of doc rows to render (excluding any doc_types whose rules don't match).
+function evaluateDocRules(rules, ctx){
+  if(!Array.isArray(rules)) return [];
+
+  // Group rules by doc_type
+  const byDocType = {};
+  for(const r of rules){
+    if(!byDocType[r.doc_type]) byDocType[r.doc_type] = [];
+    byDocType[r.doc_type].push(r);
+  }
+
+  const result = [];
+  for(const [docType, ruleList] of Object.entries(byDocType)){
+    // Find rules whose when_clause matches the context
+    const matching = ruleList.filter(r => _evaluateWhenClause(r.when_clause, ctx));
+    if(matching.length === 0) continue;  // hidden — not rendered
+
+    // Pick the rule with the lowest priority value (wins)
+    matching.sort((a, b) => (a.priority || 100) - (b.priority || 100));
+    const winner = matching[0];
+
+    result.push({
+      doc_type:    docType,
+      state:       winner.state,
+      label:       winner.label_en   || docType,
+      guidance:    winner.guidance_en || '',
+      category:    winner.category   || 'other',
+      sort_order:  winner.sort_order || 100,
+    });
+  }
+
+  // Sort by sort_order (which already groups by category in our seeded data)
+  result.sort((a, b) => a.sort_order - b.sort_order);
+  return result;
+}
+
+// Expose to window for browser-console testing
+window.evaluateDocRules = evaluateDocRules;
+window._evaluateWhenClause = _evaluateWhenClause;
+
+// ════════════════════════════════════════════════════════════════════
+// Build the application context object from the current form state.
+// Reads live DOM values so we see the user's latest edits, even before
+// they save. Reuses _collectShareholders / _collectSOF for canonical
+// extraction (single source of truth).
+//
+// Output shape — fields used by rule when_clauses:
+//   {
+//     applicant_nationality:  string   (e.g. "Cyprus", "United Kingdom")
+//     applicant_pep_status:   string   ('yes' | 'no' | null)
+//     entity_type:            string   ('incorp' | 'entity')
+//     services:               array    (e.g. ['incorp', 'accounting'])
+//     sof_types:              array    (e.g. ['employment_income', 'inheritance'])
+//     shareholders_count:     number
+//     entity_age_months:      number | null
+//   }
+//
+// All fields default to safe values (null or empty array) if not available,
+// so the evaluator can run early in the form lifecycle without crashing.
+// ════════════════════════════════════════════════════════════════════
+function buildDocRulesContext(){
+  // Detect entity type from which form is visible
+  const isIncorp = document.getElementById('incorp-f')?.style.display !== 'none';
+  const entity_type = isIncorp ? 'incorp' : 'entity';
+
+  // Services — Step 1 multi-select checkboxes
+  const services = Array.from(
+    document.querySelectorAll('.svc-item input[type=checkbox]:checked')
+  ).map(cb => cb.value);
+
+  // Source of funds types — Step 1 select rows (machine keys after our migration)
+  const sof_types = Array.from(document.querySelectorAll('.sof-type'))
+    .map(s => s.value)
+    .filter(v => v && v.length > 0);
+
+  // Shareholders — use canonical collector (handles incorp vs entity, merges Step 2 cards)
+  let shareholders = [];
+  try { shareholders = _collectShareholders(); }
+  catch(e){ console.warn('buildDocRulesContext: shareholder collection failed', e); }
+
+  const applicant = shareholders.find(s => s.is_applicant) || null;
+  const applicant_nationality = applicant?.nationality || null;
+  const applicant_pep_status  = applicant?.pep_status  || null;
+
+  // Entity age in months — only relevant when entity_type='entity'
+  let entity_age_months = null;
+  if(entity_type === 'entity'){
+    const incorpDateInp = document.getElementById('entity-incorporation-date');
+    const incorpDateStr = incorpDateInp?.value;
+    if(incorpDateStr){
+      const d = new Date(incorpDateStr);
+      if(!isNaN(d.getTime())){
+        const now = new Date();
+        entity_age_months = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
+        if(entity_age_months < 0) entity_age_months = 0;  // future dates clamp to 0
+      }
+    }
+  }
+
+  return {
+    applicant_nationality,
+    applicant_pep_status,
+    entity_type,
+    services,
+    sof_types,
+    shareholders_count: shareholders.length,
+    entity_age_months,
+  };
+}
+
+window.buildDocRulesContext = buildDocRulesContext;
 
 // ── DOCUMENTS ──
 // ════════════════════════════════════════════════
