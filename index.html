@@ -2500,7 +2500,7 @@ async function fetchDocRules(){
       .eq('is_active', true);
 
     if(error){
-      console.warn('fetchDocRules: error:', error);
+      console.warn('fetchDocRules: error:', error.message || error.code || JSON.stringify(error));
       window.docRulesFetchStatus = 'failed';
       return;
     }
@@ -2639,27 +2639,27 @@ function _buildCvRowHTML(docItem){
       <div id="cv-form" style="display:none;border-top:0.5px solid rgba(0,0,0,.07);padding-top:12px;margin-top:4px">
         <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">Employment history <button class="btn btn-sm" onclick="addEmp()" type="button"><i class="ti ti-plus" style="font-size:12px"></i>Add previous</button></div>
         <div id="emp-list">
-          <div style="border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)">
+          <div class="emp-row" style="border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)">
             <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue)">Current / most recent</div>
             <div class="fgrid">
-              <div class="fg"><label class="lbl">Employer name</label><input placeholder="Company or organisation"></div>
-              <div class="fg"><label class="lbl">Position / title</label><input placeholder="Job title"></div>
-              <div class="fg"><label class="lbl">From</label><input type="month"></div>
-              <div class="fg"><label class="lbl">To (leave blank if current)</label><input type="month"></div>
-              <div class="fg full"><label class="lbl">Nature of work</label><input placeholder="Brief description of role and responsibilities"></div>
+              <div class="fg"><label class="lbl">Employer name</label><input data-cv="emp_employer" placeholder="Company or organisation"></div>
+              <div class="fg"><label class="lbl">Position / title</label><input data-cv="emp_position" placeholder="Job title"></div>
+              <div class="fg"><label class="lbl">From</label><input data-cv="emp_from" type="month"></div>
+              <div class="fg"><label class="lbl">To (leave blank if current)</label><input data-cv="emp_to" type="month"></div>
+              <div class="fg full"><label class="lbl">Nature of work</label><input data-cv="emp_nature" placeholder="Brief description of role and responsibilities"></div>
             </div>
           </div>
         </div>
         <div style="font-size:12px;font-weight:700;color:var(--text);margin:18px 0 10px;display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:0.5px solid rgba(0,0,0,.06)">Education <button class="btn btn-sm" onclick="addEdu()" type="button"><i class="ti ti-plus" style="font-size:12px"></i>Add another</button></div>
         <div id="edu-list">
-          <div style="border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)">
+          <div class="edu-row" style="border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)">
             <div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--blue)">Highest qualification</div>
             <div class="fgrid">
-              <div class="fg"><label class="lbl">Institution</label><input placeholder="University or college name"></div>
-              <div class="fg"><label class="lbl">Qualification</label><input placeholder="e.g. BSc Economics, MBA"></div>
-              <div class="fg"><label class="lbl">From</label><input type="month"></div>
-              <div class="fg"><label class="lbl">To</label><input type="month"></div>
-              <div class="fg full"><label class="lbl">Field of study</label><input placeholder="e.g. Finance, Computer Science"></div>
+              <div class="fg"><label class="lbl">Institution</label><input data-cv="edu_institution" placeholder="University or college name"></div>
+              <div class="fg"><label class="lbl">Qualification</label><input data-cv="edu_qualification" placeholder="e.g. BSc Economics, MBA"></div>
+              <div class="fg"><label class="lbl">From</label><input data-cv="edu_from" type="month"></div>
+              <div class="fg"><label class="lbl">To</label><input data-cv="edu_to" type="month"></div>
+              <div class="fg full"><label class="lbl">Field of study</label><input data-cv="edu_field" placeholder="e.g. Finance, Computer Science"></div>
             </div>
           </div>
         </div>
@@ -2752,6 +2752,9 @@ function renderDocRows(){
       _renderDocRowUploaded(row, snap.fileName || 'document', 0, snap.docId);
     }
   }
+
+  // Restore any stashed manual CV data (from a resumed draft) into the freshly-built CV form
+  try { applyCvManualRestore(); } catch(e){ console.warn('applyCvManualRestore failed:', e); }
 }
 
 window.renderDocRows = renderDocRows;
@@ -3023,8 +3026,8 @@ let empN=1;
 function addEmp(){
   empN++;
   const list=document.getElementById('emp-list');
-  const b=document.createElement('div');b.style.cssText='border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)';
-  b.innerHTML=`<div style="font-size:11px;font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between">Previous employment ${empN-1}<button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;font-family:Manrope,sans-serif" onclick="this.closest('[style]').remove()">Remove</button></div><div class="fgrid"><div class="fg"><label class="lbl">Employer</label><input placeholder="Company or organisation"></div><div class="fg"><label class="lbl">Position</label><input placeholder="Job title"></div><div class="fg"><label class="lbl">From</label><input type="month"></div><div class="fg"><label class="lbl">To</label><input type="month"></div><div class="fg full"><label class="lbl">Nature of work</label><input placeholder="Brief description"></div></div>`;
+  const b=document.createElement('div');b.className='emp-row';b.style.cssText='border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)';
+  b.innerHTML=`<div style="font-size:11px;font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between">Previous employment ${empN-1}<button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;font-family:Manrope,sans-serif" onclick="this.closest('.emp-row').remove()">Remove</button></div><div class="fgrid"><div class="fg"><label class="lbl">Employer</label><input data-cv="emp_employer" placeholder="Company or organisation"></div><div class="fg"><label class="lbl">Position</label><input data-cv="emp_position" placeholder="Job title"></div><div class="fg"><label class="lbl">From</label><input data-cv="emp_from" type="month"></div><div class="fg"><label class="lbl">To</label><input data-cv="emp_to" type="month"></div><div class="fg full"><label class="lbl">Nature of work</label><input data-cv="emp_nature" placeholder="Brief description"></div></div>`;
   list.appendChild(b);
 }
 
@@ -3033,9 +3036,98 @@ let eduN=1;
 function addEdu(){
   eduN++;
   const list=document.getElementById('edu-list');
-  const b=document.createElement('div');b.style.cssText='border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)';
-  b.innerHTML=`<div style="font-size:11px;font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between">Qualification ${eduN-1}<button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;font-family:Manrope,sans-serif" onclick="this.closest('[style]').remove()">Remove</button></div><div class="fgrid"><div class="fg"><label class="lbl">Institution</label><input placeholder="University or college name"></div><div class="fg"><label class="lbl">Qualification</label><input placeholder="e.g. BSc Economics, MBA"></div><div class="fg"><label class="lbl">From</label><input type="month"></div><div class="fg"><label class="lbl">To</label><input type="month"></div><div class="fg full"><label class="lbl">Field of study</label><input placeholder="e.g. Finance, Computer Science"></div></div>`;
+  const b=document.createElement('div');b.className='edu-row';b.style.cssText='border:0.5px solid rgba(0,0,0,.08);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--card)';
+  b.innerHTML=`<div style="font-size:11px;font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between">Qualification ${eduN-1}<button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;font-family:Manrope,sans-serif" onclick="this.closest('.edu-row').remove()">Remove</button></div><div class="fgrid"><div class="fg"><label class="lbl">Institution</label><input data-cv="edu_institution" placeholder="University or college name"></div><div class="fg"><label class="lbl">Qualification</label><input data-cv="edu_qualification" placeholder="e.g. BSc Economics, MBA"></div><div class="fg"><label class="lbl">From</label><input data-cv="edu_from" type="month"></div><div class="fg"><label class="lbl">To</label><input data-cv="edu_to" type="month"></div><div class="fg full"><label class="lbl">Field of study</label><input data-cv="edu_field" placeholder="e.g. Finance, Computer Science"></div></div>`;
   list.appendChild(b);
+}
+
+// ── COLLECT MANUAL CV DATA ──
+// Reads the employment + education rows into a structured object for storage.
+// Returns null if the manual form is empty (e.g. user uploaded a CV file instead),
+// so we don't store empty blobs.
+function _collectCvManual(){
+  const employment = [];
+  document.querySelectorAll('#emp-list .emp-row').forEach(row => {
+    const get = f => row.querySelector(`[data-cv="${f}"]`)?.value?.trim() || '';
+    const entry = {
+      employer: get('emp_employer'),
+      position: get('emp_position'),
+      from:     get('emp_from'),
+      to:       get('emp_to'),
+      nature:   get('emp_nature'),
+    };
+    // Only include rows with at least one non-empty field
+    if(Object.values(entry).some(v => v)) employment.push(entry);
+  });
+
+  const education = [];
+  document.querySelectorAll('#edu-list .edu-row').forEach(row => {
+    const get = f => row.querySelector(`[data-cv="${f}"]`)?.value?.trim() || '';
+    const entry = {
+      institution:   get('edu_institution'),
+      qualification: get('edu_qualification'),
+      from:          get('edu_from'),
+      to:            get('edu_to'),
+      field:         get('edu_field'),
+    };
+    if(Object.values(entry).some(v => v)) education.push(entry);
+  });
+
+  // If both empty, return null (no manual CV data)
+  if(employment.length === 0 && education.length === 0) return null;
+  return { employment, education };
+}
+
+// Restore manual CV data into the (freshly rendered) emp/edu lists.
+// Called by renderDocRows() after the CV row is built. Reads from window._pendingCvManual,
+// which is stashed during resumeDraft(). No-op if nothing stashed or CV form not present.
+function applyCvManualRestore(){
+  const data = window._pendingCvManual;
+  if(!data) return;
+  const empList = document.getElementById('emp-list');
+  const eduList = document.getElementById('edu-list');
+  if(!empList || !eduList) return;  // CV form not rendered (e.g. CV file was uploaded)
+
+  // Open the manual form so the restored data is visible
+  const form = document.getElementById('cv-form');
+  const btn  = document.getElementById('cv-toggle-btn');
+  if(form && form.style.display === 'none'){
+    form.style.display = 'block';
+    if(btn) btn.innerHTML = 'Hide manual fields <i class="ti ti-chevron-up" style="font-size:11px;vertical-align:-1px"></i>';
+  }
+
+  // Employment: first row is pre-existing (the template row); add rows for the rest
+  const emp = Array.isArray(data.employment) ? data.employment : [];
+  emp.forEach((e, idx) => {
+    if(idx > 0) addEmp();  // template gives us row 0; create more as needed
+    const rows = empList.querySelectorAll('.emp-row');
+    const row = rows[idx];
+    if(!row) return;
+    const set = (f, v) => { const el = row.querySelector(`[data-cv="${f}"]`); if(el) el.value = v || ''; };
+    set('emp_employer', e.employer);
+    set('emp_position', e.position);
+    set('emp_from',     e.from);
+    set('emp_to',       e.to);
+    set('emp_nature',   e.nature);
+  });
+
+  // Education: same pattern
+  const edu = Array.isArray(data.education) ? data.education : [];
+  edu.forEach((e, idx) => {
+    if(idx > 0) addEdu();
+    const rows = eduList.querySelectorAll('.edu-row');
+    const row = rows[idx];
+    if(!row) return;
+    const set = (f, v) => { const el = row.querySelector(`[data-cv="${f}"]`); if(el) el.value = v || ''; };
+    set('edu_institution',   e.institution);
+    set('edu_qualification', e.qualification);
+    set('edu_from',          e.from);
+    set('edu_to',            e.to);
+    set('edu_field',         e.field);
+  });
+
+  // Clear the stash so we don't re-apply on subsequent Step 3 entries
+  window._pendingCvManual = null;
 }
 
 // ── TOGGLE MANUAL CV FORM ──
@@ -3833,6 +3925,14 @@ async function resumeDraft(draftInfo){
       });
       sowCalc();
     }
+
+    // ── Stash manual CV data for deferred restore ──
+    // The CV form (#emp-list/#edu-list) is rendered dynamically by renderDocRows() on Step 3 entry,
+    // so it doesn't exist yet at resume time. We stash the data and applyCvManualRestore() picks it
+    // up after the CV row is built.
+    if(app.cv_manual){
+      window._pendingCvManual = app.cv_manual;
+    }
     if(app.sow_other_description){
       const wrap = document.getElementById('sow-other-desc-wrap');
       const desc = document.getElementById('sow-other-desc');
@@ -4018,6 +4118,9 @@ function _collectAppData(forSubmit){
     biometric_ref: forSubmit ? 'SUM-2026-AB7F291' : null,
     biometric_score: forSubmit ? 98 : null,
     biometric_passed: forSubmit ? true : null,
+
+    // Manual CV data (employment + education) — null if user uploaded a CV file instead
+    cv_manual: _collectCvManual(),
 
     // Signature
     sig_method: document.querySelector('.sig-opt.on input')?.value || null,
