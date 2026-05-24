@@ -10,6 +10,7 @@
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get('token');
 
+
   function showGate(title, msg, isError) {
     // Wait for DOM if not ready
     if(document.readyState === 'loading'){
@@ -263,6 +264,8 @@ var currentAppId = window.currentAppId;
 var currentRef = window.currentRef;
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
 // ── SUPABASE CONFIG ──
 const SUPABASE_URL = 'https://dnvmprywxeuzhjumtnpm.supabase.co';
@@ -584,6 +587,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 <body>
 <!-- Hidden file input used by the KYC document uploader (one shared across all rows) -->
 <input type="file" id="kyc-file-input" accept="application/pdf,image/jpeg,image/png" style="display:none">
+<!-- Hidden file input used by the Step 7 signed-declaration uploader -->
+<input type="file" id="sig-file-input" accept="application/pdf,image/jpeg,image/png" style="display:none">
 
 
 <!-- ── ACCESS GATE — shown until token is validated (denial states) ── -->
@@ -1326,7 +1331,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 
 <!-- ══ STEP 7 — SIGNATURE ══ -->
 <div class="step" id="s7">
-  
+
   <div class="validation-banner" id="val-banner-s7">
     <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following required fields before continuing:</div>
     <ul class="validation-list" id="val-list-s7"></ul>
@@ -1335,58 +1340,36 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <div class="card-title"><i class="ti ti-certificate"></i>Electronic signature</div>
     <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Only you — the person named in this form — may sign this declaration. Please select your preferred method.</div>
 
-    <!-- Option 1 -->
+    <!-- Option 1 — Own electronic signature -->
     <div class="sig-opt" id="sig-own" onclick="sigS('own')">
       <div class="sig-hd">
         <input type="radio" name="sig" value="own">
         <div>
-          <span class="sig-title"><i class="ti ti-certificate" style="color:var(--blue);font-size:13px;margin-right:4px"></i>I have my own eIDAS electronic signature</span>
-          <span class="sig-sub">You already have a qualified or advanced electronic signature (Evrotrust, itsme, ADACOM, bank-issued digital ID, etc.). Zero cost — apply your existing certificate.</span>
+          <span class="sig-title"><i class="ti ti-certificate" style="color:var(--blue);font-size:13px;margin-right:4px"></i>Sign with my own electronic signature</span>
+          <span class="sig-sub">You already have a qualified or advanced electronic signature (eIDAS, itsme, ADACOM, bank-issued digital ID, JCC, etc.). Apply your existing certificate to the declaration — zero cost.</span>
         </div>
       </div>
       <div class="sig-detail" id="sd-own">
-        <div class="eidas-box"><i class="ti ti-shield-check"></i><div><div class="eidas-title">eIDAS Advanced or Qualified Electronic Signature</div><div class="eidas-sub">Upload your signed declaration PDF, or paste your certificate reference. Verified against the EU Trust List.</div></div></div>
-        <div class="fg"><label class="lbl">Upload signed declaration PDF <span class="req">*</span></label><div class="upload-zone" onclick="alert('File picker in live app')"><i class="ti ti-upload" style="font-size:20px;color:var(--muted);display:block;margin-bottom:5px"></i><div style="font-size:12px;font-weight:600">Click to upload signed PDF</div><div style="font-size:10px;color:var(--subtle);margin-top:3px">PDF only · Max 10MB</div></div></div>
+        <div class="eidas-box"><i class="ti ti-shield-check"></i><div><div class="eidas-title">eIDAS Advanced or Qualified Electronic Signature</div><div class="eidas-sub">Download the declaration, sign it with your own certificate, then upload the signed file.</div></div></div>
+        <button class="btn btn-sm" style="width:100%;justify-content:center;margin-bottom:12px" onclick="generateDeclarationPDF()"><i class="ti ti-download" style="font-size:13px"></i>Download declaration to sign</button>
+        <div class="fg"><label class="lbl">Upload electronically signed declaration <span class="req">*</span></label><div class="upload-zone" id="up-own" onclick="pickSigFile('own')"><i class="ti ti-upload" style="font-size:20px;color:var(--muted);display:block;margin-bottom:5px"></i><div style="font-size:12px;font-weight:600">Click to upload signed PDF</div><div style="font-size:10px;color:var(--subtle);margin-top:3px">PDF only · Max 10MB</div></div><div id="up-own-file" class="upload-file-row" style="display:none;margin-top:8px;padding:8px 12px;background:var(--green-light,#dcfce7);border-radius:8px;font-size:12px;color:var(--text)"><i class="ti ti-file-check" style="color:var(--green,#16a34a);margin-right:6px"></i><span id="up-own-name">—</span><button type="button" onclick="clearSigFile('own')" style="float:right;background:none;border:none;cursor:pointer;color:var(--muted)"><i class="ti ti-x"></i></button></div></div>
         <div class="fg" style="margin-bottom:0"><label class="lbl">eIDAS certificate reference (optional)</label><input placeholder="Certificate serial number or provider reference" id="sig-eidas-reference" oninput="saveProgress()"></div>
       </div>
     </div>
 
-    <!-- Option 2 -->
+    <!-- Option 2 — Wet ink signature -->
     <div class="sig-opt" id="sig-physical" onclick="sigS('physical')">
       <div class="sig-hd">
         <input type="radio" name="sig" value="physical">
         <div>
-          <span class="sig-title"><i class="ti ti-pen" style="color:var(--blue);font-size:13px;margin-right:4px"></i>I will sign physically (wet ink)</span>
-          <span class="sig-sub">Download the declaration PDF, print and sign by hand, then upload a clear scan. Or sign in person at our Larnaca office.</span>
+          <span class="sig-title"><i class="ti ti-pen" style="color:var(--blue);font-size:13px;margin-right:4px"></i>Sign physically (wet ink)</span>
+          <span class="sig-sub">Download the declaration, print and sign by hand, then upload a clear scan or photo. Or sign in person at our Larnaca office.</span>
         </div>
       </div>
       <div class="sig-detail" id="sd-physical">
-        <button class="btn btn-sm" style="width:100%;justify-content:center;margin-bottom:12px" onclick="alert('PDF download in live app')"><i class="ti ti-download" style="font-size:13px"></i>Download declaration PDF</button>
-        <div class="fg"><label class="lbl">Upload signed document <span class="req">*</span><span class="hint">Scan or clear photo — signature must be visible</span></label><div class="upload-zone" onclick="alert('File picker in live app')"><i class="ti ti-upload" style="font-size:20px;color:var(--muted);display:block;margin-bottom:5px"></i><div style="font-size:12px;font-weight:600">Click to upload</div><div style="font-size:10px;color:var(--subtle);margin-top:3px">PDF, JPG or PNG · Max 10MB</div></div></div>
+        <button class="btn btn-sm" style="width:100%;justify-content:center;margin-bottom:12px" onclick="generateDeclarationPDF()"><i class="ti ti-download" style="font-size:13px"></i>Download declaration to print &amp; sign</button>
+        <div class="fg"><label class="lbl">Upload signed document <span class="req">*</span><span class="hint">Scan or clear photo — signature must be visible</span></label><div class="upload-zone" id="up-physical" onclick="pickSigFile('physical')"><i class="ti ti-upload" style="font-size:20px;color:var(--muted);display:block;margin-bottom:5px"></i><div style="font-size:12px;font-weight:600">Click to upload</div><div style="font-size:10px;color:var(--subtle);margin-top:3px">PDF, JPG or PNG · Max 10MB</div></div><div id="up-physical-file" class="upload-file-row" style="display:none;margin-top:8px;padding:8px 12px;background:var(--green-light,#dcfce7);border-radius:8px;font-size:12px;color:var(--text)"><i class="ti ti-file-check" style="color:var(--green,#16a34a);margin-right:6px"></i><span id="up-physical-name">—</span><button type="button" onclick="clearSigFile('physical')" style="float:right;background:none;border:none;cursor:pointer;color:var(--muted)"><i class="ti ti-x"></i></button></div></div>
         <div class="fg" style="margin-bottom:0"><label class="lbl">Or — signing in person</label><input placeholder="Appointment date / confirmation reference (if applicable)" id="sig-physical-appointment" oninput="saveProgress()"></div>
-      </div>
-    </div>
-
-    <!-- Option 3 -->
-    <div class="sig-opt" id="sig-evrotrust" onclick="sigS('evrotrust')">
-      <div class="sig-hd">
-        <input type="radio" name="sig" value="evrotrust">
-        <div>
-          <span class="sig-title"><i class="ti ti-device-mobile" style="color:var(--blue);font-size:13px;margin-right:4px"></i>Sign via Evrotrust QES (EU Trust List QTSP)</span>
-          <span class="sig-sub">We send a signing request to your phone. Sign with a Qualified Electronic Signature — legally equivalent to wet ink across all EU member states. A small fee (~€5–15) may apply.</span>
-        </div>
-      </div>
-      <div class="sig-detail" id="sd-evrotrust">
-        <div class="eidas-box"><i class="ti ti-shield-check"></i><div><div class="eidas-title">Qualified Electronic Signature (QES) — Evrotrust</div><div class="eidas-sub">eIDAS Regulation 910/2014 · AI facial recognition · Under 5 minutes on your phone</div></div></div>
-        <div class="warn-box" style="margin-bottom:12px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>A fee of approximately €5–15 applies, charged by Evrotrust. Predeevo will confirm before sending the request.</div>
-        <div class="fg"><label class="lbl">Mobile number <span class="req">*</span></label>
-          <div class="phone-row">
-            <div style="position:relative"><input id="evro-cc" class="si" placeholder="+357" style="width:100%" oninput="spc(this)" onfocus="spdd(this)" onblur="sphdd(this)"><div class="dropdown" style="width:240px" id="dd-evro"></div></div>
-            <input placeholder="Mobile number" type="tel" id="sig-evrotrust-mobile" inputmode="numeric" pattern="[-0-9 +()]*" oninput="this.value=this.value.replace(/[^-0-9 +()]/g,'');saveProgress()">
-          </div>
-        </div>
-        <div id="evro-sent" style="display:none"><div class="success-box" style="margin-bottom:0"><i class="ti ti-check-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Signing request sent. Open the Evrotrust app on your phone and complete the process.</div></div>
-        <button class="btn btn-blue" style="width:100%;justify-content:center;margin-top:10px" onclick="sendEvro()"><i class="ti ti-send" style="font-size:13px"></i>Send signing request</button>
       </div>
     </div>
   </div>
@@ -1410,12 +1393,17 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       <div class="success-icon"><i class="ti ti-check"></i></div>
       <div style="font-size:19px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-.3px">Submission complete</div>
       <div style="font-size:13px;color:var(--muted);max-width:400px;margin:0 auto;line-height:1.65">Thank you. Your KYC form, verified identity, and signed declaration have been submitted securely to Predeevo's compliance team. We will review your file and contact you within 3 business days.</div>
-      <div class="ref-box"><div class="ref-lbl">Your reference</div><div class="ref-num" id="ref-num">KYC-2026-0047</div></div>
-      <div style="margin-top:20px;display:flex;flex-direction:column;gap:8px;align-items:center">
-        <button class="btn btn-blue" onclick="dlPDF()" style="min-width:240px;justify-content:center"><i class="ti ti-download" style="font-size:14px"></i>Download your application (PDF)</button>
-        
+      <div class="ref-box"><div class="ref-lbl">Your reference</div><div class="ref-num" id="ref-num">—</div></div>
+
+      <!-- Download CTA — prominent, with framing copy and a secondary hint -->
+      <div style="margin-top:24px;background:var(--blue-light);border:1px solid var(--blue-border);border-radius:10px;padding:16px 18px;max-width:440px;margin-left:auto;margin-right:auto;text-align:center">
+        <div style="font-size:13px;font-weight:700;color:var(--blue-dark);margin-bottom:4px">Keep a copy for your records</div>
+        <div style="font-size:11px;color:var(--blue-dark);opacity:.85;margin-bottom:12px;line-height:1.5">Your complete application — identity, UBOs, sources of funds, declarations, and signature reference — is available as a single PDF.</div>
+        <button class="btn btn-blue" onclick="generateApplicationReport()" style="min-width:260px;justify-content:center;font-size:13px;padding:11px 18px"><i class="ti ti-download" style="font-size:15px"></i>Download your application report (PDF)</button>
+        <div style="margin-top:8px;font-size:10px;color:var(--blue-dark);opacity:.7">You can also re-download this from your invitation link within 14 days.</div>
       </div>
-      <div style="margin-top:16px;font-size:11px;color:var(--subtle)">Predeevo Ltd · Sintika Hanum 58, 6051 Larnaca, Cyprus<br>Tel: +357 24255858 · info@predeevo.com</div>
+
+      <div style="margin-top:18px;font-size:11px;color:var(--subtle)">Predeevo Ltd · Sintika Hanum 58, 6051 Larnaca, Cyprus<br>Tel: +357 24255858 · info@predeevo.com</div>
     </div>
   </div>
 </div>
@@ -3155,8 +3143,11 @@ function chkD(){
 }
 
 // ── SIGNATURE ──
+// Step 7 supports two methods: 'own' (eIDAS/own e-signature upload) and 'physical' (wet ink scan upload).
+// The Evrotrust QES path was removed in May 2026 — too expensive for Predeevo's volume. AdES is
+// sufficient under Cyprus AML Law 188(I)/2007 risk-based CDD, so the upload-only path is the default.
 function sigS(m){
-  ['own','physical','evrotrust'].forEach(x=>{
+  ['own','physical'].forEach(x=>{
     const opt=document.getElementById('sig-'+x);
     const det=document.getElementById('sd-'+x);
     if(opt){opt.classList.toggle('on',x===m);opt.querySelector('input').checked=x===m;}
@@ -3164,10 +3155,96 @@ function sigS(m){
   });
   saveProgress();
 }
-function sendEvro(){
-  const btn=event.currentTarget;
-  document.getElementById('evro-sent').style.display='block';
-  btn.disabled=true;btn.style.opacity='.5';
+// Legacy no-op — kept so any cached HTML referencing sendEvro() doesn't throw.
+function sendEvro(){ /* removed: Evrotrust QES path retired May 2026 */ }
+
+// ── STEP 7 — SIGNED-DECLARATION UPLOAD ──
+// Picks a file, validates, uploads to KYC_BUCKET under signatures/{appId|currentRef}/{ts}-{name},
+// inserts a kyc_documents row with doc_type 'signed_declaration_own' or 'signed_declaration_physical',
+// and stores the resulting doc_id on window.sigUploads[method].
+window.sigUploads = window.sigUploads || { own: null, physical: null };
+
+function pickSigFile(method){
+  const inp = document.getElementById('sig-file-input');
+  if(!inp) return;
+  // Reset accept hint per method (PDF-only for own, PDF/JPG/PNG for physical)
+  inp.accept = (method === 'own') ? 'application/pdf' : 'application/pdf,image/jpeg,image/png';
+  // Re-bind onchange each time so the closure captures the right method
+  inp.onchange = (ev) => {
+    const f = ev.target.files && ev.target.files[0];
+    inp.value = '';                  // allow re-selecting the same file later
+    if(!f) return;
+    if(f.size > 10 * 1024 * 1024){ alert('File too large — maximum 10 MB.'); return; }
+    uploadSigFile(method, f);
+  };
+  inp.click();
+}
+
+async function uploadSigFile(method, file){
+  const zone = document.getElementById('up-' + method);
+  const row  = document.getElementById('up-' + method + '-file');
+  const name = document.getElementById('up-' + method + '-name');
+
+  // Orphan-prevention: if there's already an upload for this method, delete it first so
+  // the old Storage object + kyc_documents row don't linger when the client re-uploads.
+  if(window.sigUploads && window.sigUploads[method]){
+    try { await clearSigFile(method); } catch(e){ console.warn('Pre-upload cleanup:', e); }
+  }
+
+  if(zone){ zone.classList.add('uploading'); zone.style.opacity = '.55'; }
+  if(name) name.textContent = 'Uploading ' + file.name + '…';
+  if(row)  row.style.display = 'block';
+
+  try {
+    if(!sb) throw new Error('Supabase client not initialised');
+    // Ensure we have an application row so the signed-declaration upload has a real FK.
+    if(!currentAppId){ await saveDraftToDB(); }
+    const appKey = currentAppId || currentRef || ('anon-' + Date.now());
+    const safeName = file.name.replace(/[^A-Za-z0-9._-]/g,'_');
+    const path = `signatures/${appKey}/${Date.now()}-${safeName}`;
+
+    const { error: upErr } = await sb.storage.from(KYC_BUCKET).upload(path, file, {
+      cacheControl: '3600', upsert: false, contentType: file.type || 'application/octet-stream'
+    });
+    if(upErr) throw upErr;
+
+    const docType = (method === 'own') ? 'signed_declaration_own' : 'signed_declaration_physical';
+    let insertedId = null;
+    if(currentAppId){
+      const { data, error: insErr } = await sb.from('kyc_documents').insert({
+        application_id: currentAppId,
+        doc_type: docType,
+        file_name: file.name,
+        file_size: file.size,
+        storage_path: path
+      }).select('id').single();
+      if(insErr){ console.warn('kyc_documents insert error:', insErr.message); }
+      else { insertedId = data && data.id; }
+    }
+
+    window.sigUploads[method] = { docId: insertedId, path, fileName: file.name, fileSize: file.size, uploadedAt: new Date().toISOString() };
+    if(name) name.textContent = file.name;
+    if(zone){ zone.classList.remove('uploading'); zone.style.opacity = ''; }
+    saveProgress();
+  } catch(err){
+    console.error('Signature upload error:', err);
+    alert('Upload failed: ' + (err.message || 'please try again'));
+    if(zone){ zone.classList.remove('uploading'); zone.style.opacity = ''; }
+    if(row) row.style.display = 'none';
+    window.sigUploads[method] = null;
+  }
+}
+
+async function clearSigFile(method){
+  const rec = window.sigUploads[method];
+  const row = document.getElementById('up-' + method + '-file');
+  if(rec && sb){
+    try { if(rec.path) await sb.storage.from(KYC_BUCKET).remove([rec.path]); } catch(e){ console.warn('Sig file storage remove:', e); }
+    try { if(rec.docId) await sb.from('kyc_documents').delete().eq('id', rec.docId); } catch(e){ console.warn('Sig file row delete:', e); }
+  }
+  window.sigUploads[method] = null;
+  if(row) row.style.display = 'none';
+  saveProgress();
 }
 
 
@@ -3206,6 +3283,7 @@ const STEP_REQUIRED = {
   ],
   7: [
     {check:'signature', label:'Please select a signing method'},
+    {check:'signature_file', label:'Please upload your signed declaration before submitting'},
   ],
 };
 
@@ -3428,6 +3506,13 @@ function validateStep(stepNum){
           const sigSelected = document.querySelector('.sig-opt.on');
           if(!sigSelected) errors.push(f.label);
           break;
+        case 'signature_file': {
+          // Require an uploaded signed declaration for the selected method
+          const sigOpt = document.querySelector('.sig-opt.on input');
+          const m = sigOpt && sigOpt.value;
+          if(m && !(window.sigUploads && window.sigUploads[m])) errors.push(f.label);
+          break;
+        }
       }
       return;
     }
@@ -3795,17 +3880,38 @@ async function resumeDraft(draftInfo){
     setVal('entity-controlling-select', app.controlling_person_id);
 
     // ── Restore signature method + related fields ──
-    if(app.sig_method){
-      const sigOpt = document.querySelector(`.sig-opt input[value="${app.sig_method}"]`);
-      if(sigOpt){
-        sigOpt.checked = true;
-        sigOpt.closest('.sig-opt')?.classList.add('on');
-      }
+    // Use sigS() so the matching detail panel (sd-own / sd-physical) expands too —
+    // the previous code only set the .on radio class, leaving the panel collapsed on resume.
+    if(app.sig_method && (app.sig_method === 'own' || app.sig_method === 'physical')){
+      try { sigS(app.sig_method); } catch(e){ console.warn('sigS restore:', e); }
     }
     setVal('sig-eidas-reference', app.sig_reference);
     setVal('sig-physical-appointment', app.physical_appointment_ref);
-    setVal('sig-evrotrust-mobile', app.evrotrust_mobile);
-    setVal('evro-cc', app.evrotrust_mobile_country_code);
+    // (legacy: evrotrust_mobile / evro-cc fields removed May 2026; values in DB are ignored on restore)
+
+    // ── Rehydrate Step 7 signed-declaration uploads from kyc_documents ──
+    // Previously a client who saved & exited after uploading would see an empty upload
+    // zone on resume and have to re-upload. We surface the existing rows back into the
+    // UI here so the saved file is recognised by Step 7 validation and the PDF report.
+    try {
+      window.sigUploads = window.sigUploads || { own: null, physical: null };
+      const sigDocs = (docList || []).filter(d => d && d.doc_type && d.doc_type.indexOf('signed_declaration_') === 0);
+      sigDocs.forEach(d => {
+        const m = d.doc_type === 'signed_declaration_own'      ? 'own'
+                : d.doc_type === 'signed_declaration_physical' ? 'physical'
+                : null;
+        if(!m) return;
+        window.sigUploads[m] = {
+          docId: d.id, path: d.storage_path, fileName: d.file_name, fileSize: d.file_size,
+          uploadedAt: d.created_at || new Date().toISOString(), restored: true
+        };
+        // Surface in the upload UI — green file row with cross to clear
+        const row = document.getElementById('up-' + m + '-file');
+        const name = document.getElementById('up-' + m + '-name');
+        if(name) name.textContent = d.file_name || '—';
+        if(row)  row.style.display = 'block';
+      });
+    } catch(e){ console.warn('Sig uploads rehydrate:', e); }
 
     // ── Restore declarations ──
     const setCheck = (id, val) => { const el = document.getElementById(id); if(el) el.checked = !!val; };
@@ -4053,9 +4159,339 @@ async function submit(){
     }
   }
 }
-function dlPDF(){
-  alert('In the live app, a fully completed PDF of your application will download here — including all form data, document references, biometric verification result, and signature certificate.');
+// ════════════════════════════════════════════════
+// PDF GENERATION — jsPDF + autoTable
+// ════════════════════════════════════════════════
+// Two outputs:
+//  - generateDeclarationPDF()        : the declaration the applicant signs (Step 7)
+//  - generateApplicationReport()     : the full compliance-grade summary (success screen)
+// Both rely on jspdf + jspdf-autotable loaded from CDN in <head>.
+
+function _pdfHeader(doc, title){
+  const w = doc.internal.pageSize.getWidth();
+  doc.setFillColor(28, 117, 188);            // Predeevo blue
+  doc.rect(0, 0, w, 18, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.text('PREDEEVO', 12, 11);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(title, w - 12, 11, {align:'right'});
+  doc.setTextColor(0,0,0);
 }
+function _pdfFooter(doc, ref){
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  const total = doc.internal.getNumberOfPages();
+  for(let i=1;i<=total;i++){
+    doc.setPage(i);
+    doc.setFontSize(7); doc.setTextColor(120,120,120);
+    doc.text('Predeevo Ltd · Sintika Hanum 58, 6051 Larnaca, Cyprus · Cyprus AML Law 188(I)/2007', 12, h-7);
+    doc.text(`${ref || ''} · Page ${i} of ${total}`, w-12, h-7, {align:'right'});
+    doc.setTextColor(0,0,0);
+  }
+}
+function _sectionTitle(doc, y, text){
+  const w = doc.internal.pageSize.getWidth();
+  doc.setFillColor(234, 243, 251);            // var(--blue-pale)
+  doc.rect(12, y, w-24, 6, 'F');
+  doc.setTextColor(28,117,188); doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
+  doc.text(text.toUpperCase(), 14, y+4.2);
+  doc.setTextColor(0,0,0); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  return y + 9;
+}
+
+// Build the data snapshot used by both PDFs and (optionally) for audit-anchoring.
+function _buildPDFSnapshot(){
+  const ad = _collectAppData(false);
+  const sh = _collectShareholders();
+  const sof = _collectSOF();
+  const q = _collectQuestionnaire();
+  const sow = (typeof _collectSOW === 'function') ? _collectSOW() : null;
+  const sigMethod = document.querySelector('.sig-opt.on input')?.value || null;
+  const sigUpload = (window.sigUploads && sigMethod) ? window.sigUploads[sigMethod] : null;
+  const eidasRef = document.getElementById('sig-eidas-reference')?.value?.trim() || null;
+  // Applicant is the shareholder row with is_applicant=true; allow a preview override.
+  const applicant = window._previewApplicant
+                 || sh.find(s => s.is_applicant || s.isApplicant)
+                 || (typeof _collectApplicantData === 'function' ? _collectApplicantData() : {})
+                 || {};
+  // Document list: prefer in-memory sigUploads + any visible doc rows in Step 3.
+  const docs = [];
+  Array.from(document.querySelectorAll('#docs-list .doc-row, #doc-list .doc-row, [data-doc-row]')).forEach(el => {
+    docs.push({
+      type: el.dataset.docType || el.querySelector('.doc-type')?.textContent?.trim() || '—',
+      file: el.dataset.fileName || el.querySelector('.doc-file')?.textContent?.trim() || '—'
+    });
+  });
+  if(window.sigUploads){
+    if(window.sigUploads.own)      docs.push({type:'Signed declaration (eIDAS)', file: window.sigUploads.own.fileName});
+    if(window.sigUploads.physical) docs.push({type:'Signed declaration (wet ink)', file: window.sigUploads.physical.fileName});
+  }
+  return { appData: ad, shareholders: sh, sof, sow, questionnaire: q, sigMethod, sigUpload, eidasRef, applicant, docs };
+}
+
+// ── Declaration PDF (Step 7 download button) ────────────────────────────────
+function generateDeclarationPDF(){
+  if(!window.jspdf || !window.jspdf.jsPDF){ alert('PDF library still loading — please try again in a moment.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm', format:'a4'});
+  const ref = currentRef || '';
+  const w = doc.internal.pageSize.getWidth();
+  _pdfHeader(doc, 'Client KYC Declaration');
+  let y = 24;
+
+  doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text('Client KYC Declaration', 12, y); y += 5;
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text(`Reference: ${ref}   ·   Issued: ${new Date().toLocaleString('en-GB')}`, 12, y); y += 6;
+
+  const snap = _buildPDFSnapshot();
+  const ad = snap.appData || {};
+  const ap = snap.applicant || {};
+  const name = [ap.first_name || ap.firstName, ap.surname || ap.lastName].filter(Boolean).join(' ') || '________________________';
+
+  y = _sectionTitle(doc, y, 'Applicant');
+  doc.text(`Name: ${name}`, 14, y); y += 4.5;
+  doc.text(`Email: ${ap.email || '—'}`, 14, y); y += 4.5;
+  doc.text(`DOB: ${ap.dob || '—'}    Nationality: ${ap.nationality || ad.applicant_nationality || '—'}`, 14, y); y += 7;
+
+  y = _sectionTitle(doc, y, 'Declaration under Cyprus AML Law 188(I)/2007');
+  const decls = [
+    'I expressly consent to the collection and processing of my personal data by Predeevo Ltd in accordance with the Personal Data Protection Laws and GDPR. My data will be retained for a minimum of 5 years after the end of our business relationship.',
+    'All information and documents provided are true, accurate, and complete. I am aware that knowingly providing false information is a criminal offence under Article 3 of the Cyprus AML Law — up to 2 years imprisonment and/or a fine of up to EUR 100,000.',
+    'The funds and assets I intend to use in my relationship with Predeevo Ltd are from legitimate sources and are not the proceeds of any criminal activity.',
+    'My PEP declaration is accurate. I am not subject to any EU, UN, or US sanctions and no sanctions apply to my business or known associates.',
+    'I undertake to notify Predeevo Ltd promptly of any material changes including beneficial ownership, PEP status, source of funds, or jurisdiction.',
+    'I acknowledge Predeevo\'s legal obligation to report suspicious activity to MOKAS (Cyprus FIU) without prior notification. Tipping off is a criminal offence under Cyprus law.',
+    'I am fully aware of the Prevention and Suppression of Money Laundering Activities Laws and relevant regulations issued by the competent authorities of Cyprus.'
+  ];
+  doc.setFontSize(9);
+  decls.forEach((t, i) => {
+    const lines = doc.splitTextToSize(`${i+1}.  ${t}`, w-28);
+    if(y + lines.length*4 > 270){ doc.addPage(); _pdfHeader(doc, 'Client KYC Declaration'); y = 24; }
+    doc.text(lines, 14, y);
+    y += lines.length*4 + 1.5;
+  });
+
+  y += 4;
+  if(y > 250){ doc.addPage(); _pdfHeader(doc, 'Client KYC Declaration'); y = 24; }
+  y = _sectionTitle(doc, y, 'Signature');
+  doc.text('Name:', 14, y); doc.line(28, y, 110, y);
+  doc.text('Date:', 120, y); doc.line(134, y, 198, y); y += 10;
+  doc.text('Signature:', 14, y); doc.line(34, y, 198, y); y += 8;
+  doc.setFontSize(8); doc.setTextColor(120,120,120);
+  doc.text('Sign with your own qualified or advanced electronic signature, OR print, sign by hand, and upload a clear scan.', 14, y);
+  doc.setTextColor(0,0,0);
+
+  _pdfFooter(doc, ref);
+  doc.save(`Predeevo-Declaration-${ref || 'KYC'}.pdf`);
+}
+
+// ── Compliance-grade application report (success screen) ────────────────────
+function generateApplicationReport(){
+  if(!window.jspdf || !window.jspdf.jsPDF){ alert('PDF library still loading — please try again in a moment.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm', format:'a4'});
+  const ref = currentRef || (document.getElementById('ref-num')?.textContent) || '';
+  const w = doc.internal.pageSize.getWidth();
+  const snap = _buildPDFSnapshot();
+  const ad = snap.appData || {};
+  const ap = snap.applicant || {};
+  const fullName = [ap.first_name || ap.firstName, ap.surname || ap.lastName].filter(Boolean).join(' ') || '—';
+  _pdfHeader(doc, 'KYC Application Report');
+  let y = 22;
+
+  // Header block
+  doc.setFontSize(15); doc.setFont('helvetica','bold');
+  doc.text('Client KYC Application Report', 12, y); y += 6;
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text(`Reference: ${ref}`, 12, y);
+  doc.text(`Submitted: ${(ad.submitted_at ? new Date(ad.submitted_at) : new Date()).toLocaleString('en-GB')}`, w-12, y, {align:'right'});
+  y += 4.5;
+  doc.text(`Applicant: ${fullName}`, 12, y);
+  doc.text(`Status: Submitted — pending review`, w-12, y, {align:'right'});
+  y += 7;
+
+  // 1 — Applicant identity (sourced from the shareholder row flagged is_applicant)
+  y = _sectionTitle(doc, y, '1.  Applicant identity');
+  const idRows = [
+    ['Full name', fullName],
+    ['Date of birth', ap.dob || '—'],
+    ['Nationality', ap.nationality || ad.applicant_nationality || '—'],
+    ['Country of residence', ap.country_of_residence || ap.country || '—'],
+    ['ID / passport', [ap.id_type, ap.passport || ap.id_number].filter(Boolean).join(' — ') || '—'],
+    ['Email', ap.email || '—'],
+    ['Mobile', ap.mobile || ap.phone || '—'],
+    ['Address', [ap.addrStreet || ap.address_line1, ap.addrTown || ap.city, ap.addrPostcode || ap.postcode, ap.country].filter(Boolean).join(', ') || '—'],
+    ['PEP status', (ap.pep_status === 'yes' || ad.applicant_pep_status === 'yes') ? ('Yes — ' + (ap.pep_role || ad.applicant_pep_role || 'role not specified')) : 'No'],
+    ['Tax residency', ap.tax_residency || ap.tin_country || '—']
+  ];
+  doc.autoTable({ startY:y, head:[['Field','Value']], body:idRows, theme:'plain',
+    styles:{fontSize:8, cellPadding:1.4}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
+    columnStyles:{0:{cellWidth:48, textColor:[107,114,128]}}, margin:{left:12,right:12}
+  });
+  y = doc.lastAutoTable.finalY + 5;
+
+  // 2 — Engagement
+  if(y > 240){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
+  y = _sectionTitle(doc, y, '2.  Engagement details');
+  const services = Array.isArray(ad.services) ? ad.services.join(', ') : (ad.services || '—');
+  const engRows = [
+    ['Services selected', services],
+    ['Introduced by', ad.introduced_by || '—'],
+    ['Principal activities', ad.principal_activities || ad.entity_activities || '—'],
+    ['Economic rationale', ad.economic_rationale || ad.entity_rationale || '—'],
+    ['Proposed company name', ad.company_name || '—'],
+    ['Alt name', ad.alt_company_name || '—'],
+    ['Company type', ad.company_type || '—'],
+    ['Country of incorporation', ad.country_of_incorp || '—'],
+    ['Expected turnover Y1 / Y2', `${ad.turnover_y1 ?? ad.entity_turnover_y1 ?? '—'} / ${ad.turnover_y2 ?? ad.entity_turnover_y2 ?? '—'}`],
+    ['Share capital', ad.share_capital ?? '—'],
+    ['Expected employees', ad.expected_employees || '—'],
+    ['Countries of operation', ad.countries_operation || '—'],
+    ['Existing entity (if any)', [ad.entity_name, ad.entity_country, ad.entity_reg_number].filter(Boolean).join(' · ') || '—']
+  ];
+  doc.autoTable({ startY:y, head:[['Field','Value']], body:engRows, theme:'plain',
+    styles:{fontSize:8, cellPadding:1.4}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
+    columnStyles:{0:{cellWidth:48, textColor:[107,114,128]}}, margin:{left:12,right:12}
+  });
+  y = doc.lastAutoTable.finalY + 5;
+
+  // 3 — Shareholders & UBOs
+  if(y > 230){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
+  y = _sectionTitle(doc, y, '3.  Shareholders & UBOs');
+  const sh = snap.shareholders || [];
+  if(sh.length){
+    const shRows = sh.map(r => [
+      [r.first_name, r.surname].filter(Boolean).join(' ') || r.name || '—',
+      r.dob || '—',
+      r.nationality || '—',
+      r.country_of_residence || r.country || '—',
+      (r.percentage != null ? (r.percentage + '%') : '—'),
+      [r.is_ubo && 'UBO', r.is_director && 'Director', r.is_controlling && 'Controlling'].filter(Boolean).join(', ') || (r.role || '—'),
+      r.pep_status === 'yes' ? 'PEP' : '—'
+    ]);
+    doc.autoTable({ startY:y, head:[['Name','DOB','Nat.','Residence','%','Role','PEP']], body:shRows,
+      styles:{fontSize:7.5, cellPadding:1.2}, headStyles:{fillColor:[28,117,188], textColor:255, fontStyle:'bold'},
+      margin:{left:12,right:12}
+    });
+    y = doc.lastAutoTable.finalY + 5;
+  } else {
+    doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text('None declared.', 14, y); doc.setTextColor(0,0,0); y += 6;
+  }
+
+  // 4 — Source of funds
+  if(y > 240){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
+  y = _sectionTitle(doc, y, '4.  Source of funds');
+  const sof = snap.sof || [];
+  if(sof.length){
+    const sofRows = sof.map(r => [r.source_type || r.type || '—', r.value != null ? String(r.value) : '—', r.description || '—']);
+    doc.autoTable({ startY:y, head:[['Source','Value (EUR)','Description']], body:sofRows,
+      styles:{fontSize:8, cellPadding:1.3}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
+      columnStyles:{0:{cellWidth:50},1:{cellWidth:30, halign:'right'}}, margin:{left:12,right:12}
+    });
+    y = doc.lastAutoTable.finalY + 5;
+  } else {
+    doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text('No sources of funds declared.', 14, y); doc.setTextColor(0,0,0); y += 6;
+  }
+
+  // 5 — Source of wealth (PEP / EDD only)
+  const sow = snap.sow;
+  if(sow && Array.isArray(sow.sources) && sow.sources.length){
+    if(y > 230){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
+    y = _sectionTitle(doc, y, '5.  Source of wealth  (PEP / EDD)');
+    const sowRows = sow.sources.map(s => [s.type || '—', s.value != null ? String(s.value) : '—', s.description || '—']);
+    doc.autoTable({ startY:y, head:[['Source','Value (EUR)','Description']], body:sowRows,
+      styles:{fontSize:8, cellPadding:1.3}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
+      columnStyles:{0:{cellWidth:50},1:{cellWidth:30, halign:'right'}}, margin:{left:12,right:12}
+    });
+    y = doc.lastAutoTable.finalY + 2;
+    if(sow.total_declared_wealth != null){
+      doc.setFontSize(8.5); doc.setFont('helvetica','bold');
+      doc.text(`Total declared wealth: EUR ${sow.total_declared_wealth}`, 14, y+3);
+      doc.setFont('helvetica','normal'); y += 7;
+    }
+  }
+
+  // 6 — Background questionnaire
+  if(y > 235){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
+  y = _sectionTitle(doc, y, '6.  Background questionnaire');
+  const qa = snap.questionnaire || [];
+  if(qa.length){
+    const qaRows = qa.map((r,i) => [String(i+1), r.question || r.q || '—', (r.answer || r.a || '—').toString().toUpperCase(), r.detail || '']);
+    doc.autoTable({ startY:y, head:[['#','Question','Answer','Detail']], body:qaRows,
+      styles:{fontSize:7.5, cellPadding:1.2, valign:'top'}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
+      columnStyles:{0:{cellWidth:8},2:{cellWidth:18, halign:'center'}}, margin:{left:12,right:12}
+    });
+    y = doc.lastAutoTable.finalY + 5;
+  } else {
+    doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text('No questionnaire answers captured.', 14, y); doc.setTextColor(0,0,0); y += 6;
+  }
+
+  // 7 — Documents
+  if(y > 235){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
+  y = _sectionTitle(doc, y, '7.  Documents submitted');
+  const docList = snap.docs && snap.docs.length ? snap.docs : null;
+  if(docList){
+    doc.autoTable({ startY:y, head:[['Document type','File name']], body:docList.map(d=>[d.type, d.file]),
+      styles:{fontSize:8, cellPadding:1.3}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
+      margin:{left:12,right:12}
+    });
+    y = doc.lastAutoTable.finalY + 5;
+  } else {
+    doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text('Document list rendered from server-side audit (not collected in client snapshot).', 14, y); doc.setTextColor(0,0,0); y += 6;
+  }
+
+  // 8 — Declarations (confirmed)
+  if(y > 220){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
+  y = _sectionTitle(doc, y, '8.  Declarations confirmed by applicant');
+  const declLabels = [
+    'Data protection consent (GDPR & Personal Data Protection Laws)',
+    'Accuracy of information — criminal offence to falsify (Article 3, Cyprus AML Law)',
+    'Funds from legitimate sources',
+    'PEP and sanctions declaration accurate',
+    'Ongoing duty to update Predeevo of material changes',
+    'Acknowledgment of MOKAS reporting obligation (no tipping off)',
+    'AML awareness — Cyprus laws and regulations'
+  ];
+  const ids = ['dc1','dc2','dc3','dc4','dc5','dc6','dc7'];
+  const declRows = declLabels.map((t, i) => [
+    String(i+1),
+    t,
+    document.getElementById(ids[i])?.checked ? 'Confirmed' : 'NOT confirmed'
+  ]);
+  doc.autoTable({ startY:y, head:[['#','Declaration','Status']], body:declRows,
+    styles:{fontSize:8, cellPadding:1.3, valign:'top'}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
+    columnStyles:{0:{cellWidth:8},2:{cellWidth:30, halign:'center', fontStyle:'bold'}}, margin:{left:12,right:12}
+  });
+  y = doc.lastAutoTable.finalY + 5;
+
+  // 9 — Signature & verification
+  if(y > 245){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
+  y = _sectionTitle(doc, y, '9.  Signature & verification');
+  const sigLbl = snap.sigMethod === 'own'      ? 'Own electronic signature (eIDAS AdES/QES)'
+              : snap.sigMethod === 'physical' ? 'Wet ink — printed and signed by hand'
+              : '—';
+  const sigRows = [
+    ['Method', sigLbl],
+    ['Signed file', snap.sigUpload?.fileName ? `${snap.sigUpload.fileName} (${Math.round((snap.sigUpload.fileSize||0)/1024)} KB)` : '—'],
+    ['Storage reference', snap.sigUpload?.path || '—'],
+    ['eIDAS certificate reference', snap.eidasRef || '—'],
+    ['Biometric reference', ad.biometric_ref || 'Not performed'],
+    ['Submitted at', (ad.submitted_at ? new Date(ad.submitted_at) : new Date()).toISOString()],
+    ['User agent', navigator.userAgent.slice(0,90)]
+  ];
+  doc.autoTable({ startY:y, head:[['Field','Value']], body:sigRows, theme:'plain',
+    styles:{fontSize:8, cellPadding:1.3}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
+    columnStyles:{0:{cellWidth:48, textColor:[107,114,128]}}, margin:{left:12,right:12}
+  });
+
+  _pdfFooter(doc, ref);
+  doc.save(`Predeevo-KYC-${ref || 'application'}.pdf`);
+}
+
+// Backwards-compat — `dlPDF()` is the name wired up on the success screen.
+function dlPDF(){ generateApplicationReport(); }
 
 // ════════════════════════════════════════════════
 // DRAFTS — DB-backed save (Commit 2)
@@ -4126,8 +4562,7 @@ function _collectAppData(forSubmit){
     sig_method: document.querySelector('.sig-opt.on input')?.value || null,
     sig_reference: txt('sig-eidas-reference'),
     physical_appointment_ref: txt('sig-physical-appointment'),
-    evrotrust_mobile: txt('sig-evrotrust-mobile'),
-    evrotrust_mobile_country_code: txt('evro-cc'),
+    // (legacy: evrotrust_mobile / evrotrust_mobile_country_code removed May 2026 with Evrotrust QES path)
 
     // Declarations
     decl_gdpr: chk('dc1'),
