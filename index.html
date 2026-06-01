@@ -589,6 +589,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 <input type="file" id="kyc-file-input" accept="application/pdf,image/jpeg,image/png" style="display:none">
 <!-- Hidden file input used by the Step 7 signed-declaration uploader -->
 <input type="file" id="sig-file-input" accept="application/pdf,image/jpeg,image/png" style="display:none">
+<!-- Step 4 identity selfie picker — capture="user" prompts the front camera on mobile, falls back to file picker on desktop. -->
+<input type="file" id="sel-file-input" accept="image/jpeg,image/png" capture="user" style="display:none">
 
 
 <!-- ── ACCESS GATE — shown until token is validated (denial states) ── -->
@@ -1094,36 +1096,40 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <button class="btn btn-blue" onclick="validateAndProceed(2,3)">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
-<!-- ══ STEP 3 — VERIFICATION ══ -->
+<!-- ══ STEP 4 — IDENTITY SELFIE ══ -->
+<!-- Previously a fake biometric/liveness UI with a hardcoded 98% match score and a 'SUM-2026-AB7F291' reference. -->
+<!-- Rewritten 2026-06-01 to a plain selfie upload: compliance officer manually matches the selfie to the ID document -->
+<!-- uploaded in Step 3. No third-party biometric API, no false eIDAS/Art. 9 claims. Hidden <input id="sel-file-input"> -->
+<!-- is co-located with the sig file input near the top of <body>. -->
 <div class="step" id="s4">
-  <div class="card">
-    <div class="card-title"><i class="ti ti-fingerprint"></i>Identity verification — applicant only</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">This is a quick liveness check to confirm you are the person whose documents were uploaded in Step 3. Other UBOs or shareholders listed in Step 2 will complete their own identity verification via their individual KYC links. Takes under 2 minutes.</p>
-    <div class="alert-box"><i class="ti ti-shield" style="font-size:14px;flex-shrink:0;margin-top:1px"></i><strong>Biometric data consent (GDPR Art. 9).</strong> Facial recognition is special category data. Your biometric data is processed solely for identity verification and deleted immediately after the check is complete.</div>
-    <div style="border:0.5px solid var(--blue-border);border-radius:9px;padding:12px 14px;background:var(--blue-pale);margin-bottom:14px">
-      <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer">
-        <input type="checkbox" id="bio-c" style="width:15px;height:15px;accent-color:var(--blue);margin-top:2px;flex-shrink:0">
-        <span style="font-size:12px;font-weight:500;color:var(--text)">I consent to biometric processing for AML identity verification under GDPR Art. 9(2)(a).</span>
-      </label>
-    </div>
-    <div id="vsteps">
-      <div class="vs-row act" id="vs2"><div class="vs-icon vsi-act"><i class="ti ti-camera-selfie"></i></div><div><div class="vs-title">Liveness check &amp; selfie</div><div class="vs-desc">Follow on-screen prompts. Your face is matched to the photo ID you uploaded in Step 3.</div><div class="vs-tag vst-a"><i class="ti ti-camera" style="font-size:10px"></i>Ready to start</div></div></div>
-    </div>
-    <div id="v-running" style="display:none;text-align:center;padding:18px 0"><div class="spinner"></div><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Verifying identity...</div><div style="font-size:11px;color:var(--muted)">Please keep this window open. Usually 10–30 seconds.</div></div>
-    <div id="v-result" style="display:none">
-      <div class="vr-box"><div><div class="vr-num">98%</div><div class="vr-lbl">Match score</div></div><div class="vr-bars"><div class="vr-bar-row"><span class="vr-bar-lbl">Face match</span><div class="vr-track"><div class="vr-fill" style="width:98%"></div></div></div><div class="vr-bar-row"><span class="vr-bar-lbl">Liveness</span><div class="vr-track"><div class="vr-fill" style="width:100%"></div></div></div></div></div>
-      <div class="success-box" style="margin-top:10px;margin-bottom:0"><i class="ti ti-circle-check" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Identity verified · Face matched · Liveness confirmed. Ref: <strong style="font-family:monospace">SUM-2026-AB7F291</strong></div>
-    </div>
-    <button class="btn btn-blue" style="width:100%;justify-content:center;margin-top:14px" id="v-btn" onclick="runV()"><i class="ti ti-camera-selfie" style="font-size:14px"></i>Start liveness check</button>
-    <div style="text-align:center;margin-top:8px;font-size:10px;color:var(--subtle)">eIDAS compliant · GDPR Art. 9 · Biometric data deleted after verification</div>
+
+  <div class="validation-banner" id="val-banner-s4">
+    <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following required fields before continuing:</div>
+    <ul class="validation-list" id="val-list-s4"></ul>
   </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-camera-selfie"></i>Identity selfie — applicant only</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Upload a clear photo of yourself so our compliance team can confirm you are the person on the ID document uploaded in Step 3. Other UBOs or shareholders listed in Step 2 will be asked to provide their own selfie via their individual KYC links.</p>
+
+    <div class="info-box" style="margin-bottom:14px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i><strong>How to take a good selfie:</strong> face the camera straight on · plain background · good lighting · no sunglasses or hat · full face visible · holding your ID next to your face is welcome but not required.</div>
+
+    <div class="fg" style="margin-bottom:0">
+      <label class="lbl">Upload your selfie <span class="req">*</span><span class="hint">JPG or PNG · Max 10MB · On mobile, your front camera will open.</span></label>
+      <div class="upload-zone" id="up-selfie" onclick="pickSelfie()"><i class="ti ti-camera-selfie" style="font-size:22px;color:var(--muted);display:block;margin-bottom:5px"></i><div style="font-size:12px;font-weight:600">Click to take or upload selfie</div><div style="font-size:10px;color:var(--subtle);margin-top:3px">JPG or PNG · Max 10MB</div></div>
+      <div id="up-selfie-file" class="upload-file-row" style="display:none;margin-top:8px;padding:8px 12px;background:var(--green-light,#dcfce7);border-radius:8px;font-size:12px;color:var(--text)"><i class="ti ti-photo-check" style="color:var(--green,#16a34a);margin-right:6px"></i><span id="up-selfie-name">—</span><button type="button" onclick="clearSelfie()" style="float:right;background:none;border:none;cursor:pointer;color:var(--muted)"><i class="ti ti-x"></i></button></div>
+    </div>
+
+    <div style="text-align:center;margin-top:14px;font-size:10px;color:var(--subtle)">Your photo is stored securely and used solely for AML identity verification under Cyprus Law 188(I)/2007.</div>
+  </div>
+
   <div class="btn-row">
     <button class="btn-back" onclick="gs(3)"><i class="ti ti-arrow-left"></i> Back</button>
     <span class="step-count">Step 4 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
-    <button class="btn btn-blue" id="v-next" onclick="gs(_applicantIsPEP() ? 's-sow' : 5)" disabled style="opacity:.4;cursor:not-allowed">Continue <i class="ti ti-arrow-right"></i></button>
+    <button class="btn btn-blue" onclick="validateAndProceed(4, _applicantIsPEP() ? 's-sow' : 5)">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
 
@@ -1136,7 +1142,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   </div>
 <div class="card">
     <div class="card-title"><i class="ti ti-folder"></i>Supporting documents</div>
-    <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>The required documents below are determined by the information you provided in Steps 1 and 2. Your passport will be captured separately during identity verification (Step 4).</div>
+    <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>The required documents below are determined by the information you provided in Steps 1 and 2. A selfie matching your ID will be requested in Step 4.</div>
 
     <!-- Renderer outputs the dynamic doc list here, grouped into Required + Additional sections. -->
     <!-- CV is rendered inline with its manual-fill toggle + collapsible employment/education sub-form. -->
@@ -2242,22 +2248,91 @@ function qSel(id,val,inv){
 }
 buildQ();
 
-// ── VERIFICATION ──
-function runV(){
-  if(!document.getElementById('bio-c').checked){alert('Please provide biometric consent first.');return;}
-  const btn=document.getElementById('v-btn');
-  btn.disabled=true;btn.style.opacity='.5';btn.innerHTML='<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0 4px 0 0;display:inline-block;vertical-align:middle"></div>Verifying...';
-  document.getElementById('v-running').style.display='block';
-  function sv(n,lbl){const el=document.getElementById('vs'+n);el.className='vs-row done';el.querySelector('.vs-icon').className='vs-icon vsi-done';el.querySelector('.vs-icon').innerHTML='<i class="ti ti-check"></i>';el.querySelector('.vs-tag').className='vs-tag vst-d';el.querySelector('.vs-tag').innerHTML='<i class="ti ti-check" style="font-size:10px"></i>'+lbl;}
-  setTimeout(()=>{
-    sv(2,'Face matched · Liveness confirmed');
-    document.getElementById('v-running').style.display='none';
-    document.getElementById('v-result').style.display='block';
-    btn.disabled=false;btn.style.opacity='1';btn.innerHTML='<i class="ti ti-check" style="font-size:14px"></i>Verification complete';
-    const next=document.getElementById('v-next');
-    next.disabled=false;next.style.opacity='1';next.style.cursor='pointer';
+// ── STEP 4 — IDENTITY SELFIE UPLOAD ──
+// Picks a selfie image, uploads to KYC_BUCKET under selfies/{appId|currentRef}/{ts}-{name},
+// inserts a kyc_documents row with doc_type 'identity_selfie', and stores the doc_id on
+// window.selfieUpload. No third-party biometric API — the compliance officer manually matches
+// this selfie against the ID document uploaded in Step 3 from the predeevo-app dashboard.
+window.selfieUpload = window.selfieUpload || null;
+
+function pickSelfie(){
+  const inp = document.getElementById('sel-file-input');
+  if(!inp) return;
+  inp.onchange = (ev) => {
+    const f = ev.target.files && ev.target.files[0];
+    inp.value = '';                 // allow re-picking the same file later
+    if(!f) return;
+    if(!/^image\/(jpeg|png)$/.test(f.type)){ alert('Please upload a JPG or PNG image.'); return; }
+    if(f.size > 10 * 1024 * 1024){ alert('File too large — maximum 10 MB.'); return; }
+    uploadSelfie(f);
+  };
+  inp.click();
+}
+
+async function uploadSelfie(file){
+  const zone = document.getElementById('up-selfie');
+  const row  = document.getElementById('up-selfie-file');
+  const name = document.getElementById('up-selfie-name');
+
+  // Orphan-prevention: if there's already a selfie uploaded, clean it up first so the old
+  // Storage object + kyc_documents row don't linger when the client re-uploads.
+  if(window.selfieUpload){
+    try { await clearSelfie(); } catch(e){ console.warn('Pre-upload selfie cleanup:', e); }
+  }
+
+  if(zone){ zone.classList.add('uploading'); zone.style.opacity = '.55'; }
+  if(name) name.textContent = 'Uploading ' + file.name + '…';
+  if(row)  row.style.display = 'block';
+
+  try {
+    if(!sb) throw new Error('Supabase client not initialised');
+    // Ensure we have an application row so the selfie upload has a real FK.
+    if(!currentAppId){ await saveDraftToDB(); }
+    const appKey = currentAppId || currentRef || ('anon-' + Date.now());
+    const safeName = file.name.replace(/[^A-Za-z0-9._-]/g,'_');
+    const path = `selfies/${appKey}/${Date.now()}-${safeName}`;
+
+    const { error: upErr } = await sb.storage.from(KYC_BUCKET).upload(path, file, {
+      cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg'
+    });
+    if(upErr) throw upErr;
+
+    let insertedId = null;
+    if(currentAppId){
+      const { data, error: insErr } = await sb.from('kyc_documents').insert({
+        application_id: currentAppId,
+        doc_type: 'identity_selfie',
+        file_name: file.name,
+        file_size: file.size,
+        storage_path: path
+      }).select('id').single();
+      if(insErr){ console.warn('kyc_documents (selfie) insert error:', insErr.message); }
+      else { insertedId = data && data.id; }
+    }
+
+    window.selfieUpload = { docId: insertedId, path, fileName: file.name, fileSize: file.size, uploadedAt: new Date().toISOString() };
+    if(name) name.textContent = file.name;
+    if(zone){ zone.classList.remove('uploading'); zone.style.opacity = ''; }
     saveProgress();
-  },2500);
+  } catch(err){
+    console.error('Selfie upload error:', err);
+    alert('Upload failed: ' + (err.message || 'please try again'));
+    if(zone){ zone.classList.remove('uploading'); zone.style.opacity = ''; }
+    if(row) row.style.display = 'none';
+    window.selfieUpload = null;
+  }
+}
+
+async function clearSelfie(){
+  const rec = window.selfieUpload;
+  const row = document.getElementById('up-selfie-file');
+  if(rec && sb){
+    try { if(rec.path) await sb.storage.from(KYC_BUCKET).remove([rec.path]); } catch(e){ console.warn('Selfie storage remove:', e); }
+    try { if(rec.docId) await sb.from('kyc_documents').delete().eq('id', rec.docId); } catch(e){ console.warn('Selfie row delete:', e); }
+  }
+  window.selfieUpload = null;
+  if(row) row.style.display = 'none';
+  saveProgress();
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -3269,6 +3344,9 @@ const STEP_REQUIRED = {
     {check:'dynamic_required_docs', label:'Required documents are not yet uploaded'},
     {check:'cv', label:'Curriculum Vitae (or employment history form)'},
   ],
+  4: [
+    {check:'selfie_file', label:'Identity selfie is required — please upload a clear photo of yourself'},
+  ],
   5: [
     {check:'questionnaire', label:'All background questionnaire questions must be answered'},
   ],
@@ -3513,6 +3591,10 @@ function validateStep(stepNum){
           if(m && !(window.sigUploads && window.sigUploads[m])) errors.push(f.label);
           break;
         }
+        case 'selfie_file':
+          // Require a successfully uploaded identity selfie before continuing past Step 4
+          if(!window.selfieUpload) errors.push(f.label);
+          break;
       }
       return;
     }
@@ -3913,6 +3995,24 @@ async function resumeDraft(draftInfo){
       });
     } catch(e){ console.warn('Sig uploads rehydrate:', e); }
 
+    // ── Rehydrate Step 4 identity selfie from kyc_documents ──
+    // Same pattern as the signed-declaration rehydrate above. Without this the client would
+    // see an empty selfie upload zone on resume and Step 4 validation would block them.
+    try {
+      const selfieDoc = (docList || []).find(d => d && d.doc_type === 'identity_selfie');
+      if(selfieDoc){
+        window.selfieUpload = {
+          docId: selfieDoc.id, path: selfieDoc.storage_path,
+          fileName: selfieDoc.file_name, fileSize: selfieDoc.file_size,
+          uploadedAt: selfieDoc.created_at || new Date().toISOString(), restored: true
+        };
+        const row = document.getElementById('up-selfie-file');
+        const name = document.getElementById('up-selfie-name');
+        if(name) name.textContent = selfieDoc.file_name || '—';
+        if(row)  row.style.display = 'block';
+      }
+    } catch(e){ console.warn('Selfie rehydrate:', e); }
+
     // ── Restore declarations ──
     const setCheck = (id, val) => { const el = document.getElementById(id); if(el) el.checked = !!val; };
     setCheck('dc1', app.decl_gdpr || app.express_consent);
@@ -4133,7 +4233,7 @@ async function submit(){
     if(sb) await sb.from('kyc_audit_log').insert({
       application_id: appId,
       event: 'kyc_submitted',
-      details: { services: appData.services, sig_method: appData.sig_method, biometric_ref: appData.biometric_ref }
+      details: { services: appData.services, sig_method: appData.sig_method, selfie_doc_id: appData.selfie_doc_id }
     });
 
     // ── Clear localStorage draft ──
@@ -4477,7 +4577,7 @@ function generateApplicationReport(){
     ['Signed file', snap.sigUpload?.fileName ? `${snap.sigUpload.fileName} (${Math.round((snap.sigUpload.fileSize||0)/1024)} KB)` : '—'],
     ['Storage reference', snap.sigUpload?.path || '—'],
     ['eIDAS certificate reference', snap.eidasRef || '—'],
-    ['Biometric reference', ad.biometric_ref || 'Not performed'],
+    ['Identity selfie', ad.selfie_file_name ? `${ad.selfie_file_name} (manual face match by compliance officer)` : 'Not uploaded'],
     ['Submitted at', (ad.submitted_at ? new Date(ad.submitted_at) : new Date()).toISOString()],
     ['User agent', navigator.userAgent.slice(0,90)]
   ];
@@ -4550,10 +4650,16 @@ function _collectAppData(forSubmit){
     // Controlling person (when no UBO ≥25%)
     controlling_person_id: txt('controlling-person-select') || txt('entity-controlling-select'),
 
-    // Biometric (filled on actual submit in this version)
-    biometric_ref: forSubmit ? 'SUM-2026-AB7F291' : null,
-    biometric_score: forSubmit ? 98 : null,
-    biometric_passed: forSubmit ? true : null,
+    // Identity selfie (manual review by compliance officer — no third-party biometric API)
+    // The selfie is also represented as a row in kyc_documents with doc_type='identity_selfie'.
+    // biometric_* columns are intentionally left NULL — see [[predeevo-step4-implementation]].
+    biometric_ref: null,
+    biometric_score: null,
+    biometric_passed: null,
+    selfie_doc_id: window.selfieUpload?.docId || null,
+    selfie_storage_path: window.selfieUpload?.path || null,
+    selfie_file_name: window.selfieUpload?.fileName || null,
+    selfie_uploaded_at: window.selfieUpload?.uploadedAt || null,
 
     // Manual CV data (employment + education) — null if user uploaded a CV file instead
     cv_manual: _collectCvManual(),
