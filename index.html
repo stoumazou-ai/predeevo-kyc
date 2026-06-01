@@ -226,6 +226,9 @@
     window.currentInvitationExpiresAt = data.expires_at;
     window.currentInvitationEmail = data.client_email;
     window.currentInvitationName  = data.client_name;
+    // AMLCO can disable the Step 4 identity selfie per invitation when the client is met in person.
+    // Default true so legacy invitations (where the column didn't exist) still require the selfie.
+    window.currentInvitationRequireSelfie = (data.require_selfie !== false);
 
     // Check for an existing draft for this invitation
     try {
@@ -1109,18 +1112,76 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   </div>
 
   <div class="card">
-    <div class="card-title"><i class="ti ti-camera-selfie"></i>Identity selfie — applicant only</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Upload a clear photo of yourself so our compliance team can confirm you are the person on the ID document uploaded in Step 3. Other UBOs or shareholders listed in Step 2 will be asked to provide their own selfie via their individual KYC links.</p>
+    <div class="card-title"><i class="ti ti-camera-selfie"></i>Identity selfie &mdash; applicant only</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">We need a live selfie taken on this device so our compliance team can confirm you are the person on the ID document uploaded in Step 3. The capture happens in your browser &mdash; no app to install. Other UBOs or shareholders listed in Step 2 will be asked to provide their own selfie via their individual KYC links.</p>
 
-    <div class="info-box" style="margin-bottom:14px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i><strong>How to take a good selfie:</strong> face the camera straight on · plain background · good lighting · no sunglasses or hat · full face visible · holding your ID next to your face is welcome but not required.</div>
-
-    <div class="fg" style="margin-bottom:0">
-      <label class="lbl">Upload your selfie <span class="req">*</span><span class="hint">JPG or PNG · Max 10MB · On mobile, your front camera will open.</span></label>
-      <div class="upload-zone" id="up-selfie" onclick="pickSelfie()"><i class="ti ti-camera-selfie" style="font-size:22px;color:var(--muted);display:block;margin-bottom:5px"></i><div style="font-size:12px;font-weight:600">Click to take or upload selfie</div><div style="font-size:10px;color:var(--subtle);margin-top:3px">JPG or PNG · Max 10MB</div></div>
-      <div id="up-selfie-file" class="upload-file-row" style="display:none;margin-top:8px;padding:8px 12px;background:var(--green-light,#dcfce7);border-radius:8px;font-size:12px;color:var(--text)"><i class="ti ti-photo-check" style="color:var(--green,#16a34a);margin-right:6px"></i><span id="up-selfie-name">—</span><button type="button" onclick="clearSelfie()" style="float:right;background:none;border:none;cursor:pointer;color:var(--muted)"><i class="ti ti-x"></i></button></div>
+    <!-- IDLE — initial state before camera starts -->
+    <div id="selfie-idle">
+      <div class="info-box" style="margin-bottom:14px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i><strong>How to take a good selfie:</strong> face the camera straight on &middot; plain background &middot; good lighting &middot; no sunglasses or hat &middot; full face visible. Holding your ID next to your face is welcome but not required.</div>
+      <button class="btn btn-blue" style="width:100%;justify-content:center" onclick="startSelfieCamera()"><i class="ti ti-camera"></i>Start camera</button>
+      <div style="text-align:center;margin-top:10px;font-size:11px;color:var(--muted)">Your browser will ask permission to use the camera. Allow it to continue.</div>
     </div>
 
-    <div style="text-align:center;margin-top:14px;font-size:10px;color:var(--subtle)">Your photo is stored securely and used solely for AML identity verification under Cyprus Law 188(I)/2007.</div>
+    <!-- LIVE — camera streaming, awaiting capture -->
+    <div id="selfie-live" style="display:none">
+      <div style="position:relative;background:#000;border-radius:10px;overflow:hidden;aspect-ratio:4/3">
+        <video id="selfie-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1)"></video>
+        <div style="position:absolute;bottom:8px;left:0;right:0;text-align:center;color:white;font-size:11px;text-shadow:0 1px 2px rgba(0,0,0,.8);pointer-events:none">Position your face in the centre, then tap Take photo</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-outline" style="flex:1;justify-content:center" onclick="cancelSelfieCamera()">Cancel</button>
+        <button class="btn btn-blue" style="flex:2;justify-content:center" onclick="captureSelfie()"><i class="ti ti-camera"></i>Take photo</button>
+      </div>
+    </div>
+
+    <!-- CAPTURED — frame frozen, awaiting confirm or retake -->
+    <div id="selfie-captured" style="display:none">
+      <div style="background:#f3f4f6;border-radius:10px;overflow:hidden;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center">
+        <img id="selfie-preview" alt="Captured selfie" style="max-width:100%;max-height:100%;object-fit:contain;display:block">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-outline" style="flex:1;justify-content:center" onclick="startSelfieCamera()"><i class="ti ti-refresh"></i>Retake</button>
+        <button class="btn btn-blue" style="flex:2;justify-content:center" onclick="useSelfie()"><i class="ti ti-check"></i>Use this photo</button>
+      </div>
+      <div style="text-align:center;margin-top:8px;font-size:11px;color:var(--muted)">Make sure the photo is sharp and your full face is visible before continuing.</div>
+    </div>
+
+    <!-- UPLOADING — sending to storage -->
+    <div id="selfie-uploading" style="display:none">
+      <div style="background:#f3f4f6;border-radius:10px;overflow:hidden;aspect-ratio:4/3;position:relative;display:flex;align-items:center;justify-content:center">
+        <img id="selfie-uploading-img" alt="Uploading selfie" style="max-width:100%;max-height:100%;object-fit:contain;display:block;opacity:.45">
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--text)">
+          <div class="spinner" style="width:36px;height:36px;border-width:3px"></div>
+          <div style="font-size:12px;margin-top:10px;font-weight:600">Uploading&hellip;</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DONE — selfie uploaded successfully -->
+    <div id="selfie-done" style="display:none">
+      <div style="background:var(--green-light,#dcfce7);border:0.5px solid var(--green,#16a34a);border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px">
+        <i class="ti ti-circle-check" style="color:var(--green,#16a34a);font-size:26px;flex-shrink:0"></i>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">Selfie uploaded</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;word-break:break-all"><span id="selfie-done-name">&mdash;</span></div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="retakeSelfie()" style="white-space:nowrap;flex-shrink:0"><i class="ti ti-refresh"></i>Retake</button>
+      </div>
+    </div>
+
+    <!-- ERROR — camera unavailable / permission denied / etc. -->
+    <div id="selfie-error" style="display:none">
+      <div class="alert-box" style="margin-bottom:12px;align-items:flex-start">
+        <i class="ti ti-alert-triangle" style="font-size:18px;flex-shrink:0;margin-top:1px"></i>
+        <div style="flex:1">
+          <strong id="selfie-error-title">Camera unavailable</strong>
+          <div id="selfie-error-msg" style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.45">&mdash;</div>
+        </div>
+      </div>
+      <button class="btn btn-outline" style="width:100%;justify-content:center" onclick="startSelfieCamera()"><i class="ti ti-refresh"></i>Try again</button>
+    </div>
+
+    <div style="text-align:center;margin-top:14px;font-size:10px;color:var(--subtle)">Your photo is captured locally in your browser and stored securely. Used solely for AML identity verification under Cyprus Law 188(I)/2007.</div>
   </div>
 
   <div class="btn-row">
@@ -1155,7 +1216,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
-    <button class="btn btn-blue" onclick="validateAndProceed(3, 4)">Continue <i class="ti ti-arrow-right"></i></button>
+    <button class="btn btn-blue" onclick="validateAndProceed(3, _nextStepAfter(3))">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
 
@@ -1275,7 +1336,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     </div>
   </div>
   <div class="btn-row">
-    <button class="btn-back" onclick="gs(_applicantIsPEP() ? 's-sow' : 4)"><i class="ti ti-arrow-left"></i> Back</button>
+    <button class="btn-back" onclick="gs(_prevStepBefore(5))"><i class="ti ti-arrow-left"></i> Back</button>
     <span class="step-count" id="s5-step-count">Step 5 of 7</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
@@ -1527,6 +1588,12 @@ function sphdd(inp){setTimeout(()=>{const dd=inp.parentElement.querySelector('.d
 let currentStep=1;
 // Returns true if the applicant's PEP status is 'yes' — used to decide whether the
 // optional Source of Wealth step shows up in navigation.
+// Returns true if the AMLCO required an identity selfie on this invitation.
+// Default true if the field is missing (legacy invitations from before require_selfie column existed).
+function _requireSelfie(){
+  return window.currentInvitationRequireSelfie !== false;
+}
+
 function _applicantIsPEP(){
   // Check the most recent saved state first
   const list = window._lastSavedShareholders || window._resumedShareholders;
@@ -1546,23 +1613,26 @@ function _applicantIsPEP(){
   return false;
 }
 
-// Updates the step counter text on the SoW step (shows "Step 5 of 8")
-function _updateSowStepCounter(){
-  const el = document.getElementById('sow-step-count');
-  if(el) el.textContent = 'Step 5 of 8';
-}
+// Legacy — kept as no-op for backwards compat. gs() now handles the SoW counter
+// directly because the display index depends on both PEP and require_selfie.
+function _updateSowStepCounter(){ /* handled in gs() */ }
 
-// Resolves the "next" step after a given step. Inserts s-sow between 4 and 5 when applicant is PEP.
+// Resolves the "next" step. Inserts s-sow between 4 and 5 when applicant is PEP, and
+// skips Step 4 entirely when the AMLCO didn't require a selfie on the invitation.
 function _nextStepAfter(current){
+  if(current === 3 && !_requireSelfie()) return _applicantIsPEP() ? 's-sow' : 5;
   if(current === 4 && _applicantIsPEP()) return 's-sow';
   if(current === 's-sow') return 5;
   return (typeof current === 'number') ? current + 1 : 5;
 }
 
-// Resolves the "previous" step before a given step. Inserts s-sow between 5 and 4 when applicant is PEP.
+// Resolves the "previous" step. Mirrors _nextStepAfter — both PEP and require_selfie aware.
 function _prevStepBefore(current){
   if(current === 5 && _applicantIsPEP()) return 's-sow';
+  if(current === 5 && !_requireSelfie()) return 3;
+  if(current === 's-sow' && !_requireSelfie()) return 3;
   if(current === 's-sow') return 4;
+  if(current === 4) return 3;
   return (typeof current === 'number') ? current - 1 : 4;
 }
 
@@ -1576,14 +1646,20 @@ function gs(n){
   const target = document.getElementById(id);
   if(!target){ console.warn('Step not found:', id); return; }
   target.classList.add('active');
-  const total = _applicantIsPEP() ? 8 : 7;
+  // Total visible steps: base 7, +1 if PEP (adds s-sow), -1 if selfie not required (removes s4)
+  const pepYes = _applicantIsPEP();
+  const hasSelfie = _requireSelfie();
+  const total = 7 + (pepYes ? 1 : 0) - (hasSelfie ? 0 : 1);
   if(n!=='success'){
     currentStep = n;
-    // Progress bar: when applicant is PEP, SoW counts as step 5 of 8
+    // Progress bar position — convert each step ID to a 1..total display index.
+    // Numeric steps 1..3 keep their numbers. Step 4 only appears when hasSelfie.
+    // Steps 5/6/7 shift down by 1 if no selfie, up by 1 if PEP (s-sow takes the slot).
     let progressIdx;
-    if(n === 's-sow') progressIdx = 5;
-    else if(typeof n === 'number' && _applicantIsPEP() && n >= 5) progressIdx = n + 1;
-    else if(typeof n === 'number') progressIdx = n;
+    if(n === 's-sow') progressIdx = hasSelfie ? 5 : 4;
+    else if(typeof n === 'number' && n <= 3) progressIdx = n;
+    else if(typeof n === 'number' && n === 4) progressIdx = 4;
+    else if(typeof n === 'number') progressIdx = n + (pepYes ? 1 : 0) - (hasSelfie ? 0 : 1);
     else progressIdx = 1;
     document.getElementById('prog').style.width = (progressIdx/total*100)+'%';
     // Update visible sidebar labels (use original numbering, not adjusted)
@@ -1596,16 +1672,31 @@ function gs(n){
     if(n===3 && typeof renderDocRows === 'function'){
       try { renderDocRows(); } catch(e){ console.warn('renderDocRows failed:', e); }
     }
-    // Update SoW step counter dynamically (always says "Step 5 of 8" when shown)
-    if(n === 's-sow') _updateSowStepCounter();
-    // Update step counters for steps 5/6/7 based on whether SoW is in the flow
-    const pepYes = _applicantIsPEP();
+    // Initialise Step 4 selfie UI when entering it (handles resumed drafts where a selfie already exists)
+    if(n===4 && typeof _initSelfieStep === 'function'){
+      try { _initSelfieStep(); } catch(e){ console.warn('_initSelfieStep:', e); }
+    }
+    // Stop any active camera stream when leaving Step 4 (prevents the indicator light staying on)
+    if(n !== 4 && window._selfieStream){
+      try { window._selfieStream.getTracks().forEach(t => t.stop()); } catch(e){}
+      window._selfieStream = null;
+    }
+    // Update SoW step counter dynamically — accounts for selfie-skip
+    if(n === 's-sow'){
+      const sowEl = document.getElementById('sow-step-count');
+      if(sowEl) sowEl.textContent = `Step ${hasSelfie ? 5 : 4} of ${total}`;
+    }
+    // Update Step 4 step counter (only relevant when selfie required and counter visible)
+    const s4c = document.querySelector('#s4 .step-count');
+    if(s4c) s4c.textContent = `Step 4 of ${total}`;
+    // Update step counters for steps 5/6/7 based on PEP + selfie combination
+    const s5Base = pepYes ? 6 : 5; // Step 5 display number when hasSelfie=true
     const s5c = document.getElementById('s5-step-count');
-    if(s5c) s5c.textContent = pepYes ? 'Step 6 of 8' : 'Step 5 of 7';
+    if(s5c) s5c.textContent = `Step ${s5Base - (hasSelfie ? 0 : 1)} of ${total}`;
     const s6c = document.getElementById('s6-step-count');
-    if(s6c) s6c.textContent = pepYes ? 'Step 7 of 8' : 'Step 6 of 7';
+    if(s6c) s6c.textContent = `Step ${s5Base + 1 - (hasSelfie ? 0 : 1)} of ${total}`;
     const s7c = document.getElementById('s7-step-count');
-    if(s7c) s7c.textContent = pepYes ? 'Step 8 of 8' : 'Step 7 of 7';
+    if(s7c) s7c.textContent = `Step ${s5Base + 2 - (hasSelfie ? 0 : 1)} of ${total}`;
   } else {
     document.getElementById('prog').style.width='100%';
   }
@@ -2255,18 +2346,150 @@ buildQ();
 // this selfie against the ID document uploaded in Step 3 from the predeevo-app dashboard.
 window.selfieUpload = window.selfieUpload || null;
 
-function pickSelfie(){
-  const inp = document.getElementById('sel-file-input');
-  if(!inp) return;
-  inp.onchange = (ev) => {
-    const f = ev.target.files && ev.target.files[0];
-    inp.value = '';                 // allow re-picking the same file later
-    if(!f) return;
-    if(!/^image\/(jpeg|png)$/.test(f.type)){ alert('Please upload a JPG or PNG image.'); return; }
-    if(f.size > 10 * 1024 * 1024){ alert('File too large — maximum 10 MB.'); return; }
-    uploadSelfie(f);
-  };
-  inp.click();
+// ── LIVE CAMERA CAPTURE (replaces the file picker) ──
+// Multi-state UI: idle → live → captured → uploading → done (or error). The capture
+// happens client-side via getUserMedia + canvas → Blob; the resulting Blob is wrapped
+// in a File and uploaded through the existing uploadSelfie() pipeline (so storage
+// paths, kyc_documents rows, and orphan-prevention are unchanged).
+window._selfieStream = null;
+window._selfieBlob   = null;
+
+// Called from gs() when entering Step 4. Restores the "done" state if a selfie was
+// already uploaded (e.g. resumed draft), otherwise shows the idle entry point.
+function _initSelfieStep(){
+  if(window.selfieUpload){
+    const nameEl = document.getElementById('selfie-done-name');
+    if(nameEl) nameEl.textContent = window.selfieUpload.fileName || 'selfie.jpg';
+    _showSelfieState('done');
+  } else {
+    _showSelfieState('idle');
+  }
+}
+
+async function startSelfieCamera(){
+  _showSelfieState('live');
+  // Stop any prior stream (e.g. user clicked Retake from done state)
+  _stopSelfieStream();
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    _showSelfieError('Browser does not support camera access',
+      'Please continue this step on a device with a modern browser (Safari, Chrome, Firefox, or Edge) that supports the camera API. Your progress is saved — you can re-open this invitation link on a different device.');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    });
+    window._selfieStream = stream;
+    const video = document.getElementById('selfie-video');
+    if(video){ video.srcObject = stream; }
+  } catch(err){
+    console.warn('getUserMedia error:', err);
+    let title = 'Camera unavailable';
+    let msg = 'Please allow camera access in your browser and try again.';
+    if(err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')){
+      title = 'Camera permission denied';
+      msg = 'You declined camera access. Grant permission in your browser settings and try again — or re-open this invitation link on a different device. Your progress is saved.';
+    } else if(err && (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError')){
+      title = 'No camera detected';
+      msg = 'This device has no camera. Please re-open your invitation link on a device with a front-facing camera (phone or laptop). Your progress is saved.';
+    } else if(err && err.name === 'NotReadableError'){
+      title = 'Camera is in use';
+      msg = 'Another app is using the camera. Close it and try again.';
+    } else if(err && err.name === 'OverconstrainedError'){
+      title = 'Camera not compatible';
+      msg = 'Your camera does not support the requested resolution. Please try on a different device.';
+    }
+    _showSelfieError(title, msg);
+  }
+}
+
+function cancelSelfieCamera(){
+  _stopSelfieStream();
+  _showSelfieState(window.selfieUpload ? 'done' : 'idle');
+}
+
+function captureSelfie(){
+  const video = document.getElementById('selfie-video');
+  if(!video || !video.videoWidth){
+    alert('Camera not ready — please wait a moment and try again.');
+    return;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  // Mirror horizontally so the saved photo matches what the user saw on screen
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0);
+  // Stop the live stream as soon as we've grabbed the frame
+  _stopSelfieStream();
+  canvas.toBlob(blob => {
+    if(!blob){ alert('Failed to capture image — please try again.'); _showSelfieState('idle'); return; }
+    window._selfieBlob = blob;
+    const previewEl = document.getElementById('selfie-preview');
+    if(previewEl) previewEl.src = URL.createObjectURL(blob);
+    _showSelfieState('captured');
+  }, 'image/jpeg', 0.92);
+}
+
+async function useSelfie(){
+  const blob = window._selfieBlob;
+  if(!blob){ alert('No captured image — please retake.'); _showSelfieState('idle'); return; }
+  // Show uploading state with the same image dimmed underneath
+  const upImg = document.getElementById('selfie-uploading-img');
+  if(upImg) upImg.src = URL.createObjectURL(blob);
+  _showSelfieState('uploading');
+  // Wrap Blob in a File so uploadSelfie() can use it unchanged
+  const fileName = `selfie-${Date.now()}.jpg`;
+  const file = new File([blob], fileName, { type: 'image/jpeg' });
+  try {
+    await uploadSelfie(file);
+    if(window.selfieUpload){
+      const nameEl = document.getElementById('selfie-done-name');
+      if(nameEl) nameEl.textContent = window.selfieUpload.fileName || fileName;
+      _showSelfieState('done');
+    } else {
+      // uploadSelfie cleared selfieUpload on failure
+      _showSelfieError('Upload failed', 'Please try again. If the problem persists, contact us at compliance@predeevo.com.');
+    }
+  } catch(e){
+    console.error('useSelfie upload error:', e);
+    _showSelfieError('Upload failed', (e && e.message) || 'Please try again.');
+  }
+}
+
+function retakeSelfie(){
+  // Delete the existing selfie storage object + kyc_documents row so the new capture
+  // is the only record on file. clearSelfie() also resets window.selfieUpload.
+  if(window.selfieUpload){
+    clearSelfie().catch(e => console.warn('Retake clear:', e));
+  }
+  window._selfieBlob = null;
+  startSelfieCamera();
+}
+
+function _showSelfieState(state){
+  ['idle','live','captured','uploading','done','error'].forEach(s => {
+    const el = document.getElementById('selfie-' + s);
+    if(el) el.style.display = (s === state) ? '' : 'none';
+  });
+}
+
+function _showSelfieError(title, msg){
+  const t = document.getElementById('selfie-error-title');
+  const m = document.getElementById('selfie-error-msg');
+  if(t) t.textContent = title;
+  if(m) m.textContent = msg;
+  _showSelfieState('error');
+}
+
+function _stopSelfieStream(){
+  if(window._selfieStream){
+    try { window._selfieStream.getTracks().forEach(t => t.stop()); } catch(e){}
+    window._selfieStream = null;
+  }
 }
 
 async function uploadSelfie(file){
@@ -3592,8 +3815,9 @@ function validateStep(stepNum){
           break;
         }
         case 'selfie_file':
-          // Require a successfully uploaded identity selfie before continuing past Step 4
-          if(!window.selfieUpload) errors.push(f.label);
+          // Require a successfully uploaded identity selfie before continuing past Step 4.
+          // Skipped entirely when the AMLCO didn't require a selfie on this invitation.
+          if(_requireSelfie() && !window.selfieUpload) errors.push(f.label);
           break;
       }
       return;
@@ -4577,7 +4801,7 @@ function generateApplicationReport(){
     ['Signed file', snap.sigUpload?.fileName ? `${snap.sigUpload.fileName} (${Math.round((snap.sigUpload.fileSize||0)/1024)} KB)` : '—'],
     ['Storage reference', snap.sigUpload?.path || '—'],
     ['eIDAS certificate reference', snap.eidasRef || '—'],
-    ['Identity selfie', ad.selfie_file_name ? `${ad.selfie_file_name} (manual face match by compliance officer)` : 'Not uploaded'],
+    ['Identity selfie', window.currentInvitationRequireSelfie === false ? 'Not required — applicant verified in person' : (ad.selfie_file_name ? `${ad.selfie_file_name} (manual face match by compliance officer)` : 'Not uploaded')],
     ['Submitted at', (ad.submitted_at ? new Date(ad.submitted_at) : new Date()).toISOString()],
     ['User agent', navigator.userAgent.slice(0,90)]
   ];
