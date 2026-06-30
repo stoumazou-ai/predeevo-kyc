@@ -2340,7 +2340,7 @@ function qSel(id,val,inv){
 buildQ();
 
 // ── STEP 4 — IDENTITY SELFIE UPLOAD ──
-// Picks a selfie image, uploads to KYC_BUCKET under selfies/{appId|currentRef}/{ts}-{name},
+// Picks a selfie image, uploads to KYC_BUCKET under {appId|currentRef}/selfies/{ts}-{name},
 // inserts a kyc_documents row with doc_type 'identity_selfie', and stores the doc_id on
 // window.selfieUpload. No third-party biometric API — the compliance officer manually matches
 // this selfie against the ID document uploaded in Step 3 from the predeevo-app dashboard.
@@ -2513,7 +2513,7 @@ async function uploadSelfie(file){
     if(!currentAppId){ await saveDraftToDB(); }
     const appKey = currentAppId || currentRef || ('anon-' + Date.now());
     const safeName = file.name.replace(/[^A-Za-z0-9._-]/g,'_');
-    const path = `selfies/${appKey}/${Date.now()}-${safeName}`;
+    const path = `${appKey}/selfies/${Date.now()}-${safeName}`;
 
     const { error: upErr } = await sb.storage.from(KYC_BUCKET).upload(path, file, {
       cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg'
@@ -3457,7 +3457,7 @@ function sigS(m){
 function sendEvro(){ /* removed: Evrotrust QES path retired May 2026 */ }
 
 // ── STEP 7 — SIGNED-DECLARATION UPLOAD ──
-// Picks a file, validates, uploads to KYC_BUCKET under signatures/{appId|currentRef}/{ts}-{name},
+// Picks a file, validates, uploads to KYC_BUCKET under {appId|currentRef}/signatures/{ts}-{name},
 // inserts a kyc_documents row with doc_type 'signed_declaration_own' or 'signed_declaration_physical',
 // and stores the resulting doc_id on window.sigUploads[method].
 window.sigUploads = window.sigUploads || { own: null, physical: null };
@@ -3499,7 +3499,7 @@ async function uploadSigFile(method, file){
     if(!currentAppId){ await saveDraftToDB(); }
     const appKey = currentAppId || currentRef || ('anon-' + Date.now());
     const safeName = file.name.replace(/[^A-Za-z0-9._-]/g,'_');
-    const path = `signatures/${appKey}/${Date.now()}-${safeName}`;
+    const path = `${appKey}/signatures/${Date.now()}-${safeName}`;
 
     const { error: upErr } = await sb.storage.from(KYC_BUCKET).upload(path, file, {
       cacheControl: '3600', upsert: false, contentType: file.type || 'application/octet-stream'
