@@ -32,6 +32,76 @@
     // Form stays hidden via .wrap visibility:hidden CSS
   }
 
+  // ── SESSION-EXPIRY DETECTION ──
+  // The form's anon role can only write to Supabase while the linked invitation is
+  // still 'pending' and not past expires_at. When the session sits open across the
+  // expiry boundary (or while an AMLCO revokes the invitation), Supabase rejects
+  // every write with a cryptic "new row violates row-level security policy" error.
+  // These two helpers detect that situation and replace the cryptic error with a
+  // friendly full-screen gate explaining what happened.
+
+  // Cheap pre-flight check — no network roundtrip. Caches expires_at from grantAccess.
+  // Returns true and shows a gate if the in-memory expiry is already in the past.
+  function _isLikelyExpiredClientSide(){
+    if(window._sessionExpiredHandled) return true;            // already shown the gate
+    const exp = window.currentInvitationExpiresAt;
+    if(exp && new Date(exp) < new Date()){
+      window._sessionExpiredHandled = true;
+      showGate('Session expired',
+        'Your invitation link expired while this form was open. Please contact your Predeevo advisor for a new link. Your progress was saved up to your last successful update.',
+        true);
+      return true;
+    }
+    return false;
+  }
+
+  // Reactive check — run AFTER a Supabase call fails with an RLS-flavoured error.
+  // Re-validates the invitation against the server to determine *why* the session
+  // is no longer valid (expired vs revoked vs already completed) and shows the
+  // matching gate. Returns true when a gate is shown (caller should stop).
+  async function _handleSessionExpiry(err){
+    if(window._sessionExpiredHandled) return true;            // already shown the gate
+    const msg = (err && err.message) || String(err || '');
+    if(!/row-level security|violates row-level|RLS|new row violates/i.test(msg)) return false;
+    if(!window.sb || !window.currentToken){
+      window._sessionExpiredHandled = true;
+      showGate('Session ended',
+        'Your session ended unexpectedly. Please contact your Predeevo advisor.', true);
+      return true;
+    }
+    try {
+      const { data } = await window.sb
+        .from('kyc_invitations')
+        .select('status,expires_at')
+        .eq('token', window.currentToken)
+        .single();
+      window._sessionExpiredHandled = true;
+      if(!data){
+        showGate('Session ended',
+          'This invitation link is no longer valid. Please contact your Predeevo advisor for a new link.', true);
+      } else if(data.status === 'completed'){
+        showGate('Already submitted',
+          'This invitation has already been used. If you need to submit additional information, please contact your Predeevo advisor.', true);
+      } else if(data.status === 'revoked'){
+        showGate('Link revoked',
+          'This invitation has been revoked. Please contact your Predeevo advisor for a new link.', true);
+      } else if(data.expires_at && new Date(data.expires_at) < new Date()){
+        showGate('Session expired',
+          'Your invitation link expired while this form was open. Please contact your Predeevo advisor for a new link. Your progress was saved up to your last successful update.', true);
+      } else {
+        // RLS error but the invitation looks healthy. Could be a transient permissions
+        // issue. Show a generic friendly message rather than the raw RLS text.
+        showGate('Session interrupted',
+          'Your session was interrupted. Please contact your Predeevo advisor — they can issue a fresh invitation link if needed.', true);
+      }
+    } catch(_){
+      window._sessionExpiredHandled = true;
+      showGate('Session ended',
+        'Your session ended unexpectedly. Please contact your Predeevo advisor.', true);
+    }
+    return true;
+  }
+
   function grantAccess(invitation) {
     if(document.readyState === 'loading'){
       document.addEventListener('DOMContentLoaded', () => grantAccess(invitation));
@@ -2539,10 +2609,11 @@ async function uploadSelfie(file){
     saveProgress();
   } catch(err){
     console.error('Selfie upload error:', err);
-    alert('Upload failed: ' + (err.message || 'please try again'));
     if(zone){ zone.classList.remove('uploading'); zone.style.opacity = ''; }
     if(row) row.style.display = 'none';
     window.selfieUpload = null;
+    if(await _handleSessionExpiry(err)) return;
+    alert('Upload failed: ' + (err.message || 'please try again'));
   }
 }
 
@@ -3267,6 +3338,7 @@ async function _doUpload(row, file){
     if(upErr) throw upErr;
   } catch(e){
     console.warn('Storage upload error:', e);
+    if(await _handleSessionExpiry(e)) return false;
     _renderDocRowError(row, 'Upload failed: ' + (e.message || 'try again'));
     return false;
   }
@@ -3288,6 +3360,7 @@ async function _doUpload(row, file){
     console.warn('DB insert error:', e);
     // Try to clean up the uploaded file since the DB record failed
     try { await sb.storage.from(KYC_BUCKET).remove([path]); } catch(_){}
+    if(await _handleSessionExpiry(e)) return false;
     _renderDocRowError(row, 'Upload failed: ' + (e.message || 'try again'));
     return false;
   }
@@ -3526,10 +3599,11 @@ async function uploadSigFile(method, file){
     saveProgress();
   } catch(err){
     console.error('Signature upload error:', err);
-    alert('Upload failed: ' + (err.message || 'please try again'));
     if(zone){ zone.classList.remove('uploading'); zone.style.opacity = ''; }
     if(row) row.style.display = 'none';
     window.sigUploads[method] = null;
+    if(await _handleSessionExpiry(err)) return;
+    alert('Upload failed: ' + (err.message || 'please try again'));
   }
 }
 
@@ -4385,6 +4459,11 @@ function generateRef(){
 
 async function submit(){
   const submitBtn = document.querySelector('#s7 .btn-blue');
+  // Cheap pre-check — if invitation already expired in memory, gate immediately.
+  if(_isLikelyExpiredClientSide()){
+    if(submitBtn){ submitBtn.disabled=false; submitBtn.innerHTML='<i class="ti ti-send" style="font-size:13px"></i>Submit KYC'; }
+    return;
+  }
   if(submitBtn){ submitBtn.disabled=true; submitBtn.innerHTML='<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0 4px 0 0;display:inline-block;vertical-align:middle"></div>Submitting...'; }
 
   try {
@@ -4479,6 +4558,7 @@ async function submit(){
       gs('success');
     } else {
       if(submitBtn){ submitBtn.disabled=false; submitBtn.innerHTML='<i class="ti ti-send" style="font-size:13px"></i>Submit KYC'; }
+      if(await _handleSessionExpiry(err)) return;
       alert('Submission failed: ' + (err.message || 'Please check your connection and try again.'));
     }
   }
@@ -5065,6 +5145,8 @@ async function saveDraftToDB(){
     console.warn('No invitation id available — cannot save draft');
     return null;
   }
+  // Cheap pre-check — if invitation is already past expiry in memory, gate immediately.
+  if(_isLikelyExpiredClientSide()) return null;
 
   window._saveInFlight = true;
 
@@ -5135,6 +5217,7 @@ async function saveDraftToDB(){
     console.warn('Draft save error:', e);
     if(hdrBtn) hdrBtn.innerHTML = '<i class="ti ti-alert-triangle"></i>Save failed';
     setTimeout(()=>{ if(hdrBtn) hdrBtn.innerHTML = '<i class="ti ti-device-floppy"></i>Save draft'; }, 2200);
+    if(await _handleSessionExpiry(e)) return null;
     alert('Could not save draft: ' + (e.message || 'Please try again.'));
     return null;
   } finally {
