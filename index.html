@@ -42,7 +42,9 @@
 
   // Cheap pre-flight check — no network roundtrip. Caches expires_at from grantAccess.
   // Returns true and shows a gate if the in-memory expiry is already in the past.
-  function _isLikelyExpiredClientSide(){
+  // Exposed on window so the form scripts (in later <script> blocks, outside this IIFE)
+  // can call it. The closure keeps showGate accessible.
+  window._isLikelyExpiredClientSide = function(){
     if(window._sessionExpiredHandled) return true;            // already shown the gate
     const exp = window.currentInvitationExpiresAt;
     if(exp && new Date(exp) < new Date()){
@@ -53,13 +55,14 @@
       return true;
     }
     return false;
-  }
+  };
 
   // Reactive check — run AFTER a Supabase call fails with an RLS-flavoured error.
   // Re-validates the invitation against the server to determine *why* the session
   // is no longer valid (expired vs revoked vs already completed) and shows the
   // matching gate. Returns true when a gate is shown (caller should stop).
-  async function _handleSessionExpiry(err){
+  // Exposed on window — see _isLikelyExpiredClientSide comment above.
+  window._handleSessionExpiry = async function(err){
     if(window._sessionExpiredHandled) return true;            // already shown the gate
     const msg = (err && err.message) || String(err || '');
     if(!/row-level security|violates row-level|RLS|new row violates/i.test(msg)) return false;
@@ -100,7 +103,7 @@
         'Your session ended unexpectedly. Please contact your Predeevo advisor.', true);
     }
     return true;
-  }
+  };
 
   function grantAccess(invitation) {
     if(document.readyState === 'loading'){
