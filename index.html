@@ -2615,7 +2615,7 @@ async function uploadSelfie(file){
     if(zone){ zone.classList.remove('uploading'); zone.style.opacity = ''; }
     if(row) row.style.display = 'none';
     window.selfieUpload = null;
-    if(await _handleSessionExpiry(err)) return;
+    if(window._handleSessionExpiry && (await window._handleSessionExpiry(err))) return;
     alert('Upload failed: ' + (err.message || 'please try again'));
   }
 }
@@ -3341,7 +3341,7 @@ async function _doUpload(row, file){
     if(upErr) throw upErr;
   } catch(e){
     console.warn('Storage upload error:', e);
-    if(await _handleSessionExpiry(e)) return false;
+    if(window._handleSessionExpiry && (await window._handleSessionExpiry(e))) return false;
     _renderDocRowError(row, 'Upload failed: ' + (e.message || 'try again'));
     return false;
   }
@@ -3363,7 +3363,7 @@ async function _doUpload(row, file){
     console.warn('DB insert error:', e);
     // Try to clean up the uploaded file since the DB record failed
     try { await sb.storage.from(KYC_BUCKET).remove([path]); } catch(_){}
-    if(await _handleSessionExpiry(e)) return false;
+    if(window._handleSessionExpiry && (await window._handleSessionExpiry(e))) return false;
     _renderDocRowError(row, 'Upload failed: ' + (e.message || 'try again'));
     return false;
   }
@@ -3605,7 +3605,7 @@ async function uploadSigFile(method, file){
     if(zone){ zone.classList.remove('uploading'); zone.style.opacity = ''; }
     if(row) row.style.display = 'none';
     window.sigUploads[method] = null;
-    if(await _handleSessionExpiry(err)) return;
+    if(window._handleSessionExpiry && (await window._handleSessionExpiry(err))) return;
     alert('Upload failed: ' + (err.message || 'please try again'));
   }
 }
@@ -4463,7 +4463,7 @@ function generateRef(){
 async function submit(){
   const submitBtn = document.querySelector('#s7 .btn-blue');
   // Cheap pre-check — if invitation already expired in memory, gate immediately.
-  if(_isLikelyExpiredClientSide()){
+  if(window._isLikelyExpiredClientSide && window._isLikelyExpiredClientSide()){
     if(submitBtn){ submitBtn.disabled=false; submitBtn.innerHTML='<i class="ti ti-send" style="font-size:13px"></i>Submit KYC'; }
     return;
   }
@@ -4561,7 +4561,7 @@ async function submit(){
       gs('success');
     } else {
       if(submitBtn){ submitBtn.disabled=false; submitBtn.innerHTML='<i class="ti ti-send" style="font-size:13px"></i>Submit KYC'; }
-      if(await _handleSessionExpiry(err)) return;
+      if(window._handleSessionExpiry && (await window._handleSessionExpiry(err))) return;
       alert('Submission failed: ' + (err.message || 'Please check your connection and try again.'));
     }
   }
@@ -5149,7 +5149,7 @@ async function saveDraftToDB(){
     return null;
   }
   // Cheap pre-check — if invitation is already past expiry in memory, gate immediately.
-  if(_isLikelyExpiredClientSide()) return null;
+  if(window._isLikelyExpiredClientSide && window._isLikelyExpiredClientSide()) return null;
 
   window._saveInFlight = true;
 
@@ -5220,7 +5220,7 @@ async function saveDraftToDB(){
     console.warn('Draft save error:', e);
     if(hdrBtn) hdrBtn.innerHTML = '<i class="ti ti-alert-triangle"></i>Save failed';
     setTimeout(()=>{ if(hdrBtn) hdrBtn.innerHTML = '<i class="ti ti-device-floppy"></i>Save draft'; }, 2200);
-    if(await _handleSessionExpiry(e)) return null;
+    if(window._handleSessionExpiry && (await window._handleSessionExpiry(e))) return null;
     alert('Could not save draft: ' + (e.message || 'Please try again.'));
     return null;
   } finally {
