@@ -4536,11 +4536,14 @@ async function submit(){
     }
 
     // ── Audit log ──
-    if(sb) await sb.from('kyc_audit_log').insert({
-      application_id: appId,
-      event: 'kyc_submitted',
-      details: { services: appData.services, sig_method: appData.sig_method, selfie_doc_id: appData.selfie_doc_id }
-    });
+    if(sb){
+      const { error: _auditErr } = await sb.from('kyc_audit_log').insert({
+        application_id: appId,
+        event: 'kyc_submitted',
+        details: { services: appData.services, sig_method: appData.sig_method, selfie_doc_id: appData.selfie_doc_id }
+      });
+      if(_auditErr) console.warn('Audit log write failed (submission still recorded):', _auditErr.message);
+    }
 
     // ── Clear localStorage draft ──
     try{ localStorage.removeItem('predeevo_kyc_draft'); }catch(e){}
