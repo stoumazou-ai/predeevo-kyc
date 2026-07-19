@@ -504,27 +504,6 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .wt-lbl{font-size:11px;color:rgba(255,255,255,.7);font-weight:600}
 .wt-val{font-size:15px;font-weight:700;color:white}
 
-/* VERIFICATION */
-.vs-row{display:flex;gap:12px;padding:13px;border:0.5px solid rgba(0,0,0,.08);border-radius:10px;margin-bottom:10px;background:var(--surface)}
-.vs-row.act{border-color:var(--blue-border);background:var(--blue-pale)}
-.vs-row.done{border-color:var(--teal-border);background:var(--teal-light)}
-.vs-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.vsi-pend{background:var(--surface);color:var(--subtle)}
-.vsi-act{background:var(--blue-light);color:var(--blue)}
-.vsi-done{background:var(--teal-light);color:var(--teal)}
-.vs-title{font-size:12px;font-weight:700;margin-bottom:2px}
-.vs-desc{font-size:11px;color:var(--muted);line-height:1.5}
-.vs-tag{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:5px}
-.vst-w{background:var(--surface);color:var(--subtle)}
-.vst-a{background:var(--blue-light);color:var(--blue)}
-.vst-d{background:var(--teal-light);color:var(--teal)}
-.vr-box{background:var(--blue);border-radius:10px;padding:14px;margin-top:12px;display:flex;align-items:center;gap:14px}
-.vr-num{font-size:28px;font-weight:700;color:white;line-height:1}
-.vr-lbl{font-size:10px;color:rgba(255,255,255,.6);margin-top:2px}
-.vr-bars{flex:1}.vr-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
-.vr-bar-lbl{font-size:10px;color:rgba(255,255,255,.65);width:76px;font-weight:500;flex-shrink:0}
-.vr-track{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.2);overflow:hidden}
-.vr-fill{height:100%;border-radius:2px;background:white;transition:width .6s}
 .spinner{width:32px;height:32px;border:3px solid var(--blue-light);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -665,8 +644,6 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 <input type="file" id="kyc-file-input" accept="application/pdf,image/jpeg,image/png" style="display:none">
 <!-- Hidden file input used by the Step 7 signed-declaration uploader -->
 <input type="file" id="sig-file-input" accept="application/pdf,image/jpeg,image/png" style="display:none">
-<!-- Step 4 identity selfie picker — capture="user" prompts the front camera on mobile, falls back to file picker on desktop. -->
-<input type="file" id="sel-file-input" accept="image/jpeg,image/png" capture="user" style="display:none">
 
 
 <!-- ── ACCESS GATE — shown until token is validated (denial states) ── -->
@@ -1175,8 +1152,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 <!-- ══ STEP 4 — IDENTITY SELFIE ══ -->
 <!-- Previously a fake biometric/liveness UI with a hardcoded 98% match score and a 'SUM-2026-AB7F291' reference. -->
 <!-- Rewritten 2026-06-01 to a plain selfie upload: compliance officer manually matches the selfie to the ID document -->
-<!-- uploaded in Step 3. No third-party biometric API, no false eIDAS/Art. 9 claims. Hidden <input id="sel-file-input"> -->
-<!-- is co-located with the sig file input near the top of <body>. -->
+<!-- uploaded in Step 3. No third-party biometric API, no false eIDAS/Art. 9 claims. -->
 <div class="step" id="s4">
 
   <div class="validation-banner" id="val-banner-s4">
