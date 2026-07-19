@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>UBO identity verification — Predeevo</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <style>
@@ -201,8 +202,22 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);bo
       <div class="card-title"><i class="ti ti-camera-selfie"></i>Identity selfie</div>
       <div id="cap-idle">
         <div class="info-box"><i class="ti ti-info-circle"></i><span><strong>For a good selfie:</strong> face the camera straight on · plain background · good lighting · no sunglasses or hat · full face visible.</span></div>
-        <button type="button" class="btn btn-blue" style="width:100%" onclick="startCamera()"><i class="ti ti-camera"></i>Start camera</button>
-        <div class="muted-note">Your browser will ask permission to use the camera. Allow it to continue.</div>
+        <button type="button" class="btn btn-blue" style="width:100%" onclick="startSelfiePhoneHandoff()"><i class="ti ti-device-mobile"></i>Continue on your phone</button>
+        <div class="muted-note" style="margin-top:8px">Recommended if you're on a computer &middot; scan a QR code and take the selfie with your phone's camera.</div>
+        <div style="display:flex;align-items:center;gap:10px;margin:14px 0"><div style="flex:1;height:0.5px;background:rgba(0,0,0,.1)"></div><div style="font-size:10px;color:var(--subtle);font-weight:600;text-transform:uppercase;letter-spacing:.04em">or</div><div style="flex:1;height:0.5px;background:rgba(0,0,0,.1)"></div></div>
+        <button type="button" class="btn btn-outline" style="width:100%" onclick="startCamera()"><i class="ti ti-camera"></i>Use this device's camera</button>
+        <div class="muted-note" style="margin-top:8px">Your browser will ask permission to use the camera. Allow it to continue.</div>
+      </div>
+      <div id="cap-phone" class="hide">
+        <div style="text-align:center">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">Scan with your phone's camera</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.55;margin-bottom:12px">Point your phone's camera app at the code to open a secure page and take your selfie there. Keep this page open &mdash; it continues automatically once your phone is done.</div>
+          <div id="selfie-qr" style="display:inline-flex;padding:10px;background:#fff;border:0.5px solid rgba(0,0,0,.1);border-radius:12px;min-width:110px;min-height:110px;align-items:center;justify-content:center"></div>
+          <div style="margin-top:10px;font-size:11px;color:var(--muted)">Can't scan? Open this link on your phone:</div>
+          <div id="selfie-phone-link" style="font-size:11px;color:var(--blue);word-break:break-all;margin-top:3px">&mdash;</div>
+          <div style="display:inline-flex;align-items:center;gap:6px;margin-top:14px;font-size:12px;font-weight:600;color:var(--blue)"><div class="spinner" style="width:12px;height:12px;border-width:2px;margin:0"></div>Waiting for your phone&hellip;</div>
+        </div>
+        <button type="button" class="btn btn-outline" style="width:100%;margin-top:14px" onclick="cancelSelfiePhoneHandoff()">Cancel</button>
       </div>
       <div id="cap-live" class="hide">
         <div class="frame">
@@ -289,7 +304,7 @@ function _show(id){
   });
 }
 function _capState(sub){
-  ['cap-idle','cap-live','cap-review','cap-uploading','cap-done','cap-error'].forEach(s => {
+  ['cap-idle','cap-phone','cap-live','cap-review','cap-uploading','cap-done','cap-error'].forEach(s => {
     const el = document.getElementById(s);
     if(el) el.classList.toggle('hide', s !== sub);
   });
@@ -489,13 +504,7 @@ async function useSelfie(){
   const path = appId + '/ubo/' + SESSION.id + '/selfie-' + Date.now() + '.jpg';
   try {
     // Replace any earlier selfie so only one is on file for this person
-    if(SELFIE){
-      try {
-        if(SELFIE.path) await sb.storage.from(KYC_BUCKET).remove([SELFIE.path]);
-        if(SELFIE.docId) await sb.from('kyc_documents').delete().eq('id', SELFIE.docId);
-      } catch(e){ console.warn('Selfie cleanup:', e); }
-      SELFIE = null;
-    }
+    await _cleanupSelfie();
     const { error: upErr } = await sb.storage.from(KYC_BUCKET).upload(path, file, { cacheControl:'3600', upsert:false, contentType:'image/jpeg' });
     if(upErr) throw upErr;
     const { data: row, error: insErr } = await sb.from('kyc_documents').insert({
@@ -518,7 +527,87 @@ async function useSelfie(){
     _camErr('Upload failed', (err && err.message) || 'Please try again.');
   }
 }
-function retakeSelfie(){ _blob = null; startCamera(); }
+function retakeSelfie(){ _blob = null; _capState('cap-idle'); }
+
+// ── Selfie phone handoff (mirrors the main form's Step 4) ──
+// If the UBO opened their link on a computer, they can hand the selfie off to
+// their phone: we create a kyc_selfie_sessions row, show a QR to selfie.html,
+// and poll for status='captured'. selfie.html doesn't know about persons, so
+// after capture we tag the kyc_documents row with this person's label.
+let _selfiePoll = null;
+async function startSelfiePhoneHandoff(){
+  _capState('cap-phone');
+  const qrBox = document.getElementById('selfie-qr');
+  const linkEl = document.getElementById('selfie-phone-link');
+  if(qrBox) qrBox.innerHTML = '<div class="spinner" style="width:24px;height:24px;border-width:3px;margin:0"></div>';
+  if(linkEl) linkEl.textContent = '—';
+  try {
+    const { data: ss, error } = await sb.from('kyc_selfie_sessions').insert({
+      application_id: SESSION.application_id,
+      client_name: SESSION.person_name
+    }).select('id').single();
+    if(error) throw error;
+    const url = location.origin + '/selfie.html?s=' + ss.id;
+    if(qrBox){
+      qrBox.innerHTML = '';
+      if(window.QRCode){
+        try { new window.QRCode(qrBox, { text: url, width: 150, height: 150, colorDark: '#1A2332', colorLight: '#ffffff', correctLevel: window.QRCode.CorrectLevel.M }); }
+        catch(e){ qrBox.innerHTML = '<div style="font-size:11px;color:var(--muted)">Use the link below on your phone.</div>'; }
+      } else {
+        qrBox.innerHTML = '<div style="font-size:11px;color:var(--muted)">Use the link below on your phone.</div>';
+      }
+    }
+    if(linkEl) linkEl.textContent = url;
+    _startSelfiePhonePolling(ss.id);
+  } catch(err){
+    console.error('startSelfiePhoneHandoff:', err);
+    if(await _handleWriteError(err)) return;
+    _camErr('Could not create phone link', ((err && err.message) || 'Please try again') + ' — or use this device\'s camera instead.');
+  }
+}
+function _startSelfiePhonePolling(sessionId){
+  _stopSelfiePhonePolling();
+  _selfiePoll = setInterval(async () => {
+    try {
+      const { data, error } = await sb.from('kyc_selfie_sessions')
+        .select('status, selfie_doc_id, selfie_storage_path, selfie_file_name')
+        .eq('id', sessionId).maybeSingle();
+      if(error || !data) return;
+      if(data.status === 'captured'){
+        _stopSelfiePhonePolling();
+        await _adoptPhoneSelfie(data);
+      }
+    } catch(e){ console.warn('Selfie phone poll:', e); }
+  }, 2500);
+}
+function _stopSelfiePhonePolling(){ if(_selfiePoll){ clearInterval(_selfiePoll); _selfiePoll = null; } }
+function cancelSelfiePhoneHandoff(){ _stopSelfiePhonePolling(); _capState(SELFIE ? 'cap-done' : 'cap-idle'); }
+async function _adoptPhoneSelfie(data){
+  // Replace any earlier selfie so only one is on file for this person
+  await _cleanupSelfie();
+  // Tag the phone-captured selfie with this person's label so the dashboard
+  // groups it under the right face-match panel.
+  if(data.selfie_doc_id){
+    try {
+      const { error } = await sb.from('kyc_documents')
+        .update({ person_label: SESSION.person_name })
+        .eq('id', data.selfie_doc_id);
+      if(error) console.warn('person_label tag:', error.message);
+    } catch(e){ console.warn('person_label tag:', e); }
+  }
+  SELFIE = { docId: data.selfie_doc_id || null, path: data.selfie_storage_path || null, fileName: data.selfie_file_name || 'selfie.jpg' };
+  const n = document.getElementById('selfie-name');
+  if(n) n.textContent = SELFIE.fileName;
+  _capState('cap-done');
+}
+async function _cleanupSelfie(){
+  if(!SELFIE) return;
+  try {
+    if(SELFIE.path) await sb.storage.from(KYC_BUCKET).remove([SELFIE.path]);
+    if(SELFIE.docId) await sb.from('kyc_documents').delete().eq('id', SELFIE.docId);
+  } catch(e){ console.warn('Selfie cleanup:', e); }
+  SELFIE = null;
+}
 
 // ── Validation + submit ──
 function _highlight(el){
