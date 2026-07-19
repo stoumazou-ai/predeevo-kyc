@@ -7,6 +7,7 @@
 <title>UBO identity verification — Predeevo</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <style>
@@ -260,6 +261,27 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);bo
       <div class="muted-note">Captured locally in your browser and stored securely. A compliance officer manually matches this selfie to your ID document. Used solely for AML identity verification under Cyprus Law 188(I)/2007.</div>
     </div>
 
+    <!-- DECLARATION & SIGNATURE -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-writing-sign"></i>Declaration &amp; signature</div>
+      <div class="info-box"><i class="ti ti-info-circle"></i>Under Cyprus AML Law 188(I)/2007 you must personally sign the KYC declaration. Download it below (pre-filled with your details), sign it, and upload the signed copy.</div>
+      <button type="button" class="btn btn-outline" style="width:100%;margin-bottom:14px" onclick="downloadUBODeclaration()"><i class="ti ti-download"></i>Download my declaration (PDF)</button>
+      <div class="fg">
+        <label class="lbl">How did you sign it? <span class="req">*</span></label>
+        <select id="sig-method">
+          <option value="">Please select...</option>
+          <option value="own">Electronically — with my own qualified or advanced e-signature</option>
+          <option value="physical">By hand — printed, signed, and scanned or photographed</option>
+        </select>
+      </div>
+      <div class="doc-row" id="doc-declaration" onclick="pickDoc('declaration')">
+        <div class="doc-icon"><i class="ti ti-signature"></i></div>
+        <div class="doc-info"><div class="doc-name">Signed declaration <span style="color:var(--red)">*</span></div><div class="doc-desc" id="desc-declaration">Upload the signed declaration — PDF, JPG or PNG</div></div>
+        <span class="doc-st ds-req" id="st-declaration">Required</span>
+      </div>
+      <div class="muted-note" style="text-align:left">An advanced electronic signature (AdES) is sufficient — a qualified certificate is not required. A clear photo of the hand-signed page is also acceptable.</div>
+    </div>
+
     <!-- SUBMIT -->
     <div class="card">
       <div class="warn-box"><i class="ti ti-alert-circle"></i>By submitting you confirm the information and documents provided are true, accurate and complete. Knowingly providing false information is a criminal offence under Article 3 of the Cyprus AML Law.</div>
@@ -378,6 +400,12 @@ async function init(){
 // ── Document uploads ──
 function pickDoc(docType){
   if(DOCS[docType]) return;  // already uploaded; use Remove first
+  if(docType === 'declaration' && !document.getElementById('sig-method')?.value){
+    alert('Please first select how you signed the declaration.');
+    const el = document.getElementById('sig-method');
+    if(el){ _highlight(el); el.focus(); }
+    return;
+  }
   _pickTarget = docType;
   const inp = document.getElementById('doc-file-input');
   inp.value = '';
@@ -395,15 +423,20 @@ document.getElementById('doc-file-input').addEventListener('change', async funct
   if(desc) desc.textContent = 'Uploading ' + file.name + '…';
   try {
     const appId = SESSION.application_id;
+    // The declaration row stores under signed_declaration_own / _physical per the
+    // chosen signing method (mirrors the main form's Step 7 doc types).
+    const storedType = docType === 'declaration'
+      ? 'signed_declaration_' + (document.getElementById('sig-method')?.value || 'own')
+      : docType;
     const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
-    const path = appId + '/ubo/' + SESSION.id + '/' + docType + '-' + Date.now() + '-' + safeName;
+    const path = appId + '/ubo/' + SESSION.id + '/' + storedType + '-' + Date.now() + '-' + safeName;
     const { error: upErr } = await sb.storage.from(KYC_BUCKET).upload(path, file, {
       cacheControl: '3600', upsert: false, contentType: file.type
     });
     if(upErr) throw upErr;
     const { data: row, error: insErr } = await sb.from('kyc_documents').insert({
       application_id: appId,
-      doc_type: docType,
+      doc_type: storedType,
       file_name: file.name,
       file_size: file.size,
       mime_type: file.type,
@@ -438,13 +471,80 @@ async function removeDoc(docType){
   const desc = document.getElementById('desc-' + docType);
   const st = document.getElementById('st-' + docType);
   if(rowEl){ rowEl.classList.remove('done'); rowEl.onclick = function(){ pickDoc(docType); }; }
-  const DESCS = {passport:'Photo page of your passport — or upload your ID card below instead', id_card:'Both sides of your national ID card — alternative to the passport', proof_of_address:'Utility bill or bank statement issued within the last 6 months', cv:'A recent CV covering your employment history and qualifications'};
+  const DESCS = {passport:'Photo page of your passport — or upload your ID card below instead', id_card:'Both sides of your national ID card — alternative to the passport', proof_of_address:'Utility bill or bank statement issued within the last 6 months', cv:'A recent CV covering your employment history and qualifications', declaration:'Upload the signed declaration — PDF, JPG or PNG'};
   if(desc) desc.textContent = DESCS[docType] || '';
   if(st){
-    const req = (docType === 'proof_of_address' || docType === 'cv' || docType === 'passport');
     st.className = 'doc-st ' + (docType === 'id_card' ? 'ds-opt' : 'ds-req');
     st.textContent = docType === 'id_card' ? 'Alternative' : 'Required';
   }
+}
+
+// ── Personalised declaration PDF (mirrors the main form's legal text exactly) ──
+function downloadUBODeclaration(){
+  if(!window.jspdf || !window.jspdf.jsPDF){ alert('PDF library still loading — please try again in a moment.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm', format:'a4'});
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  const name = ((_val('first_name') + ' ' + _val('surname')).trim()) || SESSION.person_name || '________________________';
+  const header = () => {
+    doc.setFillColor(28, 117, 188);
+    doc.rect(0, 0, w, 18, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.text('PREDEEVO', 12, 11);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text('Beneficial Owner KYC Declaration', w - 12, 11, {align:'right'});
+    doc.setTextColor(26,35,50);
+  };
+  header();
+  let y = 26;
+  doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text('Beneficial Owner KYC Declaration', 12, y); y += 5;
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text('Issued: ' + new Date().toLocaleString('en-GB') + (SESSION.client_company ? '   ·   In connection with: ' + SESSION.client_company : ''), 12, y); y += 7;
+  doc.setFillColor(240, 247, 253);
+  doc.rect(12, y, w-24, 6, 'F');
+  doc.setTextColor(28,117,188); doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
+  doc.text('DECLARANT', 15, y+4.2);
+  doc.setTextColor(26,35,50); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  y += 9;
+  doc.text('Name: ' + name, 14, y); y += 4.5;
+  doc.text('Email: ' + (_val('email') || '—'), 14, y); y += 4.5;
+  doc.text('Date of birth: ' + (_val('dob') || '—') + '    Nationality: ' + (_val('nationality') || '—'), 14, y); y += 7;
+  doc.setFillColor(240, 247, 253);
+  doc.rect(12, y, w-24, 6, 'F');
+  doc.setTextColor(28,117,188); doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
+  doc.text('DECLARATION UNDER CYPRUS AML LAW 188(I)/2007', 15, y+4.2);
+  doc.setTextColor(26,35,50); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  y += 9;
+  const decls = [
+    'I expressly consent to the collection and processing of my personal data by Predeevo Ltd in accordance with the Personal Data Protection Laws and GDPR. My data will be retained for a minimum of 5 years after the end of our business relationship.',
+    'All information and documents provided are true, accurate, and complete. I am aware that knowingly providing false information is a criminal offence under Article 3 of the Cyprus AML Law — up to 2 years imprisonment and/or a fine of up to EUR 100,000.',
+    'The funds and assets I intend to use in my relationship with Predeevo Ltd are from legitimate sources and are not the proceeds of any criminal activity.',
+    'My PEP declaration is accurate. I am not subject to any EU, UN, or US sanctions and no sanctions apply to my business or known associates.',
+    'I undertake to notify Predeevo Ltd promptly of any material changes including beneficial ownership, PEP status, source of funds, or jurisdiction.',
+    'I acknowledge Predeevo\'s legal obligation to report suspicious activity to MOKAS (Cyprus FIU) without prior notification. Tipping off is a criminal offence under Cyprus law.',
+    'I am fully aware of the Prevention and Suppression of Money Laundering Activities Laws and relevant regulations issued by the competent authorities of Cyprus.'
+  ];
+  decls.forEach((t, i) => {
+    const lines = doc.splitTextToSize((i+1) + '.  ' + t, w-28);
+    if(y + lines.length*4 > 270){ doc.addPage(); header(); y = 26; }
+    doc.text(lines, 14, y);
+    y += lines.length*4 + 1.5;
+  });
+  y += 4;
+  if(y > 250){ doc.addPage(); header(); y = 26; }
+  doc.setDrawColor(90,100,120); doc.setLineWidth(0.25);
+  doc.text('Name:', 14, y); doc.line(28, y, 110, y);
+  doc.text('Date:', 120, y); doc.line(134, y, 198, y); y += 10;
+  doc.text('Signature:', 14, y); doc.line(34, y, 198, y); y += 8;
+  doc.setFontSize(8); doc.setTextColor(138,150,168);
+  doc.text('Sign with your own qualified or advanced electronic signature, OR print, sign by hand, and upload a clear scan or photo.', 14, y);
+  doc.setTextColor(26,35,50);
+  doc.setFontSize(7); doc.setTextColor(138,150,168);
+  doc.text('Predeevo Ltd · Sintika Hanum 58, 6051 Larnaca, Cyprus · Cyprus AML Law 188(I)/2007', 12, h-7);
+  doc.save('Predeevo-UBO-Declaration.pdf');
 }
 
 // ── Selfie camera ──
@@ -643,6 +743,12 @@ function validateUBO(){
   if(!DOCS.proof_of_address) errors.push('Upload a proof of address');
   if(!DOCS.cv) errors.push('Upload your CV');
   if(!SELFIE) errors.push('Take your identity selfie');
+  const sigSel = document.getElementById('sig-method');
+  if(!sigSel?.value){
+    errors.push('Select how you signed your declaration');
+    _highlight(sigSel); if(!firstEl) firstEl = sigSel;
+  }
+  if(!DOCS.declaration) errors.push('Download, sign, and upload your declaration');
   return { errors, firstEl };
 }
 async function submitUBO(){
@@ -671,6 +777,9 @@ async function submitUBO(){
       const v = (el.value || '').trim();
       if(v) fields[el.dataset.field] = v;
     });
+    // Record how the declaration was signed (mirrors kyc_applications.sig_method values)
+    const sigMethod = document.getElementById('sig-method')?.value;
+    if(sigMethod) fields.sig_method = sigMethod;
     const { error } = await sb.from('kyc_ubo_sessions').update({
       status: 'completed',
       fields: fields,

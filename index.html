@@ -766,11 +766,10 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   <div class="step-lbls">
     <span class="slbl active" id="sl1">Services</span>
     <span class="slbl" id="sl2">Identity</span>
-    <span class="slbl" id="sl3">Documents</span>
-    <span class="slbl" id="sl4">Verify</span>
-    <span class="slbl" id="sl5">Questionnaire</span>
-    <span class="slbl" id="sl6">Consent</span>
-    <span class="slbl" id="sl7">Sign</span>
+    <span class="slbl" id="sl3">Owners &amp; Docs</span>
+    <span class="slbl" id="sl4">Questionnaire</span>
+    <span class="slbl" id="sl5">Consent</span>
+    <span class="slbl" id="sl6">Sign</span>
   </div>
 </div>
 
@@ -1121,48 +1120,26 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   </div>
   <div class="req-legend">Fields marked <span style="color:var(--red);font-weight:800">*</span> are required</div>
 
-  <!-- UBO IDENTITY COLLECTION — dynamically populated from Step 1 -->
-  <div id="ubo-identity-section" style="display:none">
-    <div class="card" style="margin-bottom:14px">
-      <div class="card-title"><i class="ti ti-users"></i>Identity collection</div>
-      <div class="info-box" style="margin-bottom:0"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>The following persons require full KYC based on their shareholding declared in Step 1. Your details are pre-filled — click your name to review. Click other names to open and complete their identity form.</div>
-    </div>
-    <div id="ubo-identity-cards">
-      <!-- populated dynamically by renderUBOIdentityCards() -->
-    </div>
+  <!-- APPLICANT IDENTITY — the applicant's own card, rendered by renderUBOIdentityCards() -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title"><i class="ti ti-user"></i>Your identity</div>
+    <div class="info-box" style="margin-bottom:0"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Complete your own identity details, upload your personal documents, and take your selfie — all on this page. Other beneficial owners are handled in the next step via their own personal links.</div>
+  </div>
+  <div id="applicant-card-container">
+    <!-- populated dynamically by renderUBOIdentityCards() -->
   </div>
 
-  <!-- Shown if applicant is the sole UBO -->
-  <div id="no-ubo-section" style="display:none">
-    <div class="card">
-      <div class="card-title"><i class="ti ti-circle-check" style="color:var(--teal)"></i>Identity confirmed</div>
-      <div class="success-box" style="margin-bottom:0"><i class="ti ti-circle-check" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>You are the sole qualifying UBO. Your identity will be verified in the next step.</div>
-    </div>
-  </div>
-
-  <div class="btn-row">
-    <button class="btn-back" onclick="gs(1)"><i class="ti ti-arrow-left"></i> Back</button>
-    <span class="step-count">Step 2 of 7</span>
-    <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
-    <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
-    <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
-    <button class="btn btn-blue" onclick="validateAndProceed(2,3)">Continue <i class="ti ti-arrow-right"></i></button>
-  </div>
-</div>
-<!-- ══ STEP 4 — IDENTITY SELFIE ══ -->
-<!-- Previously a fake biometric/liveness UI with a hardcoded 98% match score and a 'SUM-2026-AB7F291' reference. -->
-<!-- Rewritten 2026-06-01 to a plain selfie upload: compliance officer manually matches the selfie to the ID document -->
-<!-- uploaded in Step 3. No third-party biometric API, no false eIDAS/Art. 9 claims. -->
-<div class="step" id="s4">
-
-  <div class="validation-banner" id="val-banner-s4">
-    <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following required fields before continuing:</div>
-    <ul class="validation-list" id="val-list-s4"></ul>
-  </div>
-
+  <!-- PERSONAL DOCUMENTS -->
   <div class="card">
-    <div class="card-title"><i class="ti ti-camera-selfie"></i>Identity selfie &mdash; applicant only</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">We need a live selfie taken on this device so our compliance team can confirm you are the person on the ID document uploaded in Step 3. The capture happens in your browser &mdash; no app to install. Other UBOs or shareholders listed in Step 2 will be asked to provide their own selfie via their individual KYC links.</p>
+    <div class="card-title"><i class="ti ti-files"></i>Your documents</div>
+    <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Upload clear scans or photos — PDF, JPG or PNG, max 10 MB each.</div>
+    <div id="personal-doc-rows"></div>
+  </div>
+
+  <!-- IDENTITY SELFIE (lived on its own Step 4 until 2026-07-19; now part of Step 2) -->
+  <div class="card" id="selfie-card">
+    <div class="card-title"><i class="ti ti-camera-selfie"></i>Identity selfie</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">We need a live selfie so our compliance team can confirm you are the person on the ID document uploaded above. The capture happens in your browser &mdash; no app to install. Other beneficial owners take their own selfie via their personal links.</p>
 
     <!-- IDLE — initial state before camera starts -->
     <div id="selfie-idle">
@@ -1250,34 +1227,47 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   </div>
 
   <div class="btn-row">
-    <button class="btn-back" onclick="gs(3)"><i class="ti ti-arrow-left"></i> Back</button>
-    <span class="step-count">Step 4 of 7</span>
+    <button class="btn-back" onclick="gs(1)"><i class="ti ti-arrow-left"></i> Back</button>
+    <span class="step-count">Step 2 of 6</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
-    <button class="btn btn-blue" onclick="validateAndProceed(4, _applicantIsPEP() ? 's-sow' : 5)">Continue <i class="ti ti-arrow-right"></i></button>
+    <button class="btn btn-blue" onclick="validateAndProceed(2,3)">Continue <i class="ti ti-arrow-right"></i></button>
   </div>
 </div>
 
 <!-- ══ STEP 3 — DOCUMENTS ══ -->
 <div class="step" id="s3">
-  
+
   <div class="validation-banner" id="val-banner-s3">
     <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following required fields before continuing:</div>
     <ul class="validation-list" id="val-list-s3"></ul>
   </div>
-<div class="card">
-    <div class="card-title"><i class="ti ti-folder"></i>Supporting documents</div>
-    <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>The required documents below are determined by the information you provided in Steps 1 and 2. A selfie matching your ID will be requested in Step 4.</div>
 
-    <!-- Renderer outputs the dynamic doc list here, grouped into Required + Additional sections. -->
-    <!-- CV is rendered inline with its manual-fill toggle + collapsible employment/education sub-form. -->
-    <div id="dynamic-doc-rows"></div>
-
+  <!-- OTHER BENEFICIAL OWNERS — non-applicant cards rendered by renderUBOIdentityCards() -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title"><i class="ti ti-users"></i>Other beneficial owners</div>
+    <div class="info-box" style="margin-bottom:0"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Each person below requires their own KYC based on the shareholding declared in Step 1. Send each one their personal secure link &mdash; they complete their identity details, documents, selfie and signed declaration themselves &mdash; or fill in their details on their behalf. <strong>You can continue with the rest of the form while you wait</strong>; final submission unlocks once everyone has completed.</div>
   </div>
+  <div id="ubo-identity-cards">
+    <!-- populated dynamically by renderUBOIdentityCards() -->
+  </div>
+  <div id="no-other-ubo-note" style="display:none">
+    <div class="card">
+      <div class="success-box" style="margin-bottom:0"><i class="ti ti-circle-check" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>No other qualifying beneficial owners &mdash; you are the only person requiring identity verification.</div>
+    </div>
+  </div>
+
+  <!-- COMPANY / SUPPORTING DOCUMENTS (application-level doc types; hidden when the rules produce none) -->
+  <div class="card" id="company-docs-card">
+    <div class="card-title"><i class="ti ti-folder"></i>Company &amp; supporting documents</div>
+    <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>The documents below are determined by the services and company details you provided in Step 1.</div>
+    <div id="dynamic-doc-rows"></div>
+  </div>
+
   <div class="btn-row">
-    <button class="btn-back" onclick="gs(2)"><i class="ti ti-arrow-left"></i> Back</button>
-    <span class="step-count">Step 3 of 7</span>
+    <button class="btn-back" onclick="saveDraftToDB();gs(2)"><i class="ti ti-arrow-left"></i> Back</button>
+    <span class="step-count">Step 3 of 6</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
     <button class="btn-save-row" onclick="saveAndExit()" title="Save and email me a link to continue later"><i class="ti ti-mail-forward"></i>Save &amp; exit</button>
@@ -1376,7 +1366,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   </div>
 
   <div class="btn-row">
-    <button class="btn-back" onclick="gs(4)"><i class="ti ti-arrow-left"></i> Back</button>
+    <button class="btn-back" onclick="gs(3)"><i class="ti ti-arrow-left"></i> Back</button>
     <span class="step-count" id="sow-step-count">Step 5 of 8</span>
     <span class="save-indicator"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
@@ -1469,6 +1459,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <ul class="validation-list" id="val-list-s7"></ul>
   </div>
   <div class="req-legend">Fields marked <span style="color:var(--red);font-weight:800">*</span> are required</div>
+
+  <div id="ubo-final-status" style="display:none"></div>
 <div class="card">
     <div class="card-title"><i class="ti ti-certificate"></i>Electronic signature</div>
     <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Only you — the person named in this form — may sign this declaration. Please select your preferred method.</div>
@@ -1668,7 +1660,7 @@ function _applicantIsPEP(){
     if(applicant && applicant.pep_status === 'yes') return true;
   }
   // Also check the current Step 2 card live (in case PEP was just changed but not yet saved)
-  const cards = document.querySelectorAll('#ubo-identity-cards .ubo-id-card');
+  const cards = document.querySelectorAll('#applicant-card-container .ubo-id-card, #ubo-identity-cards .ubo-id-card');
   for(const card of cards){
     const isAp = card.dataset.applicant === 'true' || card.querySelector('.ubo-id-name')?.textContent?.includes('You');
     if(isAp){
@@ -1686,23 +1678,21 @@ function _updateSowStepCounter(){ /* handled in gs() */ }
 // Resolves the "next" step. Inserts s-sow between 4 and 5 when applicant is PEP, and
 // skips Step 4 entirely when the AMLCO didn't require a selfie on the invitation.
 function _nextStepAfter(current){
-  if(current === 3 && !_requireSelfie()) return _applicantIsPEP() ? 's-sow' : 5;
-  if(current === 4 && _applicantIsPEP()) return 's-sow';
+  if(current === 3) return _applicantIsPEP() ? 's-sow' : 5;
   if(current === 's-sow') return 5;
   return (typeof current === 'number') ? current + 1 : 5;
 }
 
-// Resolves the "previous" step. Mirrors _nextStepAfter — both PEP and require_selfie aware.
+// Resolves the "previous" step. Mirrors _nextStepAfter — PEP aware.
 function _prevStepBefore(current){
   if(current === 5 && _applicantIsPEP()) return 's-sow';
-  if(current === 5 && !_requireSelfie()) return 3;
-  if(current === 's-sow' && !_requireSelfie()) return 3;
-  if(current === 's-sow') return 4;
-  if(current === 4) return 3;
-  return (typeof current === 'number') ? current - 1 : 4;
+  if(current === 5) return 3;
+  if(current === 's-sow') return 3;
+  return (typeof current === 'number') ? current - 1 : 3;
 }
 
 function gs(n){
+  if(n === 4) n = 2;  // legacy step id — the selfie step merged into Step 2 (2026-07-19)
   if(n>1&&n!=='success'){
     // Save before moving forward
     saveProgress();
@@ -1712,66 +1702,74 @@ function gs(n){
   const target = document.getElementById(id);
   if(!target){ console.warn('Step not found:', id); return; }
   target.classList.add('active');
-  // Total visible steps: base 7, +1 if PEP (adds s-sow), -1 if selfie not required (removes s4)
+  // Total visible steps: base 6 (the selfie lives inside Step 2 now), +1 if PEP (adds s-sow)
   const pepYes = _applicantIsPEP();
-  const hasSelfie = _requireSelfie();
-  const total = 7 + (pepYes ? 1 : 0) - (hasSelfie ? 0 : 1);
+  const total = 6 + (pepYes ? 1 : 0);
   if(n!=='success'){
     currentStep = n;
     // Progress bar position — convert each step ID to a 1..total display index.
-    // Numeric steps 1..3 keep their numbers. Step 4 only appears when hasSelfie.
+    // Numeric steps 1..3 keep their numbers; 5/6/7 display one lower (s4 was
+    // merged into Step 2), shifted up by one when the PEP s-sow step is present.
     // Steps 5/6/7 shift down by 1 if no selfie, up by 1 if PEP (s-sow takes the slot).
     let progressIdx;
-    if(n === 's-sow') progressIdx = hasSelfie ? 5 : 4;
+    if(n === 's-sow') progressIdx = 4;
     else if(typeof n === 'number' && n <= 3) progressIdx = n;
-    else if(typeof n === 'number' && n === 4) progressIdx = 4;
-    else if(typeof n === 'number') progressIdx = n + (pepYes ? 1 : 0) - (hasSelfie ? 0 : 1);
+    else if(typeof n === 'number') progressIdx = n - 1 + (pepYes ? 1 : 0);
     else progressIdx = 1;
     document.getElementById('prog').style.width = (progressIdx/total*100)+'%';
     // Update visible sidebar labels (use original numbering, not adjusted)
     if(typeof n === 'number'){
-      for(let i=1;i<=7;i++){const el=document.getElementById('sl'+i);if(el)el.className='slbl'+(i===n?' active':i<n?' done':'');}
+      const lblIdx = n <= 3 ? n : n - 1;  // element steps skip 4 (merged into Step 2)
+      for(let i=1;i<=6;i++){const el=document.getElementById('sl'+i);if(el)el.className='slbl'+(i===lblIdx?' active':i<lblIdx?' done':'');}
     }
-    // Populate UBO identity cards when entering Step 2
-    if(n===2){ renderUBOIdentityCards(); if(typeof _syncUBOSessionUI === 'function'){ try { _syncUBOSessionUI(); } catch(e){} } }
-    // Build the dynamic doc list when entering Step 3 (Documents)
-    if(n===3 && typeof renderDocRows === 'function'){
-      try { renderDocRows(); } catch(e){ console.warn('renderDocRows failed:', e); }
+    // Steps 2 and 3 both host person cards + doc rows — (re)render on entry
+    if(n===2 || n===3){
+      renderUBOIdentityCards();
+      if(typeof _syncUBOSessionUI === 'function'){ try { _syncUBOSessionUI(); } catch(e){} }
+      if(typeof renderDocRows === 'function'){ try { renderDocRows(); } catch(e){ console.warn('renderDocRows failed:', e); } }
     }
-    // Initialise Step 4 selfie UI when entering it (handles resumed drafts where a selfie already exists)
-    if(n===4 && typeof _initSelfieStep === 'function'){
-      try { _initSelfieStep(); } catch(e){ console.warn('_initSelfieStep:', e); }
+    // Selfie UI init on Step 2 entry; hide the whole selfie card when the AMLCO
+    // waived the selfie for this invitation (require_selfie=false).
+    if(n===2){
+      const selfieCard = document.getElementById('selfie-card');
+      if(selfieCard) selfieCard.style.display = _requireSelfie() ? '' : 'none';
+      if(typeof _initSelfieStep === 'function'){ try { _initSelfieStep(); } catch(e){ console.warn('_initSelfieStep:', e); } }
     }
-    // Stop any active camera stream when leaving Step 4 (prevents the indicator light staying on)
-    if(n !== 4 && window._selfieStream){
+    // Stop any active camera stream / phone-handoff polling when leaving Step 2
+    if(n !== 2 && window._selfieStream){
       try { window._selfieStream.getTracks().forEach(t => t.stop()); } catch(e){}
       window._selfieStream = null;
     }
-    // Stop any phone-handoff polling when leaving Step 4
-    if(n !== 4 && typeof _stopSelfiePolling === 'function'){
+    if(n !== 2 && typeof _stopSelfiePolling === 'function'){
       _stopSelfiePolling();
       window._selfieSessionId = null;
+    }
+    // Entering the signature step: refresh UBO sessions + render the completion panel
+    if(n === 7){
+      if(typeof renderUBOStatusPanel === 'function'){ try { renderUBOStatusPanel(); } catch(e){} }
+      if(typeof _refreshUBOSessions === 'function'){
+        try { _refreshUBOSessions().then(() => { try { renderUBOStatusPanel(); } catch(e){} }); } catch(e){}
+      }
     }
     // Sync the Step 6 continue-button state on entry (chkD otherwise only fires onchange)
     if(n === 6 && typeof chkD === 'function'){ try { chkD(); } catch(e){} }
     // Stop UBO-link polling once the application is submitted
     if(n === 'success' && typeof _stopUBOPolling === 'function'){ _stopUBOPolling(); }
-    // Update SoW step counter dynamically — accounts for selfie-skip
+    // Update step counters (base 6 steps; s-sow inserts at position 4 for PEPs)
     if(n === 's-sow'){
       const sowEl = document.getElementById('sow-step-count');
-      if(sowEl) sowEl.textContent = `Step ${hasSelfie ? 5 : 4} of ${total}`;
+      if(sowEl) sowEl.textContent = `Step 4 of ${total}`;
     }
-    // Update Step 4 step counter (only relevant when selfie required and counter visible)
-    const s4c = document.querySelector('#s4 .step-count');
-    if(s4c) s4c.textContent = `Step 4 of ${total}`;
-    // Update step counters for steps 5/6/7 based on PEP + selfie combination
-    const s5Base = pepYes ? 6 : 5; // Step 5 display number when hasSelfie=true
+    const s2c = document.querySelector('#s2 .step-count');
+    if(s2c) s2c.textContent = `Step 2 of ${total}`;
+    const s3c = document.querySelector('#s3 .step-count');
+    if(s3c) s3c.textContent = `Step 3 of ${total}`;
     const s5c = document.getElementById('s5-step-count');
-    if(s5c) s5c.textContent = `Step ${s5Base - (hasSelfie ? 0 : 1)} of ${total}`;
+    if(s5c) s5c.textContent = `Step ${4 + (pepYes ? 1 : 0)} of ${total}`;
     const s6c = document.getElementById('s6-step-count');
-    if(s6c) s6c.textContent = `Step ${s5Base + 1 - (hasSelfie ? 0 : 1)} of ${total}`;
+    if(s6c) s6c.textContent = `Step ${5 + (pepYes ? 1 : 0)} of ${total}`;
     const s7c = document.getElementById('s7-step-count');
-    if(s7c) s7c.textContent = `Step ${s5Base + 2 - (hasSelfie ? 0 : 1)} of ${total}`;
+    if(s7c) s7c.textContent = `Step ${6 + (pepYes ? 1 : 0)} of ${total}`;
   } else {
     document.getElementById('prog').style.width='100%';
   }
@@ -2121,7 +2119,7 @@ function calcSOW(){
 
 // ── UBO IDENTITY CARDS (Step 2) ──
 function renderUBOIdentityCards(){
-  const section   = document.getElementById('ubo-identity-section');
+  const applicantContainer = document.getElementById('applicant-card-container');
   const container = document.getElementById('ubo-identity-cards');
   const isIncorp  = document.getElementById('incorp-f')?.style.display !== 'none';
 
@@ -2172,19 +2170,36 @@ function renderUBOIdentityCards(){
     }
   }
 
+  // The applicant ALWAYS gets a card — their identity is required regardless of
+  // shareholding % (previously a <=25% non-controlling applicant was skipped).
+  if(!ubosForKYC.find(u => u.isApplicant)){
+    const blocks = isIncorp ? document.querySelectorAll('#ubo-list .ubo-block') : document.querySelectorAll('#entity-ubo-list .entity-ubo-block');
+    let ap = null;
+    blocks.forEach(b => {
+      const isMe = b.querySelector(isIncorp ? '.ubo-is-applicant' : '.entity-ubo-is-applicant')?.value === 'yes';
+      if(isMe && !ap){
+        ap = {
+          name: b.querySelector(isIncorp ? '.ubo-name' : '.entity-ubo-name')?.value?.trim() || 'Applicant',
+          pct: parseFloat(b.querySelector(isIncorp ? '.ubo-pct' : '.entity-ubo-pct')?.value) || null,
+          email: b.querySelector(isIncorp ? '.ubo-email' : '.entity-ubo-email')?.value?.trim() || '',
+          nationality: b.querySelector('input[type=hidden]')?.value?.trim() || '',
+          isApplicant: true,
+          reason: 'Applicant'
+        };
+      }
+    });
+    if(ap) ubosForKYC.push(ap);
+  }
+
   // Sort: applicant first, then others
   ubosForKYC.sort((a,b) => b.isApplicant - a.isApplicant);
 
-  if (!ubosForKYC.length) {
-    section.style.display='none';
-    const noUbo = document.getElementById('no-ubo-section');
-    if(noUbo) noUbo.style.display='block';
-    return;
-  }
-  const noUbo = document.getElementById('no-ubo-section');
-  if(noUbo) noUbo.style.display='none';
-  section.style.display='block';
-  container.innerHTML='';
+  if(applicantContainer) applicantContainer.innerHTML='';
+  if(container) container.innerHTML='';
+  // Step 3 shows a friendly note when there are no OTHER owners
+  const others = ubosForKYC.filter(u => !u.isApplicant);
+  const noOther = document.getElementById('no-other-ubo-note');
+  if(noOther) noOther.style.display = others.length ? 'none' : 'block';
 
   // Get applicant details from Step 2 once
   const apd = getApplicantDetails();
@@ -2292,7 +2307,7 @@ function renderUBOIdentityCards(){
           </div>
         </div>
       </div>`;
-    container.appendChild(card);
+    (ubo.isApplicant && applicantContainer ? applicantContainer : container).appendChild(card);
 
     // Repopulate card fields from the most recent saved state (if any).
     // Priority: _lastSavedShareholders (set after every successful save) wins;
@@ -2582,6 +2597,34 @@ async function _syncUBOSessionUI(){
     if(data.some(s => s.status === 'pending')) _startUBOPolling();
   } catch(e){ console.warn('_syncUBOSessionUI:', e); }
 }
+
+// Step 7 panel: per-UBO completion status shown next to the submit button.
+function renderUBOStatusPanel(){
+  const wrap = document.getElementById('ubo-final-status');
+  if(!wrap) return;
+  const names = (typeof _step1NonApplicants === 'function') ? _step1NonApplicants() : [];
+  if(!names.length){ wrap.innerHTML = ''; wrap.style.display = 'none'; return; }
+  const pill = (bg, color, text) =>
+    '<span style="background:' + bg + ';color:' + color + ';font-weight:700;padding:2px 9px;border-radius:9px;font-size:10.5px;white-space:nowrap">' + text + '</span>';
+  const rows = names.map(name => {
+    const sess = _uboSessionFor(name);
+    const viaLink = sess && sess.status === 'completed';
+    const done = viaLink || _savedRowComplete(name);
+    const status = viaLink ? pill('var(--teal-light)', 'var(--teal)', 'Completed via own link ✓')
+      : done ? pill('var(--teal-light)', 'var(--teal)', 'Details completed ✓')
+      : sess ? pill('var(--amber-light)', 'var(--amber)', 'Waiting for them to finish…')
+      : pill('var(--red-light)', 'var(--red)', 'Not started');
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 2px;border-bottom:0.5px solid rgba(0,0,0,.06);font-size:12px"><span style="font-weight:600">' + _uboEscHtml(name) + '</span>' + status + '</div>';
+  });
+  wrap.style.display = 'block';
+  wrap.innerHTML =
+    '<div class="card">' +
+      '<div class="card-title"><i class="ti ti-users"></i>Other beneficial owners — completion status</div>' +
+      rows.join('') +
+      '<div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">Final submission unlocks once everyone above has completed — or once you fill in their details on their behalf in Step 3.</div>' +
+    '</div>';
+}
+
 
 // ── QUESTIONNAIRE ──
 const QS=[
@@ -3259,7 +3302,7 @@ const RENDERER_SKIP_DOC_TYPES = [];
 // rerendering. Returns a map: { doc_type: { fileName, fileSize, docId } }
 function _snapshotUploadedDocs(){
   const snap = {};
-  document.querySelectorAll('#dynamic-doc-rows .doc-row.done').forEach(row => {
+  document.querySelectorAll('#personal-doc-rows .doc-row.done, #dynamic-doc-rows .doc-row.done').forEach(row => {
     const docType = row.dataset.docType;
     if(!docType) return;
     snap[docType] = {
@@ -3359,15 +3402,20 @@ function _buildDocRowHTML(docItem){
     </div>`;
 }
 
-// Main render: replace the contents of #dynamic-doc-rows with rule-evaluated rows.
+// Personal doc types render on Step 2 with the applicant; everything else
+// (company/supporting docs) renders on Step 3.
+const PERSONAL_DOC_TYPES = ['passport','id_card','proof_of_address','cv'];
+
+// Main render: fills #personal-doc-rows (Step 2) and #dynamic-doc-rows (Step 3).
 function renderDocRows(){
-  const container = document.getElementById('dynamic-doc-rows');
-  if(!container){
-    console.warn('renderDocRows: #dynamic-doc-rows container not found');
+  const personalContainer = document.getElementById('personal-doc-rows');
+  const companyContainer  = document.getElementById('dynamic-doc-rows');
+  if(!personalContainer && !companyContainer){
+    console.warn('renderDocRows: no doc containers found');
     return;
   }
 
-  // Snapshot upload state before clearing the container
+  // Snapshot upload state before clearing the containers
   const uploadedSnap = _snapshotUploadedDocs();
 
   // Determine the doc list to render
@@ -3389,25 +3437,32 @@ function renderDocRows(){
     }];
   }
 
-  // Filter out doc types we skip (CV)
+  // Filter out doc types we skip
   docList = docList.filter(d => !RENDERER_SKIP_DOC_TYPES.includes(d.doc_type));
 
-  // Separate into required and additional
-  const required   = docList.filter(d => d.state === 'required');
-  const additional = docList.filter(d => d.state === 'optional');
+  const renderInto = (container, list) => {
+    if(!container) return;
+    const required   = list.filter(d => d.state === 'required');
+    const additional = list.filter(d => d.state === 'optional');
+    let html = '';
+    if(required.length){
+      html += '<div class="sec-lbl">Required</div>';
+      html += required.map(_buildDocRowHTML).join('');
+    }
+    if(additional.length){
+      html += '<div class="sec-lbl" style="margin-top:16px">Additional</div>';
+      html += additional.map(_buildDocRowHTML).join('');
+    }
+    container.innerHTML = html;
+  };
+  const personal = docList.filter(d => PERSONAL_DOC_TYPES.includes(d.doc_type));
+  const company  = docList.filter(d => !PERSONAL_DOC_TYPES.includes(d.doc_type));
+  renderInto(personalContainer, personal);
+  renderInto(companyContainer, company);
 
-  // Build HTML
-  let html = '';
-  if(required.length){
-    html += '<div class="sec-lbl">Required</div>';
-    html += required.map(_buildDocRowHTML).join('');
-  }
-  if(additional.length){
-    html += '<div class="sec-lbl" style="margin-top:16px">Additional</div>';
-    html += additional.map(_buildDocRowHTML).join('');
-  }
-
-  container.innerHTML = html;
+  // Hide the whole company-docs card when the rules produced nothing for it
+  const companyCard = document.getElementById('company-docs-card');
+  if(companyCard) companyCard.style.display = company.length ? '' : 'none';
 
   // Restore upload state for any doc that was uploaded before this rerender
   for(const docType in uploadedSnap){
@@ -3416,6 +3471,18 @@ function renderDocRows(){
     if(row && snap.docId){
       _renderDocRowUploaded(row, snap.fileName || 'document', 0, snap.docId);
     }
+  }
+
+  // Restore upload state from a resumed draft (kyc_documents rows fetched on resume;
+  // UBO-labelled docs are excluded upstream so they never mark the applicant's rows)
+  if(Array.isArray(window._resumedDocs)){
+    window._resumedDocs.forEach(d => {
+      if(!d || !d.doc_type) return;
+      const row = document.getElementById('dr-' + d.doc_type);
+      if(row && !row.classList.contains('done')){
+        _renderDocRowUploaded(row, d.file_name || 'document', d.file_size || 0, d.id);
+      }
+    });
   }
 
   // Restore any stashed manual CV data (from a resumed draft) into the freshly-built CV form
@@ -3962,14 +4029,14 @@ const STEP_REQUIRED = {
     {check:'controlling_person', label:'Please designate the controlling person for UBO purposes'},
   ],
   2: [
-    {check:'ubo_cards_started', label:'Please complete the identity form for each UBO — at minimum first name, surname, date of birth, and email are required for each person'},
+    {check:'applicant_card', label:'Please complete your identity form'},
+    {check:'personal_required_docs', label:'Required personal documents are not yet uploaded'},
+    {check:'cv', label:'Curriculum Vitae (or employment history form)'},
+    {check:'selfie_file', label:'Identity selfie is required — please take a clear photo of yourself'},
   ],
   3: [
-    {check:'dynamic_required_docs', label:'Required documents are not yet uploaded'},
-    {check:'cv', label:'Curriculum Vitae (or employment history form)'},
-  ],
-  4: [
-    {check:'selfie_file', label:'Identity selfie is required — please upload a clear photo of yourself'},
+    {check:'other_ubos_progress', label:'Each other beneficial owner needs their KYC link sent — or their details filled in on their behalf'},
+    {check:'company_required_docs', label:'Required company documents are not yet uploaded'},
   ],
   5: [
     {check:'questionnaire', label:'All background questionnaire questions must be answered'},
@@ -3984,6 +4051,7 @@ const STEP_REQUIRED = {
     {sel:'#dc7', label:'Declaration: AML awareness', type:'checkbox'},
   ],
   7: [
+    {check:'all_ubos_complete', label:'All beneficial owners must complete their KYC before submission'},
     {check:'signature', label:'Please select a signing method'},
     {check:'signature_file', label:'Please upload your signed declaration before submitting'},
   ],
@@ -4012,6 +4080,89 @@ function _reqValue(id, f, errors){
     errors.push(f.label);
     _flagInvalid(el && el.type === 'hidden' ? _countryVisibleInput(el) : el);
   }
+}
+
+// Shared identity-completeness check for one person card's form. Red-flags the
+// failing fields and returns the list of missing items (empty = complete).
+function _cardIdentityIssues(form){
+  const issues = [];
+  const nameInp  = form.querySelector('input[data-field="first_name"]') || form.querySelector('input[placeholder*="As on passport"]');
+  const surInp   = form.querySelector('input[data-field="surname"]');
+  const emailInp = form.querySelector('input[data-field="email"]') || form.querySelector('input[type="email"]');
+  const natHid   = form.querySelector('input[data-field="nationality"]');
+  const resHid   = form.querySelector('input[data-field="country_of_residence"]');
+  let dobInp = form.querySelector('input[data-field="dob"]');
+  if(!dobInp){
+    const allDateInputs = Array.from(form.querySelectorAll('input[type="date"]'));
+    dobInp = allDateInputs.find(inp => !inp.classList.contains('doc-passport-exp') && !inp.classList.contains('doc-id-exp'));
+  }
+  const passNum  = form.querySelector('.doc-passport-num');
+  const passExp  = form.querySelector('.doc-passport-exp');
+  const idNum    = form.querySelector('.doc-id-num');
+  const idExp    = form.querySelector('.doc-id-exp');
+  const today2 = new Date().toISOString().split('T')[0];
+  const hasPassport = passNum?.value?.trim() && passExp?.value && passExp.value > today2;
+  const hasID       = idNum?.value?.trim() && idExp?.value && idExp.value > today2;
+  const allSelects = form.querySelectorAll('select');
+  const pepSelect = form.querySelector('select[data-field="pep_status"]') || allSelects[allSelects.length - 1];
+  const hasPEP = pepSelect?.value && pepSelect.value !== '';
+  if(!nameInp?.value?.trim()){ issues.push('first name'); _flagInvalid(nameInp); }
+  if(!surInp?.value?.trim()){ issues.push('surname'); _flagInvalid(surInp); }
+  if(!dobInp?.value){ issues.push('date of birth'); _flagInvalid(dobInp); }
+  if(!natHid?.value){ issues.push('nationality'); _flagInvalid(_countryVisibleInput(natHid)); }
+  if(!resHid?.value){ issues.push('country of residence'); _flagInvalid(_countryVisibleInput(resHid)); }
+  if(!emailInp?.value?.trim()){ issues.push('email'); _flagInvalid(emailInp); }
+  if(!(hasPassport || hasID)){ issues.push('passport or ID card details (number + expiry)'); _flagInvalid(passNum); }
+  if(!hasPEP){ issues.push('PEP declaration'); _flagInvalid(pepSelect); }
+  return issues;
+}
+// Missing required-doc errors for one container ('#personal-doc-rows' or '#dynamic-doc-rows')
+function _requiredDocErrors(containerSel, errors){
+  const missing = [];
+  document.querySelectorAll(containerSel + ' .doc-row[data-required="true"]').forEach(r => {
+    if(r.dataset.docType === 'cv') return;  // CV satisfied by upload OR the manual form ('cv' check)
+    if(!r.classList.contains('done')){
+      const name = r.querySelector('.doc-name')?.textContent?.replace(/\s*\*\s*$/, '').trim() || r.dataset.docType;
+      missing.push(name);
+    }
+  });
+  if(missing.length) errors.push(missing.map(n => 'Required: ' + n).join(' · '));
+}
+// The kyc_ubo_sessions row for a person (matched by exact trimmed name), if any
+function _uboSessionFor(name){
+  return (window._uboSessions || []).find(s => (s.person_name || '').trim() === (name || '').trim()) || null;
+}
+// Is a person's SAVED shareholder row identity-complete? Used when their card
+// isn't rendered (e.g. resume straight to Step 7).
+function _savedRowComplete(name){
+  const src = (Array.isArray(window._lastSavedShareholders) && window._lastSavedShareholders.length)
+    ? window._lastSavedShareholders : window._resumedShareholders;
+  if(!Array.isArray(src)) return false;
+  const r = src.find(s => (s.full_name || '').trim() === (name || '').trim());
+  if(!r) return false;
+  const today = new Date().toISOString().split('T')[0];
+  const hasDoc = (r.passport_number && r.passport_expiry && r.passport_expiry > today) ||
+                 (r.id_card_number && r.id_card_expiry && r.id_card_expiry > today);
+  return !!(r.first_name && r.surname && r.dob && r.email && hasDoc && (r.pep_status === 'yes' || r.pep_status === 'no'));
+}
+// Names of every NON-applicant person who requires KYC (>25% or designated controlling)
+function _step1NonApplicants(){
+  const isIncorp = _isIncorpVisible();
+  const sel     = isIncorp ? '#ubo-list .ubo-block' : '#entity-ubo-list .entity-ubo-block';
+  const nameCls = isIncorp ? '.ubo-name' : '.entity-ubo-name';
+  const apCls   = isIncorp ? '.ubo-is-applicant' : '.entity-ubo-is-applicant';
+  const pctCls  = isIncorp ? '.ubo-pct' : '.entity-ubo-pct';
+  const ctrl = (isIncorp ? document.getElementById('controlling-person-select')
+                         : document.getElementById('entity-controlling-select'))?.value || null;
+  const names = [];
+  document.querySelectorAll(sel).forEach(b => {
+    const name = b.querySelector(nameCls)?.value?.trim();
+    if(!name) return;
+    const isMe = b.querySelector(apCls)?.value === 'yes';
+    const pct = parseFloat(b.querySelector(pctCls)?.value) || 0;
+    if(!isMe && (pct > 25 || name === ctrl)) names.push(name);
+  });
+  return names;
 }
 
 function validateStep(stepNum){
@@ -4107,72 +4258,51 @@ function validateStep(stepNum){
           }
           break;
         }
-        case 'ubo_cards_started': {
-          const uboCards = document.querySelectorAll('.ubo-id-card');
-          if(uboCards.length === 0) break;
-          const missing = [];
-          uboCards.forEach((card, i) => {
-            // Try by ID first, then search within the card body
-            let form = document.getElementById('ubo-form-'+i);
-            if(!form){
-              const body = document.getElementById('ubo-body-'+i);
-              form = body?.querySelector('.ubo-id-form');
-            }
-            if(!form) return;
-            // Anchor on data-field attributes (stable) with legacy fallbacks
-            const nameInp  = form.querySelector('input[data-field="first_name"]') || form.querySelector('input[placeholder*="As on passport"]');
-            const surInp   = form.querySelector('input[data-field="surname"]');
-            const emailInp = form.querySelector('input[data-field="email"]') || form.querySelector('input[type="email"]');
-            const natHid   = form.querySelector('input[data-field="nationality"]');
-            const resHid   = form.querySelector('input[data-field="country_of_residence"]');
-            let dobInp = form.querySelector('input[data-field="dob"]');
-            if(!dobInp){
-              // DOB fallback: the first date input that is NOT a document expiry field
-              const allDateInputs = Array.from(form.querySelectorAll('input[type="date"]'));
-              dobInp = allDateInputs.find(inp => !inp.classList.contains('doc-passport-exp') && !inp.classList.contains('doc-id-exp'));
-            }
-            const passNum  = form.querySelector('.doc-passport-num');
-            const passExp  = form.querySelector('.doc-passport-exp');
-            const idNum    = form.querySelector('.doc-id-num');
-            const idExp    = form.querySelector('.doc-id-exp');
-            const today2 = new Date().toISOString().split('T')[0];
-            const hasPassport = passNum?.value?.trim() && passExp?.value && passExp.value > today2;
-            const hasID       = idNum?.value?.trim() && idExp?.value && idExp.value > today2;
-            const hasDoc      = hasPassport || hasID;
-            const personName  = ((nameInp?.value?.trim() || '') + ' ' + (surInp?.value?.trim() || '')).trim() || 'Person '+(i+1);
-            const allSelects = form.querySelectorAll('select');
-            const pepSelect = form.querySelector('select[data-field="pep_status"]') || allSelects[allSelects.length - 1];
-            const hasPEP = pepSelect?.value && pepSelect.value !== '';
-            const issues = [];
-            if(!nameInp?.value?.trim()){ issues.push('first name'); _flagInvalid(nameInp); }
-            if(!surInp?.value?.trim()){ issues.push('surname'); _flagInvalid(surInp); }
-            if(!dobInp?.value){ issues.push('date of birth'); _flagInvalid(dobInp); }
-            if(!natHid?.value){ issues.push('nationality'); _flagInvalid(_countryVisibleInput(natHid)); }
-            if(!resHid?.value){ issues.push('country of residence'); _flagInvalid(_countryVisibleInput(resHid)); }
-            if(!emailInp?.value?.trim()){ issues.push('email'); _flagInvalid(emailInp); }
-            if(!hasDoc){ issues.push('passport or ID card details (number + expiry)'); _flagInvalid(passNum); }
-            if(!hasPEP){ issues.push('PEP declaration'); _flagInvalid(pepSelect); }
-            if(issues.length) missing.push(`${personName}: missing ${issues.join(', ')}`);
-          });
-          if(missing.length) errors.push(...missing.map(m=>'Identity form incomplete — '+m));
+        case 'applicant_card': {
+          // Step 2: the applicant's own identity card must be fully complete.
+          const card = document.querySelector('#applicant-card-container .ubo-id-card');
+          if(!card) break;
+          const form = card.querySelector('.ubo-id-form');
+          if(!form) break;
+          const issues = _cardIdentityIssues(form);
+          if(issues.length) errors.push('Your identity form is incomplete — missing: ' + issues.join(', '));
           break;
         }
-        case 'dynamic_required_docs': {
-          // Walk every required doc-row in the dynamic container.
-          // CV is checked separately (its case follows below) because CV can be
-          // satisfied by manual form OR upload — so we skip it here.
-          const missing = [];
-          document.querySelectorAll('#dynamic-doc-rows .doc-row[data-required="true"]').forEach(r => {
-            if(r.dataset.docType === 'cv') return;  // CV handled by separate 'cv' check
-            if(!r.classList.contains('done')){
-              const name = r.querySelector('.doc-name')?.textContent?.replace(/\s*\*\s*$/, '').trim() || r.dataset.docType;
-              missing.push(name);
+        case 'other_ubos_progress': {
+          // Step 3 is NON-blocking: for each other UBO it is enough that their
+          // personal link exists (any status) OR their card was filled on their
+          // behalf. Full completion is enforced at submit (all_ubos_complete).
+          document.querySelectorAll('#ubo-identity-cards .ubo-id-card').forEach(card => {
+            const nameEl = card.querySelector('.ubo-id-name');
+            const name = nameEl ? nameEl.textContent.replace(/\s*You\s*$/i,'').trim() : '';
+            if(_uboSessionFor(name)) return;  // link created — pending is fine here
+            const form = card.querySelector('.ubo-id-form');
+            const issues = form ? _cardIdentityIssues(form) : ['identity details'];
+            if(issues.length) errors.push(name + ' — send them their personal KYC link, or fill in their details on their behalf (missing: ' + issues.join(', ') + ')');
+          });
+          break;
+        }
+        case 'personal_required_docs': {
+          _requiredDocErrors('#personal-doc-rows', errors);
+          break;
+        }
+        case 'company_required_docs': {
+          _requiredDocErrors('#dynamic-doc-rows', errors);
+          break;
+        }
+        case 'all_ubos_complete': {
+          // Final gate: every other UBO must have finished — via their own link,
+          // via a complete on-behalf card, or via previously saved complete data.
+          _step1NonApplicants().forEach(name => {
+            const sess = _uboSessionFor(name);
+            const viaLink = sess && sess.status === 'completed';
+            const card = _findUBOCardByName(name);
+            const form = card ? card.querySelector('.ubo-id-form') : null;
+            const cardOk = form ? _cardIdentityIssues(form).length === 0 : false;
+            if(!(viaLink || cardOk || _savedRowComplete(name))){
+              errors.push('Waiting for ' + name + ' — they have not finished their personal KYC yet. Resend their link from Step 3, or fill in their details on their behalf there.');
             }
           });
-          if(missing.length){
-            // Replace the generic label with a specific missing-doc list
-            errors.push(missing.map(n => 'Required: ' + n).join(' · '));
-          }
           break;
         }
         case 'cv': {
@@ -4520,8 +4650,11 @@ async function resumeDraft(draftInfo){
       sb.from('kyc_shareholders').select('*').eq('application_id', app.id),
       sb.from('kyc_source_of_funds').select('*').eq('application_id', app.id),
       sb.from('kyc_questionnaire').select('*').eq('application_id', app.id),
-      sb.from('kyc_documents').select('id,doc_type,file_name,file_size,storage_path').eq('application_id', app.id),
+      sb.from('kyc_documents').select('id,doc_type,file_name,file_size,storage_path,person_label').eq('application_id', app.id),
     ]);
+    // Stash application-level docs (no person_label) so renderDocRows can re-mark
+    // uploaded rows on Steps 2/3. UBO-labelled docs must NOT mark the applicant's rows.
+    window._resumedDocs = (docList || []).filter(d => d && !d.person_label);
 
     // ── Restore Step 1: services (and trigger conditional incorp/entity forms) ──
     if(Array.isArray(app.services)){
@@ -4614,7 +4747,7 @@ async function resumeDraft(draftInfo){
     // UI here so the saved file is recognised by Step 7 validation and the PDF report.
     try {
       window.sigUploads = window.sigUploads || { own: null, physical: null };
-      const sigDocs = (docList || []).filter(d => d && d.doc_type && d.doc_type.indexOf('signed_declaration_') === 0);
+      const sigDocs = (docList || []).filter(d => d && !d.person_label && d.doc_type && d.doc_type.indexOf('signed_declaration_') === 0);
       sigDocs.forEach(d => {
         const m = d.doc_type === 'signed_declaration_own'      ? 'own'
                 : d.doc_type === 'signed_declaration_physical' ? 'physical'
@@ -4636,7 +4769,7 @@ async function resumeDraft(draftInfo){
     // Same pattern as the signed-declaration rehydrate above. Without this the client would
     // see an empty selfie upload zone on resume and Step 4 validation would block them.
     try {
-      const selfieDoc = (docList || []).find(d => d && d.doc_type === 'identity_selfie');
+      const selfieDoc = (docList || []).find(d => d && !d.person_label && d.doc_type === 'identity_selfie');
       if(selfieDoc){
         window.selfieUpload = {
           docId: selfieDoc.id, path: selfieDoc.storage_path,
@@ -4797,6 +4930,8 @@ function generateRef(){
 }
 
 async function submit(){
+  // Freeze UBO polling so a concurrent adoption save can't interleave with submit
+  if(typeof _stopUBOPolling === 'function'){ try { _stopUBOPolling(); } catch(e){} }
   // Load any UBO self-service sessions so their answers merge into kyc_shareholders
   try { await _refreshUBOSessions(); } catch(e){}
   const submitBtn = document.querySelector('#s7 .btn-blue');
@@ -5019,7 +5154,7 @@ function _buildPDFSnapshot(){
   // Document list: the live Step 3 rows (uploaded ones carry .done + the file
   // name in .doc-desc strong), plus selfie and signed-declaration uploads.
   const docs = [];
-  document.querySelectorAll('#dynamic-doc-rows .doc-row.done').forEach(el => {
+  document.querySelectorAll('#personal-doc-rows .doc-row.done, #dynamic-doc-rows .doc-row.done').forEach(el => {
     docs.push({
       type: el.querySelector('.doc-name')?.textContent?.replace(/\s*\*\s*$/, '').trim() || el.dataset.docType || '—',
       file: el.querySelector('.doc-desc strong')?.textContent?.trim() || '—'
@@ -5440,7 +5575,7 @@ function _findUBOCardByName(name){
   if(!name) return null;
   const trimmed = name.trim();
   let match = null;
-  document.querySelectorAll('#ubo-identity-cards .ubo-id-card').forEach(card => {
+  document.querySelectorAll('#applicant-card-container .ubo-id-card, #ubo-identity-cards .ubo-id-card').forEach(card => {
     const nameEl = card.querySelector('.ubo-id-name');
     if(!nameEl) return;
     // Strip the "You" badge / whitespace; take just the leading text
@@ -5579,6 +5714,11 @@ function _flashSaved(msg){
 // Public: save current form state as a draft application in the DB.
 // Returns the application id, or null on failure.
 async function saveDraftToDB(){
+  // Snapshot form state SYNCHRONOUSLY before any await — a step-change re-render
+  // repopulates cards from the last save and must never wipe unsaved edits mid-save.
+  const _earlySh  = _collectShareholders();
+  const _earlySof = _collectSOF();
+  const _earlyQ   = _collectQuestionnaire();
   if(window._saveInFlight) return null;
   if(!sb){
     console.warn('Supabase client not initialised — cannot save draft');
@@ -5642,9 +5782,9 @@ async function saveDraftToDB(){
       sb.from('kyc_questionnaire').delete().eq('application_id', appId),
     ]);
 
-    const sh  = _collectShareholders().map(r => ({...r, application_id: appId}));
-    const sof = _collectSOF().map(r => ({...r, application_id: appId}));
-    const q   = _collectQuestionnaire().map(r => ({...r, application_id: appId}));
+    const sh  = _earlySh.map(r => ({...r, application_id: appId}));
+    const sof = _earlySof.map(r => ({...r, application_id: appId}));
+    const q   = _earlyQ.map(r => ({...r, application_id: appId}));
 
     if(sh.length)  { const { error } = await sb.from('kyc_shareholders').insert(sh);     if(error) console.warn('Draft shareholders error:', error.message); }
     if(sof.length) { const { error } = await sb.from('kyc_source_of_funds').insert(sof); if(error) console.warn('Draft SOF error:', error.message); }
