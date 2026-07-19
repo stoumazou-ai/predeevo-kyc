@@ -340,6 +340,7 @@ var currentAppId = window.currentAppId;
 var currentRef = window.currentRef;
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
@@ -1167,8 +1168,24 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <!-- IDLE — initial state before camera starts -->
     <div id="selfie-idle">
       <div class="info-box" style="margin-bottom:14px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i><strong>How to take a good selfie:</strong> face the camera straight on &middot; plain background &middot; good lighting &middot; no sunglasses or hat &middot; full face visible. Holding your ID next to your face is welcome but not required.</div>
-      <button class="btn btn-blue" style="width:100%;justify-content:center" onclick="startSelfieCamera()"><i class="ti ti-camera"></i>Start camera</button>
-      <div style="text-align:center;margin-top:10px;font-size:11px;color:var(--muted)">Your browser will ask permission to use the camera. Allow it to continue.</div>
+      <button class="btn btn-blue" style="width:100%;justify-content:center" onclick="startPhoneHandoff()"><i class="ti ti-device-mobile"></i>Continue on your phone</button>
+      <div style="text-align:center;margin-top:8px;font-size:11px;color:var(--muted)">Recommended &middot; scan a QR code and take the selfie with your phone's camera.</div>
+      <div style="display:flex;align-items:center;gap:10px;margin:16px 0"><div style="flex:1;height:0.5px;background:rgba(0,0,0,.1)"></div><div style="font-size:10px;color:var(--subtle);font-weight:600;text-transform:uppercase;letter-spacing:.04em">or</div><div style="flex:1;height:0.5px;background:rgba(0,0,0,.1)"></div></div>
+      <button class="btn btn-outline" style="width:100%;justify-content:center" onclick="startSelfieCamera()"><i class="ti ti-camera"></i>Use this device's camera</button>
+      <div style="text-align:center;margin-top:8px;font-size:11px;color:var(--muted)">Your browser will ask permission to use the camera. Allow it to continue.</div>
+    </div>
+
+    <!-- PHONE HANDOFF - QR code, desktop waits for the phone to capture -->
+    <div id="selfie-phone" style="display:none">
+      <div style="text-align:center">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">Scan with your phone's camera</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.55;margin-bottom:14px">Point your phone's camera app at the code below to open a secure page and take your selfie. Keep this page open &mdash; it continues automatically once your phone is done.</div>
+        <div id="selfie-qr" style="display:inline-flex;padding:12px;background:#fff;border:0.5px solid rgba(0,0,0,.1);border-radius:12px;min-width:120px;min-height:120px;align-items:center;justify-content:center"></div>
+        <div style="margin-top:12px;font-size:11px;color:var(--muted)">Can't scan? Open this link on your phone:</div>
+        <div id="selfie-phone-link" style="font-size:11px;color:var(--blue);word-break:break-all;margin-top:3px">&mdash;</div>
+        <div id="selfie-phone-status" style="display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-size:12px;font-weight:600;color:var(--blue)"><span class="save-dot"></span>Waiting for your phone&hellip;</div>
+      </div>
+      <button class="btn btn-outline" style="width:100%;justify-content:center;margin-top:16px" onclick="cancelPhoneHandoff()">Cancel</button>
     </div>
 
     <!-- LIVE — camera streaming, awaiting capture -->
@@ -1729,6 +1746,11 @@ function gs(n){
     if(n !== 4 && window._selfieStream){
       try { window._selfieStream.getTracks().forEach(t => t.stop()); } catch(e){}
       window._selfieStream = null;
+    }
+    // Stop any phone-handoff polling when leaving Step 4
+    if(n !== 4 && typeof _stopSelfiePolling === 'function'){
+      _stopSelfiePolling();
+      window._selfieSessionId = null;
     }
     // Update SoW step counter dynamically — accounts for selfie-skip
     if(n === 's-sow'){
@@ -2516,11 +2538,12 @@ function retakeSelfie(){
     clearSelfie().catch(e => console.warn('Retake clear:', e));
   }
   window._selfieBlob = null;
-  startSelfieCamera();
+  // Return to the method chooser so the client can pick phone or this device again.
+  _showSelfieState('idle');
 }
 
 function _showSelfieState(state){
-  ['idle','live','captured','uploading','done','error'].forEach(s => {
+  ['idle','phone','live','captured','uploading','done','error'].forEach(s => {
     const el = document.getElementById('selfie-' + s);
     if(el) el.style.display = (s === state) ? '' : 'none';
   });
@@ -2539,6 +2562,106 @@ function _stopSelfieStream(){
     try { window._selfieStream.getTracks().forEach(t => t.stop()); } catch(e){}
     window._selfieStream = null;
   }
+}
+
+// ── MOBILE-LINK SELFIE HANDOFF ──
+// Desktop creates a short-lived kyc_selfie_sessions row, encodes its id into a
+// QR code pointing at /selfie.html?s=<id>, and polls until the phone flips the
+// row to status='captured'. The phone uploads the selfie through the same anon
+// storage + kyc_documents policies (both gated on is_anon_accessible_application),
+// so no extra permissions are needed. On capture we mirror the phone's upload
+// into window.selfieUpload so the rest of the form treats it as its own.
+window._selfiePoll = null;        // setInterval handle
+window._selfieSessionId = null;   // active handoff session id
+
+async function startPhoneHandoff(){
+  _showSelfieState('phone');
+  const statusEl = document.getElementById('selfie-phone-status');
+  const qrBox    = document.getElementById('selfie-qr');
+  const linkEl   = document.getElementById('selfie-phone-link');
+  if(qrBox) qrBox.innerHTML = '<div class="spinner" style="width:28px;height:28px;border-width:3px"></div>';
+  if(statusEl) statusEl.innerHTML = 'Preparing your secure link&hellip;';
+  try {
+    if(!sb) throw new Error('Supabase not initialised');
+    // Ensure an application row exists — it is the FK target for the session.
+    if(!currentAppId){ await saveDraftToDB(); }
+    if(!currentAppId) throw new Error('Could not start a session — please save your progress and try again.');
+
+    const label = (window.currentInvitation && window.currentInvitation.client_name) || null;
+    const { data: sess, error: insErr } = await sb.from('kyc_selfie_sessions').insert({
+      application_id: currentAppId,
+      client_name: label
+    }).select('id').single();
+    if(insErr) throw insErr;
+
+    window._selfieSessionId = sess.id;
+    const url = location.origin + '/selfie.html?s=' + sess.id;
+
+    if(qrBox){
+      qrBox.innerHTML = '';
+      if(window.QRCode){
+        try {
+          new window.QRCode(qrBox, { text: url, width: 190, height: 190, colorDark: '#1A2332', colorLight: '#ffffff', correctLevel: window.QRCode.CorrectLevel.M });
+        } catch(qe){ console.warn('QR render:', qe); qrBox.innerHTML = '<div style="font-size:11px;color:var(--muted)">Use the link below on your phone.</div>'; }
+      } else {
+        qrBox.innerHTML = '<div style="font-size:11px;color:var(--muted)">Use the link below on your phone.</div>';
+      }
+    }
+    if(linkEl) linkEl.textContent = url;
+    if(statusEl) statusEl.innerHTML = '<span class="save-dot"></span>Waiting for your phone&hellip;';
+
+    _startSelfiePolling(sess.id);
+  } catch(err){
+    console.error('startPhoneHandoff:', err);
+    if(window._handleSessionExpiry && (await window._handleSessionExpiry(err))) return;
+    _showSelfieError('Could not create link', (err && err.message) || 'Please try again, or use this device\'s camera instead.');
+  }
+}
+
+function _startSelfiePolling(sessionId){
+  _stopSelfiePolling();
+  window._selfiePoll = setInterval(async () => {
+    // Bail if the user cancelled or navigated to a different session.
+    if(!sb || window._selfieSessionId !== sessionId){ _stopSelfiePolling(); return; }
+    try {
+      const { data, error } = await sb.from('kyc_selfie_sessions')
+        .select('status, selfie_doc_id, selfie_storage_path, selfie_file_name')
+        .eq('id', sessionId).maybeSingle();
+      if(error){ console.warn('Selfie poll:', error.message); return; }
+      if(data && data.status === 'captured'){
+        _stopSelfiePolling();
+        await _adoptPhoneSelfie(data);
+      }
+    } catch(e){ console.warn('Selfie poll exception:', e); }
+  }, 2500);
+}
+
+function _stopSelfiePolling(){
+  if(window._selfiePoll){ clearInterval(window._selfiePoll); window._selfiePoll = null; }
+}
+
+function cancelPhoneHandoff(){
+  _stopSelfiePolling();
+  window._selfieSessionId = null;
+  _showSelfieState(window.selfieUpload ? 'done' : 'idle');
+}
+
+async function _adoptPhoneSelfie(data){
+  // The phone already wrote the storage object + kyc_documents row against this
+  // application. Mirror it into window.selfieUpload so the desktop treats it as
+  // its own upload (progress save, PDF snapshot, submit-time app columns).
+  window.selfieUpload = {
+    docId:      data.selfie_doc_id || null,
+    path:       data.selfie_storage_path || null,
+    fileName:   data.selfie_file_name || 'selfie.jpg',
+    fileSize:   null,
+    uploadedAt: new Date().toISOString()
+  };
+  window._selfieSessionId = null;
+  const nameEl = document.getElementById('selfie-done-name');
+  if(nameEl) nameEl.textContent = window.selfieUpload.fileName;
+  _showSelfieState('done');
+  try { saveProgress(); } catch(e){}
 }
 
 async function uploadSelfie(file){
