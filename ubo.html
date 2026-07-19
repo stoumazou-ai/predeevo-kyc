@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>UBO identity verification — Predeevo</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1C75BC;--blue-dark:#155d96;--blue-light:#E8F3FC;--blue-pale:#F0F7FD;--blue-border:#9DCBEE;
+  --teal:#1D9E75;--teal-light:#E1F5EE;--teal-border:#9FE1CB;--green:#16a34a;--green-light:#dcfce7;
+  --red:#C0392B;--red-light:#FDEDEC;--red-border:#F1A89D;--amber:#D4820A;--amber-light:#FEF3E2;
+  --text:#1A2332;--muted:#5A6478;--subtle:#8A96A8;--surface:#F5F6F8;--card:#FFFFFF;
+}
+body{font-family:'Manrope',sans-serif;color:var(--text);background:var(--surface);min-height:100vh;font-weight:400;-webkit-font-smoothing:antialiased}
+.wrap{max-width:640px;margin:0 auto;padding:24px 16px 60px}
+.hdr{background:var(--blue);border-radius:14px;padding:22px 26px;margin-bottom:20px;color:white}
+.hdr-secure{font-size:10px;color:rgba(255,255,255,.55);font-weight:500;display:flex;align-items:center;gap:4px;margin-bottom:14px}
+.hdr img{height:24px;width:auto}
+.hdr h1{font-size:17px;font-weight:700;letter-spacing:-.3px;margin-top:12px}
+.hdr-sub{color:rgba(255,255,255,.7);font-size:12px;line-height:1.6;margin-top:5px}
+.card{background:var(--card);border:0.5px solid rgba(0,0,0,.1);border-radius:12px;padding:20px 22px;margin-bottom:14px}
+.card-title{font-size:13px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title i{font-size:16px;color:var(--blue)}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.fgrid .full{grid-column:1/-1}
+@media(max-width:560px){.fgrid{grid-template-columns:1fr}}
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.lbl{font-size:11px;color:var(--muted);font-weight:600}
+.lbl .req{color:var(--red);margin-left:2px;font-weight:800;font-size:12px}
+input,select,textarea{border:0.5px solid rgba(0,0,0,.14);border-radius:8px;padding:9px 11px;font-size:13px;font-family:'Manrope',sans-serif;color:var(--text);background:var(--card);width:100%;transition:border-color .13s;font-weight:400}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(28,117,188,.1)}
+.field-error{border-color:var(--red) !important;background:var(--red-light) !important}
+.info-box{display:flex;gap:8px;background:var(--blue-pale);border:0.5px solid var(--blue-border);border-radius:9px;padding:11px 13px;font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:14px}
+.info-box i{font-size:14px;color:var(--blue);flex-shrink:0;margin-top:1px}
+.warn-box{display:flex;gap:8px;background:var(--amber-light);border:0.5px solid var(--amber);border-radius:9px;padding:11px 13px;font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:14px}
+.warn-box i{font-size:14px;color:var(--amber);flex-shrink:0;margin-top:1px}
+.alert-box{display:flex;gap:9px;align-items:flex-start;background:var(--red-light);border:0.5px solid var(--red-border);border-radius:9px;padding:13px 15px}
+.alert-box i{font-size:18px;color:var(--red);flex-shrink:0;margin-top:1px}
+.alert-box strong{font-size:13px}
+.alert-box .msg{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}
+.validation-banner{background:var(--red-light);border:0.5px solid var(--red-border);border-radius:10px;padding:13px 16px;margin-bottom:16px;display:none}
+.validation-banner.show{display:block}
+.validation-banner-title{font-size:13px;font-weight:700;color:var(--red);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.validation-list{list-style:none;padding:0;margin:0}
+.validation-list li{font-size:12px;color:var(--red);padding:3px 0;display:flex;align-items:center;gap:6px}
+.validation-list li::before{content:"\2192";font-weight:700}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:9px;padding:12px 16px;font-size:13px;font-weight:600;font-family:'Manrope',sans-serif;cursor:pointer;transition:all .13s;line-height:1}
+.btn i{font-size:16px}
+.btn-blue{background:var(--blue);color:white}
+.btn-blue:hover{background:var(--blue-dark)}
+.btn-outline{background:none;border:0.5px solid rgba(0,0,0,.14);color:var(--muted)}
+.btn-outline:hover{background:var(--surface);color:var(--text)}
+.btn-sm{padding:8px 12px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.sec-lbl{font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.05em;border-bottom:0.5px solid var(--blue-border);padding-bottom:6px;margin:16px 0 12px}
+.doc-row{display:flex;align-items:center;gap:12px;border:0.5px solid rgba(0,0,0,.1);border-radius:10px;padding:13px 14px;margin-bottom:10px;cursor:pointer;transition:all .13s;background:var(--card)}
+.doc-row:hover{border-color:var(--blue-border);background:var(--blue-pale)}
+.doc-row.done{border-color:var(--teal-border);background:var(--teal-light);cursor:default}
+.doc-icon{width:36px;height:36px;border-radius:8px;background:var(--blue-light);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.doc-row.done .doc-icon{background:var(--card);color:var(--teal)}
+.doc-info{flex:1;min-width:0}
+.doc-name{font-size:12.5px;font-weight:600}
+.doc-desc{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.45;word-break:break-word}
+.doc-st{font-size:10px;font-weight:700;flex-shrink:0}
+.ds-req{color:var(--amber)}.ds-done{color:var(--teal)}.ds-opt{color:var(--subtle)}
+.frame{position:relative;background:#000;border-radius:10px;overflow:hidden;aspect-ratio:4/3}
+.frame video{width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1)}
+.frame .hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;color:white;font-size:11px;text-shadow:0 1px 2px rgba(0,0,0,.8);pointer-events:none}
+.frame-still{background:#f3f4f6;border-radius:10px;overflow:hidden;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
+.frame-still img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.row{display:flex;gap:8px;margin-top:12px}
+.muted-note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5;text-align:center}
+.spinner{width:32px;height:32px;border:3px solid var(--blue-light);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.done-box{display:flex;flex-direction:column;align-items:center;text-align:center;padding:16px 0}
+.done-box .tick{width:56px;height:56px;border-radius:50%;background:var(--green-light);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:14px}
+.done-box h2{font-size:16px;font-weight:700}
+.done-box p{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6}
+.req-legend{font-size:11px;color:var(--muted);margin:0 0 14px;font-weight:500}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div class="hdr-secure"><i class="ti ti-lock"></i>SECURE · PREDEEVO KYC</div>
+    <img src="https://predeevo.com/wp-content/uploads/2026/02/logo-1.png" alt="Predeevo">
+    <h1><i class="ti ti-user-check" style="margin-right:6px"></i>Beneficial owner identity verification</h1>
+    <div class="hdr-sub" id="hdr-sub">Complete your identity details, upload your documents, and take a selfie. Takes about 10 minutes.</div>
+  </div>
+
+  <!-- LOADING -->
+  <div class="card" id="state-loading" style="text-align:center">
+    <div class="spinner" style="margin:10px auto 14px"></div>
+    <div style="font-size:13px;color:var(--muted)">Checking your link…</div>
+  </div>
+
+  <!-- INVALID / EXPIRED -->
+  <div class="card hide" id="state-invalid">
+    <div class="alert-box">
+      <i class="ti ti-alert-triangle"></i>
+      <div>
+        <strong id="invalid-title">This link is no longer valid</strong>
+        <div class="msg" id="invalid-msg">Please ask the person who sent you this link to generate a new one, or contact us at compliance@predeevo.com.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN FORM -->
+  <div id="state-main" class="hide">
+
+    <div class="validation-banner" id="val-banner">
+      <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following before submitting:</div>
+      <ul class="validation-list" id="val-list"></ul>
+    </div>
+    <div class="req-legend">Fields marked <span style="color:var(--red);font-weight:800">*</span> are required</div>
+
+    <!-- IDENTITY -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-id"></i>Your identity details</div>
+      <div class="info-box" id="context-box"><i class="ti ti-info-circle"></i><span id="context-text">You have been named as a beneficial owner. Please confirm your identity details below — exactly as they appear on your passport or ID card.</span></div>
+      <div class="fgrid">
+        <div class="fg"><label class="lbl">Title</label><select data-field="title"><option value="">Select...</option><option>Mr</option><option>Mrs</option><option>Miss</option><option>Ms</option><option>Dr</option><option>Prof</option></select></div>
+        <div class="fg"><label class="lbl">Marital status</label><select data-field="marital_status"><option value="">Select...</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option><option>Other</option></select></div>
+        <div class="fg"><label class="lbl">First name(s) <span class="req">*</span></label><input data-field="first_name" placeholder="As on passport"></div>
+        <div class="fg"><label class="lbl">Surname <span class="req">*</span></label><input data-field="surname" placeholder="As on passport"></div>
+        <div class="fg full"><label class="lbl">Previous or other surname</label><input data-field="prev_surname" placeholder="Maiden name or other legal name"></div>
+        <div class="fg"><label class="lbl">Date of birth <span class="req">*</span></label><input data-field="dob" type="date" min="1900-01-01" max="2099-12-31"></div>
+        <div class="fg"><label class="lbl">Place / country of birth</label><input data-field="place_of_birth" placeholder="e.g. Nicosia, Cyprus"></div>
+        <div class="fg"><label class="lbl">Nationality <span class="req">*</span></label><input data-field="nationality" list="country-list" placeholder="Type country..."></div>
+        <div class="fg"><label class="lbl">Dual nationality?</label><select data-field="dual_nationality"><option value="no">No</option><option value="yes">Yes</option></select></div>
+        <div class="fg full">
+          <div style="background:var(--blue-pale);border:0.5px solid var(--blue-border);border-radius:9px;padding:12px 14px">
+            <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Identity document — at least one required <span style="color:var(--red)">*</span></div>
+            <div class="fgrid" style="gap:0 8px">
+              <div class="fg" style="margin-bottom:8px"><label class="lbl">Passport number</label><input data-field="passport_number" placeholder="Passport number"></div>
+              <div class="fg" style="margin-bottom:8px"><label class="lbl">Passport expiry date</label><input data-field="passport_expiry" type="date" max="2099-12-31"></div>
+              <div class="fg" style="margin-bottom:0"><label class="lbl">National ID card number</label><input data-field="id_card_number" placeholder="ID card number (if applicable)"></div>
+              <div class="fg" style="margin-bottom:0"><label class="lbl">ID card expiry date</label><input data-field="id_card_expiry" type="date" max="2099-12-31"></div>
+            </div>
+          </div>
+        </div>
+        <div class="fg full"><label class="lbl">Country of residence <span class="req">*</span></label><input data-field="country_of_residence" list="country-list" placeholder="Type country..."></div>
+        <div class="fg full"><label class="lbl">Street address</label><input data-field="addr_street" placeholder="Street name and number"></div>
+        <div class="fg"><label class="lbl">Town / City</label><input data-field="addr_town" placeholder="Town or city"></div>
+        <div class="fg"><label class="lbl">Postcode</label><input data-field="addr_postcode" placeholder="Postcode / ZIP"></div>
+        <div class="fg"><label class="lbl">Email address <span class="req">*</span></label><input data-field="email" type="email" placeholder="email@domain.com"></div>
+        <div class="fg"><label class="lbl">Mobile</label><div style="display:flex;gap:6px"><input data-field="mobile_country_code" placeholder="+357" style="width:74px;flex-shrink:0"><input data-field="mobile" placeholder="Number" type="tel" inputmode="numeric"></div></div>
+        <div class="fg"><label class="lbl">Occupation / profession</label><input data-field="occupation" placeholder="e.g. Director, Investor"></div>
+        <div class="fg"><label class="lbl">Employment status</label><select data-field="employment_status"><option value="">Select...</option><option>Self-employed</option><option>Employed</option><option>Business owner</option><option>Retired</option><option>Investor</option><option>Other</option></select></div>
+        <div class="fg"><label class="lbl">Country of tax residence</label><input data-field="tax_country" list="country-list" placeholder="Type country..."></div>
+        <div class="fg"><label class="lbl">TIN / AFM</label><input data-field="tin" placeholder="Tax identification number"></div>
+        <div class="fg"><label class="lbl">Annual income (EUR)</label><select data-field="annual_income"><option value="">Select...</option><option>Under €30,000</option><option>€30,000–€100,000</option><option>€100,000–€500,000</option><option>€500,000–€2,000,000</option><option>Over €2,000,000</option></select></div>
+      </div>
+      <div class="sec-lbl">PEP declaration</div>
+      <div class="fg">
+        <label class="lbl">Are you a Politically Exposed Person (PEP)? <span class="req">*</span></label>
+        <select data-field="pep_status">
+          <option value="">Please select...</option>
+          <option value="no">No — not a PEP</option>
+          <option value="yes">Yes — I am or have been a PEP</option>
+        </select>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">A PEP is a person who holds or has held a prominent public function (e.g. head of state, minister, MP, judge, ambassador, senior military officer, state-enterprise executive), or a family member or close associate of such a person.</div>
+      </div>
+    </div>
+
+    <!-- DOCUMENTS -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-files"></i>Your documents</div>
+      <div class="info-box"><i class="ti ti-info-circle"></i>Upload clear scans or photos. PDF, JPG or PNG · max 10 MB each. Your passport <em>or</em> ID card is required (whichever you entered above).</div>
+      <div class="doc-row" id="doc-passport" onclick="pickDoc('passport')">
+        <div class="doc-icon"><i class="ti ti-file-certificate"></i></div>
+        <div class="doc-info"><div class="doc-name">Passport copy <span style="color:var(--red)">*</span></div><div class="doc-desc" id="desc-passport">Photo page of your passport — or upload your ID card below instead</div></div>
+        <span class="doc-st ds-req" id="st-passport">Required</span>
+      </div>
+      <div class="doc-row" id="doc-id_card" onclick="pickDoc('id_card')">
+        <div class="doc-icon"><i class="ti ti-id-badge-2"></i></div>
+        <div class="doc-info"><div class="doc-name">National ID card copy</div><div class="doc-desc" id="desc-id_card">Both sides of your national ID card — alternative to the passport</div></div>
+        <span class="doc-st ds-opt" id="st-id_card">Alternative</span>
+      </div>
+      <div class="doc-row" id="doc-proof_of_address" onclick="pickDoc('proof_of_address')">
+        <div class="doc-icon"><i class="ti ti-home"></i></div>
+        <div class="doc-info"><div class="doc-name">Proof of address <span style="color:var(--red)">*</span></div><div class="doc-desc" id="desc-proof_of_address">Utility bill or bank statement issued within the last 6 months</div></div>
+        <span class="doc-st ds-req" id="st-proof_of_address">Required</span>
+      </div>
+      <div class="doc-row" id="doc-cv" onclick="pickDoc('cv')">
+        <div class="doc-icon"><i class="ti ti-file-text"></i></div>
+        <div class="doc-info"><div class="doc-name">Curriculum Vitae <span style="color:var(--red)">*</span></div><div class="doc-desc" id="desc-cv">A recent CV covering your employment history and qualifications</div></div>
+        <span class="doc-st ds-req" id="st-cv">Required</span>
+      </div>
+      <input type="file" id="doc-file-input" accept="application/pdf,image/jpeg,image/png" style="display:none">
+    </div>
+
+    <!-- SELFIE -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-camera-selfie"></i>Identity selfie</div>
+      <div id="cap-idle">
+        <div class="info-box"><i class="ti ti-info-circle"></i><span><strong>For a good selfie:</strong> face the camera straight on · plain background · good lighting · no sunglasses or hat · full face visible.</span></div>
+        <button type="button" class="btn btn-blue" style="width:100%" onclick="startCamera()"><i class="ti ti-camera"></i>Start camera</button>
+        <div class="muted-note">Your browser will ask permission to use the camera. Allow it to continue.</div>
+      </div>
+      <div id="cap-live" class="hide">
+        <div class="frame">
+          <video id="cam-video" autoplay playsinline muted></video>
+          <div class="hint">Centre your face, then tap Take photo</div>
+        </div>
+        <div class="row">
+          <button type="button" class="btn btn-outline" style="flex:1" onclick="cancelCamera()">Cancel</button>
+          <button type="button" class="btn btn-blue" style="flex:2" onclick="capture()"><i class="ti ti-camera"></i>Take photo</button>
+        </div>
+      </div>
+      <div id="cap-review" class="hide">
+        <div class="frame-still"><img id="cam-preview" alt="Captured selfie"></div>
+        <div class="row">
+          <button type="button" class="btn btn-outline" style="flex:1" onclick="startCamera()"><i class="ti ti-refresh"></i>Retake</button>
+          <button type="button" class="btn btn-blue" style="flex:2" onclick="useSelfie()"><i class="ti ti-check"></i>Use this photo</button>
+        </div>
+      </div>
+      <div id="cap-uploading" class="hide" style="text-align:center;padding:14px 0">
+        <div class="spinner"></div>
+        <div style="font-size:12px;margin-top:10px;font-weight:600">Uploading…</div>
+      </div>
+      <div id="cap-done" class="hide">
+        <div style="background:var(--green-light);border:0.5px solid var(--green);border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px">
+          <i class="ti ti-circle-check" style="color:var(--green);font-size:26px;flex-shrink:0"></i>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600">Selfie captured</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;word-break:break-all" id="selfie-name">—</div>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="retakeSelfie()" style="flex-shrink:0"><i class="ti ti-refresh"></i>Retake</button>
+        </div>
+      </div>
+      <div id="cap-error" class="hide">
+        <div class="alert-box" style="margin-bottom:12px">
+          <i class="ti ti-alert-triangle"></i>
+          <div><strong id="cam-err-title">Camera unavailable</strong><div class="msg" id="cam-err-msg">—</div></div>
+        </div>
+        <button type="button" class="btn btn-outline" style="width:100%" onclick="startCamera()"><i class="ti ti-refresh"></i>Try again</button>
+      </div>
+      <div class="muted-note">Captured locally in your browser and stored securely. A compliance officer manually matches this selfie to your ID document. Used solely for AML identity verification under Cyprus Law 188(I)/2007.</div>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="card">
+      <div class="warn-box"><i class="ti ti-alert-circle"></i>By submitting you confirm the information and documents provided are true, accurate and complete. Knowingly providing false information is a criminal offence under Article 3 of the Cyprus AML Law.</div>
+      <button type="button" class="btn btn-blue" id="submit-btn" style="width:100%;padding:14px" onclick="submitUBO()"><i class="ti ti-send"></i>Submit my details</button>
+    </div>
+  </div>
+
+  <!-- DONE -->
+  <div class="card hide" id="state-done">
+    <div class="done-box">
+      <div class="tick"><i class="ti ti-circle-check"></i></div>
+      <h2>Details received — thank you</h2>
+      <p>Your identity details, documents and selfie have been submitted securely to Predeevo's compliance team. The person completing the main application has been notified automatically. You may close this page.</p>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:6px;font-size:10px;color:var(--subtle)">Predeevo Ltd · Larnaca, Cyprus · Data processed under GDPR and Cyprus AML Law 188(I)/2007</div>
+</div>
+
+<datalist id="country-list"><option value="Afghanistan"><option value="Albania"><option value="Algeria"><option value="Andorra"><option value="Angola"><option value="Antigua and Barbuda"><option value="Argentina"><option value="Armenia"><option value="Australia"><option value="Austria"><option value="Azerbaijan"><option value="Bahamas"><option value="Bahrain"><option value="Bangladesh"><option value="Barbados"><option value="Belarus"><option value="Belgium"><option value="Belize"><option value="Benin"><option value="Bhutan"><option value="Bolivia"><option value="Bosnia and Herzegovina"><option value="Botswana"><option value="Brazil"><option value="Brunei"><option value="Bulgaria"><option value="Burkina Faso"><option value="Burundi"><option value="Cabo Verde"><option value="Cambodia"><option value="Cameroon"><option value="Canada"><option value="Central African Republic"><option value="Chad"><option value="Chile"><option value="China"><option value="Colombia"><option value="Comoros"><option value="Congo"><option value="Costa Rica"><option value="Croatia"><option value="Cuba"><option value="Cyprus"><option value="Czech Republic"><option value="Denmark"><option value="Djibouti"><option value="Dominica"><option value="Dominican Republic"><option value="DR Congo"><option value="Ecuador"><option value="Egypt"><option value="El Salvador"><option value="Equatorial Guinea"><option value="Eritrea"><option value="Estonia"><option value="Eswatini"><option value="Ethiopia"><option value="Fiji"><option value="Finland"><option value="France"><option value="Gabon"><option value="Gambia"><option value="Georgia"><option value="Germany"><option value="Ghana"><option value="Greece"><option value="Grenada"><option value="Guatemala"><option value="Guinea"><option value="Guinea-Bissau"><option value="Guyana"><option value="Haiti"><option value="Honduras"><option value="Hungary"><option value="Iceland"><option value="India"><option value="Indonesia"><option value="Iran"><option value="Iraq"><option value="Ireland"><option value="Israel"><option value="Italy"><option value="Jamaica"><option value="Japan"><option value="Jordan"><option value="Kazakhstan"><option value="Kenya"><option value="Kiribati"><option value="Kuwait"><option value="Kyrgyzstan"><option value="Laos"><option value="Latvia"><option value="Lebanon"><option value="Lesotho"><option value="Liberia"><option value="Libya"><option value="Liechtenstein"><option value="Lithuania"><option value="Luxembourg"><option value="Madagascar"><option value="Malawi"><option value="Malaysia"><option value="Maldives"><option value="Mali"><option value="Malta"><option value="Marshall Islands"><option value="Mauritania"><option value="Mauritius"><option value="Mexico"><option value="Micronesia"><option value="Moldova"><option value="Monaco"><option value="Mongolia"><option value="Montenegro"><option value="Morocco"><option value="Mozambique"><option value="Myanmar"><option value="Namibia"><option value="Nauru"><option value="Nepal"><option value="Netherlands"><option value="New Zealand"><option value="Nicaragua"><option value="Niger"><option value="Nigeria"><option value="North Korea"><option value="North Macedonia"><option value="Norway"><option value="Oman"><option value="Pakistan"><option value="Palau"><option value="Palestine"><option value="Panama"><option value="Papua New Guinea"><option value="Paraguay"><option value="Peru"><option value="Philippines"><option value="Poland"><option value="Portugal"><option value="Qatar"><option value="Romania"><option value="Russia"><option value="Rwanda"><option value="Saint Kitts and Nevis"><option value="Saint Lucia"><option value="Saint Vincent"><option value="Samoa"><option value="San Marino"><option value="Sao Tome and Principe"><option value="Saudi Arabia"><option value="Senegal"><option value="Serbia"><option value="Seychelles"><option value="Sierra Leone"><option value="Singapore"><option value="Slovakia"><option value="Slovenia"><option value="Solomon Islands"><option value="Somalia"><option value="South Africa"><option value="South Korea"><option value="South Sudan"><option value="Spain"><option value="Sri Lanka"><option value="Sudan"><option value="Suriname"><option value="Sweden"><option value="Switzerland"><option value="Syria"><option value="Taiwan"><option value="Tajikistan"><option value="Tanzania"><option value="Thailand"><option value="Timor-Leste"><option value="Togo"><option value="Tonga"><option value="Trinidad and Tobago"><option value="Tunisia"><option value="Turkey"><option value="Turkmenistan"><option value="Tuvalu"><option value="Uganda"><option value="Ukraine"><option value="United Arab Emirates"><option value="United Kingdom"><option value="United States"><option value="Uruguay"><option value="Uzbekistan"><option value="Vanuatu"><option value="Vatican City"><option value="Venezuela"><option value="Vietnam"><option value="Yemen"><option value="Zambia"><option value="Zimbabwe"></datalist>
+
+<script>
+const SUPABASE_URL = 'https://dnvmprywxeuzhjumtnpm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudm1wcnl3eGV1emhqdW10bnBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNDY5MjMsImV4cCI6MjA5MzkyMjkyM30.hAHkY1se2EZ834TIEEpger-cNG3EQIhWYs31CPzXH7w';
+const KYC_BUCKET = 'kyc-documents';
+const ALLOWED_MIME = ['application/pdf','image/jpeg','image/png'];
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+let sb = null;
+try { if(window.supabase && window.supabase.createClient) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e){ console.error('Supabase init:', e); }
+
+let SESSION = null;               // the kyc_ubo_sessions row
+let _stream = null, _blob = null; // camera state
+let _pickTarget = null;           // which doc_type the file input is picking for
+const DOCS = {};                  // doc_type -> {docId, path, fileName}
+let SELFIE = null;                // {docId, path, fileName}
+
+function _show(id){
+  ['state-loading','state-invalid','state-main','state-done'].forEach(s => {
+    const el = document.getElementById(s);
+    if(el) el.classList.toggle('hide', s !== id);
+  });
+}
+function _capState(sub){
+  ['cap-idle','cap-live','cap-review','cap-uploading','cap-done','cap-error'].forEach(s => {
+    const el = document.getElementById(s);
+    if(el) el.classList.toggle('hide', s !== sub);
+  });
+}
+function _invalid(title, msg){
+  const t = document.getElementById('invalid-title');
+  const m = document.getElementById('invalid-msg');
+  if(t && title) t.textContent = title;
+  if(m && msg) m.textContent = msg;
+  _show('state-invalid');
+}
+function _isRLSError(err){
+  const s = ((err && (err.message || err.error_description)) || '').toLowerCase();
+  return s.includes('row-level security') || s.includes('policy') || s.includes('permission') || s.includes('403') || s.includes('violates');
+}
+async function _handleWriteError(err){
+  console.warn('Write error:', err);
+  if(_isRLSError(err)){
+    _invalid('Session expired', 'The KYC application this link belongs to is no longer active — it may have expired or already been submitted. Please ask for a new link or contact compliance@predeevo.com.');
+    return true;
+  }
+  return false;
+}
+function _fld(name){ return document.querySelector('[data-field="' + name + '"]'); }
+function _val(name){ return _fld(name)?.value?.trim() || ''; }
+
+// ── Load & validate the session ──
+async function init(){
+  if(!sb){ _invalid('Something went wrong', 'Could not connect. Please refresh the page.'); return; }
+  const sessionId = new URLSearchParams(location.search).get('u');
+  if(!sessionId){ _invalid('Invalid link', 'This link is missing its access code. Please use the exact link you were sent.'); return; }
+  try {
+    const { data, error } = await sb.from('kyc_ubo_sessions')
+      .select('id, application_id, person_name, person_email, client_company, status, expires_at')
+      .eq('id', sessionId)
+      .maybeSingle();
+    if(error) console.warn('Session load:', error.message);
+    // RLS returns no row once the parent invitation is no longer valid
+    if(!data){
+      _invalid('Link expired', 'This verification link is no longer active — the related KYC application may have expired or already been submitted. Please ask for a new link.');
+      return;
+    }
+    SESSION = data;
+    if(data.status === 'completed'){ _show('state-done'); return; }
+    if(data.expires_at && new Date(data.expires_at).getTime() < Date.now()){
+      _invalid('Link expired', 'This verification link has expired. Please ask the person completing the main application to send you a fresh one.');
+      return;
+    }
+    // Personalise
+    const sub = document.getElementById('hdr-sub');
+    if(sub) sub.textContent = 'For ' + (data.person_name || 'you') + (data.client_company ? ' — in connection with ' + data.client_company : '') + '. Complete your identity details, upload your documents, and take a selfie. Takes about 10 minutes.';
+    const ctx = document.getElementById('context-text');
+    if(ctx) ctx.textContent = 'You have been named as a beneficial owner' + (data.client_company ? ' of ' + data.client_company : '') + '. Please confirm your identity details below — exactly as they appear on your passport or ID card.';
+    // Prefill name + email
+    const parts = (data.person_name || '').trim().split(/\s+/);
+    if(parts.length){ const f = _fld('first_name'); if(f && !f.value) f.value = parts.slice(0, -1).join(' ') || parts[0]; }
+    if(parts.length > 1){ const s = _fld('surname'); if(s && !s.value) s.value = parts[parts.length - 1]; }
+    if(data.person_email){ const e = _fld('email'); if(e && !e.value) e.value = data.person_email; }
+    // Expiry dates must be in the future
+    const today = new Date().toISOString().split('T')[0];
+    const pe = _fld('passport_expiry'); if(pe) pe.min = today;
+    const ie = _fld('id_card_expiry'); if(ie) ie.min = today;
+    _show('state-main');
+    _capState('cap-idle');
+  } catch(e){
+    console.error('init:', e);
+    _invalid('Something went wrong', 'Please refresh the page and try again.');
+  }
+}
+
+// ── Document uploads ──
+function pickDoc(docType){
+  if(DOCS[docType]) return;  // already uploaded; use Remove first
+  _pickTarget = docType;
+  const inp = document.getElementById('doc-file-input');
+  inp.value = '';
+  inp.click();
+}
+document.getElementById('doc-file-input').addEventListener('change', async function(){
+  const file = this.files && this.files[0];
+  const docType = _pickTarget;
+  if(!file || !docType) return;
+  if(!ALLOWED_MIME.includes(file.type)){ alert('Unsupported file type — PDF, JPG or PNG only.'); return; }
+  if(file.size > MAX_FILE_BYTES){ alert('File too large — maximum 10 MB.'); return; }
+  if(file.size === 0){ alert('That file is empty.'); return; }
+  const desc = document.getElementById('desc-' + docType);
+  const st = document.getElementById('st-' + docType);
+  if(desc) desc.textContent = 'Uploading ' + file.name + '…';
+  try {
+    const appId = SESSION.application_id;
+    const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+    const path = appId + '/ubo/' + SESSION.id + '/' + docType + '-' + Date.now() + '-' + safeName;
+    const { error: upErr } = await sb.storage.from(KYC_BUCKET).upload(path, file, {
+      cacheControl: '3600', upsert: false, contentType: file.type
+    });
+    if(upErr) throw upErr;
+    const { data: row, error: insErr } = await sb.from('kyc_documents').insert({
+      application_id: appId,
+      doc_type: docType,
+      file_name: file.name,
+      file_size: file.size,
+      mime_type: file.type,
+      storage_path: path,
+      person_label: SESSION.person_name
+    }).select('id').single();
+    if(insErr){ console.warn('kyc_documents insert:', insErr.message); }
+    DOCS[docType] = { docId: row?.id || null, path, fileName: file.name };
+    const rowEl = document.getElementById('doc-' + docType);
+    if(rowEl){
+      rowEl.classList.add('done');
+      rowEl.onclick = null;
+    }
+    if(desc) desc.innerHTML = '<strong>' + file.name.replace(/</g,'&lt;') + '</strong> · ' + Math.round(file.size/1024) + ' KB &nbsp; <a href="#" onclick="removeDoc(\'' + docType + '\');return false" style="color:var(--red);font-weight:600">Remove</a>';
+    if(st){ st.className = 'doc-st ds-done'; st.textContent = 'Uploaded ✓'; }
+  } catch(err){
+    console.error('Doc upload:', err);
+    if(await _handleWriteError(err)) return;
+    if(desc) desc.textContent = 'Upload failed — please try again.';
+    alert('Upload failed: ' + (err.message || 'please try again'));
+  }
+});
+async function removeDoc(docType){
+  const rec = DOCS[docType];
+  if(!rec) return;
+  try {
+    if(rec.path) await sb.storage.from(KYC_BUCKET).remove([rec.path]);
+    if(rec.docId) await sb.from('kyc_documents').delete().eq('id', rec.docId);
+  } catch(e){ console.warn('Doc remove:', e); }
+  delete DOCS[docType];
+  const rowEl = document.getElementById('doc-' + docType);
+  const desc = document.getElementById('desc-' + docType);
+  const st = document.getElementById('st-' + docType);
+  if(rowEl){ rowEl.classList.remove('done'); rowEl.onclick = function(){ pickDoc(docType); }; }
+  const DESCS = {passport:'Photo page of your passport — or upload your ID card below instead', id_card:'Both sides of your national ID card — alternative to the passport', proof_of_address:'Utility bill or bank statement issued within the last 6 months', cv:'A recent CV covering your employment history and qualifications'};
+  if(desc) desc.textContent = DESCS[docType] || '';
+  if(st){
+    const req = (docType === 'proof_of_address' || docType === 'cv' || docType === 'passport');
+    st.className = 'doc-st ' + (docType === 'id_card' ? 'ds-opt' : 'ds-req');
+    st.textContent = docType === 'id_card' ? 'Alternative' : 'Required';
+  }
+}
+
+// ── Selfie camera ──
+function _stopStream(){ if(_stream){ try { _stream.getTracks().forEach(t => t.stop()); } catch(e){} _stream = null; } }
+async function startCamera(){
+  _capState('cap-live');
+  _stopStream();
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    _camErr('Camera not supported', 'This browser cannot access the camera. Try opening this link in Safari or Chrome.');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: {ideal: 720}, height: {ideal: 540} }, audio: false });
+    _stream = stream;
+    const v = document.getElementById('cam-video');
+    if(v) v.srcObject = stream;
+  } catch(err){
+    console.warn('getUserMedia:', err);
+    let title = 'Camera unavailable', msg = 'Please allow camera access and try again.';
+    if(err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')){ title = 'Camera permission denied'; msg = 'You declined camera access. Enable it in your browser settings and try again.'; }
+    else if(err && (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError')){ title = 'No camera found'; msg = 'This device has no usable camera. Try opening this link on your phone.'; }
+    else if(err && err.name === 'NotReadableError'){ title = 'Camera in use'; msg = 'Another app is using the camera. Close it and try again.'; }
+    _camErr(title, msg);
+  }
+}
+function _camErr(title, msg){
+  const t = document.getElementById('cam-err-title');
+  const m = document.getElementById('cam-err-msg');
+  if(t) t.textContent = title;
+  if(m) m.textContent = msg;
+  _capState('cap-error');
+}
+function cancelCamera(){ _stopStream(); _capState(SELFIE ? 'cap-done' : 'cap-idle'); }
+function capture(){
+  const v = document.getElementById('cam-video');
+  if(!v || !v.videoWidth){ alert('Camera not ready — please wait a moment and try again.'); return; }
+  const canvas = document.createElement('canvas');
+  canvas.width = v.videoWidth; canvas.height = v.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
+  ctx.drawImage(v, 0, 0);
+  _stopStream();
+  canvas.toBlob(blob => {
+    if(!blob){ alert('Failed to capture — please try again.'); _capState('cap-idle'); return; }
+    _blob = blob;
+    const img = document.getElementById('cam-preview');
+    if(img) img.src = URL.createObjectURL(blob);
+    _capState('cap-review');
+  }, 'image/jpeg', 0.92);
+}
+async function useSelfie(){
+  if(!_blob){ alert('No photo captured — please retake.'); _capState('cap-idle'); return; }
+  _capState('cap-uploading');
+  const appId = SESSION.application_id;
+  const fileName = 'selfie-' + Date.now() + '.jpg';
+  const file = new File([_blob], fileName, { type: 'image/jpeg' });
+  const path = appId + '/ubo/' + SESSION.id + '/selfie-' + Date.now() + '.jpg';
+  try {
+    // Replace any earlier selfie so only one is on file for this person
+    if(SELFIE){
+      try {
+        if(SELFIE.path) await sb.storage.from(KYC_BUCKET).remove([SELFIE.path]);
+        if(SELFIE.docId) await sb.from('kyc_documents').delete().eq('id', SELFIE.docId);
+      } catch(e){ console.warn('Selfie cleanup:', e); }
+      SELFIE = null;
+    }
+    const { error: upErr } = await sb.storage.from(KYC_BUCKET).upload(path, file, { cacheControl:'3600', upsert:false, contentType:'image/jpeg' });
+    if(upErr) throw upErr;
+    const { data: row, error: insErr } = await sb.from('kyc_documents').insert({
+      application_id: appId,
+      doc_type: 'identity_selfie',
+      file_name: fileName,
+      file_size: file.size,
+      mime_type: 'image/jpeg',
+      storage_path: path,
+      person_label: SESSION.person_name
+    }).select('id').single();
+    if(insErr){ console.warn('Selfie doc insert:', insErr.message); }
+    SELFIE = { docId: row?.id || null, path, fileName };
+    const n = document.getElementById('selfie-name');
+    if(n) n.textContent = fileName;
+    _capState('cap-done');
+  } catch(err){
+    console.error('Selfie upload:', err);
+    if(await _handleWriteError(err)) return;
+    _camErr('Upload failed', (err && err.message) || 'Please try again.');
+  }
+}
+function retakeSelfie(){ _blob = null; startCamera(); }
+
+// ── Validation + submit ──
+function _highlight(el){
+  if(!el) return;
+  el.classList.add('field-error');
+  el.addEventListener('input', () => el.classList.remove('field-error'), {once:true});
+  el.addEventListener('change', () => el.classList.remove('field-error'), {once:true});
+}
+function validateUBO(){
+  const errors = [];
+  let firstEl = null;
+  const req = (name, label) => {
+    if(!_val(name)){ errors.push(label); const el = _fld(name); _highlight(el); if(!firstEl) firstEl = el; }
+  };
+  req('first_name', 'First name is required');
+  req('surname', 'Surname is required');
+  req('dob', 'Date of birth is required');
+  req('nationality', 'Nationality is required');
+  req('country_of_residence', 'Country of residence is required');
+  req('email', 'Email address is required');
+  const today = new Date().toISOString().split('T')[0];
+  const hasPassport = _val('passport_number') && _val('passport_expiry') && _val('passport_expiry') > today;
+  const hasID = _val('id_card_number') && _val('id_card_expiry') && _val('id_card_expiry') > today;
+  if(!hasPassport && !hasID){
+    errors.push('Provide either passport or ID card details (number + a future expiry date)');
+    const el = _fld('passport_number'); _highlight(el); if(!firstEl) firstEl = el;
+  }
+  if(!_val('pep_status')){
+    errors.push('Please answer the PEP declaration');
+    const el = _fld('pep_status'); _highlight(el); if(!firstEl) firstEl = el;
+  }
+  if(!DOCS.passport && !DOCS.id_card) errors.push('Upload a copy of your passport or ID card');
+  if(!DOCS.proof_of_address) errors.push('Upload a proof of address');
+  if(!DOCS.cv) errors.push('Upload your CV');
+  if(!SELFIE) errors.push('Take your identity selfie');
+  return { errors, firstEl };
+}
+async function submitUBO(){
+  const banner = document.getElementById('val-banner');
+  const list = document.getElementById('val-list');
+  const { errors, firstEl } = validateUBO();
+  if(errors.length){
+    list.innerHTML = errors.map(e => '<li>' + e + '</li>').join('');
+    banner.classList.add('show');
+    if(firstEl && firstEl.offsetParent !== null){
+      firstEl.scrollIntoView({behavior:'smooth', block:'center'});
+      try { firstEl.focus({preventScroll:true}); } catch(e){}
+    } else {
+      banner.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+    return;
+  }
+  banner.classList.remove('show');
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;margin:0 6px 0 0;display:inline-block;vertical-align:middle"></div>Submitting…';
+  try {
+    // Collect every data-field value into the session's jsonb payload
+    const fields = {};
+    document.querySelectorAll('#state-main [data-field]').forEach(el => {
+      const v = (el.value || '').trim();
+      if(v) fields[el.dataset.field] = v;
+    });
+    const { error } = await sb.from('kyc_ubo_sessions').update({
+      status: 'completed',
+      fields: fields,
+      selfie_doc_id: SELFIE?.docId || null,
+      selfie_storage_path: SELFIE?.path || null,
+      selfie_file_name: SELFIE?.fileName || null,
+      completed_at: new Date().toISOString()
+    }).eq('id', SESSION.id);
+    if(error) throw error;
+    _show('state-done');
+  } catch(err){
+    console.error('submitUBO:', err);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-send"></i>Submit my details';
+    if(await _handleWriteError(err)) return;
+    alert('Submission failed: ' + (err.message || 'please try again'));
+  }
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

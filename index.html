@@ -629,9 +629,6 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .ubo-send-link-title{font-size:12px;font-weight:600;color:var(--blue)}
 .ubo-send-link-sub{font-size:11px;color:var(--muted);margin-top:2px}
 .ubo-link-sent{font-size:11px;color:var(--teal);font-weight:600;display:flex;align-items:center;gap:5px;margin-top:6px;display:none}
-.ubo-manual-toggle{font-size:12px;color:var(--blue);font-weight:600;cursor:pointer;background:none;border:none;font-family:'Manrope',sans-serif;padding:0;display:flex;align-items:center;gap:4px;margin-bottom:10px}
-.ubo-manual-form{display:none}
-.ubo-manual-form.show{display:block}
 
 /* ── PROGRESS STEPS COMPLETE ── */
 .step-complete-badge{display:inline-flex;align-items:center;gap:4px;background:var(--teal-light);border:0.5px solid var(--teal-border);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--teal);margin-left:8px}
@@ -1736,7 +1733,7 @@ function gs(n){
       for(let i=1;i<=7;i++){const el=document.getElementById('sl'+i);if(el)el.className='slbl'+(i===n?' active':i<n?' done':'');}
     }
     // Populate UBO identity cards when entering Step 2
-    if(n===2) renderUBOIdentityCards();
+    if(n===2){ renderUBOIdentityCards(); if(typeof _syncUBOSessionUI === 'function'){ try { _syncUBOSessionUI(); } catch(e){} } }
     // Build the dynamic doc list when entering Step 3 (Documents)
     if(n===3 && typeof renderDocRows === 'function'){
       try { renderDocRows(); } catch(e){ console.warn('renderDocRows failed:', e); }
@@ -1757,6 +1754,8 @@ function gs(n){
     }
     // Sync the Step 6 continue-button state on entry (chkD otherwise only fires onchange)
     if(n === 6 && typeof chkD === 'function'){ try { chkD(); } catch(e){} }
+    // Stop UBO-link polling once the application is submitted
+    if(n === 'success' && typeof _stopUBOPolling === 'function'){ _stopUBOPolling(); }
     // Update SoW step counter dynamically — accounts for selfie-skip
     if(n === 's-sow'){
       const sowEl = document.getElementById('sow-step-count');
@@ -2212,8 +2211,6 @@ function renderUBOIdentityCards(){
 
     // Applicant card opens by default, others collapsed
     const startOpen = ubo.isApplicant;
-    const refNum = 'KYC-UBO-'+Math.random().toString(36).slice(2,8).toUpperCase();
-
     const card = document.createElement('div');
     card.className = 'ubo-id-card';
     card.id = cardId;
@@ -2233,12 +2230,12 @@ function renderUBOIdentityCards(){
 
         ${!ubo.isApplicant ? `
         <div class="ubo-id-actions">
-          <button type="button" class="ubo-send-btn" id="send-btn-${i}" onclick="sendUBOLink(${i},'${ubo.name}','${prefillEmail}')">
+          <button type="button" class="ubo-send-btn" id="send-btn-${i}" onclick="sendUBOLink(${i},'${_uboEscJs(ubo.name)}','${_uboEscJs(prefillEmail)}')">
             <i class="ti ti-link" style="font-size:13px"></i>Send KYC link${prefillEmail?' to '+prefillEmail:''}
           </button>
           <span style="font-size:11px;color:var(--muted)">or fill in details below on their behalf</span>
-          <span id="link-sent-${i}" style="display:none;font-size:11px;font-weight:600;color:var(--teal)"><i class="ti ti-circle-check"></i> Link sent · Ref: ${refNum}</span>
-        </div>` : ''}
+        </div>
+        <div id="ubo-link-area-${i}" style="display:none;padding:14px 18px;border-bottom:0.5px solid rgba(0,0,0,.07);background:var(--blue-pale)"></div>` : ''}
 
         <div class="ubo-id-form" id="ubo-form-${i}">
           ${!ubo.isApplicant ? `<div class="warn-box" style="margin-bottom:14px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>You are completing this on behalf of <strong>${firstName}</strong>. Pre-fill their details here to save them time. <strong>Biometric identity verification (facial recognition) and the declaration signature must be completed by ${firstName} personally</strong> via their own secure KYC link — this cannot be done on their behalf.</div>` : `<div class="info-box" style="margin-bottom:14px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Your details have been pre-filled from Step 2. Please review and complete any missing fields.</div>`}
@@ -2369,17 +2366,221 @@ function markUBOComplete(i){
   saveProgress();
 }
 
-function sendUBOLink(idx,name,email){
-  const sendBtn=document.getElementById('send-btn-'+idx);
-  const sentBox=document.getElementById('link-sent-'+idx);
-  if(sendBtn){sendBtn.classList.add('sent');sendBtn.innerHTML='<i class="ti ti-circle-check" style="font-size:13px"></i>Link sent';}
-  if(sentBox)sentBox.style.display='flex';
-  saveProgress();
+// ── UBO SELF-SERVICE LINKS ──
+// The applicant clicks "Send KYC link" on a UBO's card. We insert a
+// kyc_ubo_sessions row, show a QR + copy link, and (when an email is on file)
+// ask the kyc-ubo-invitation-email edge function to email it. The UBO
+// completes ubo.html on their own device: identity form + passport/ID + proof
+// of address + CV uploads + selfie. Their files land directly in storage +
+// kyc_documents (tagged person_label); their answers land on the session row.
+// The desktop polls every 4s and, on completion, adopts the answers into the
+// Step 2 card so the normal save path persists them to kyc_shareholders.
+window._uboSessions = window._uboSessions || [];
+window._uboAdopted  = window._uboAdopted  || {};
+window._uboPoll     = null;
+
+// Escape for embedding inside single-quoted inline onclick strings
+function _uboEscJs(s){
+  return String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+// Escape for interpolating into innerHTML
+function _uboEscHtml(s){
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-function toggleUBOManual(idx){
-  const form=document.getElementById('ubo-manual-'+idx);
-  if(form){form.classList.toggle('show');const btn=form.previousElementSibling;if(btn)btn.innerHTML=form.classList.contains('show')?'<i class="ti ti-chevron-up" style="font-size:13px"></i>Hide manual form':'<i class="ti ti-pencil" style="font-size:13px"></i>Fill in details on their behalf instead';}
+async function sendUBOLink(idx, name, email){
+  const btn = document.getElementById('send-btn-' + idx);
+  if(btn){ btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:12px;height:12px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:4px"></div>Creating link…'; }
+  try {
+    if(!sb) throw new Error('Not connected — please refresh and try again.');
+    if(!currentAppId){ await saveDraftToDB(); }
+    if(!currentAppId) throw new Error('Could not save your progress — please click Save draft first, then retry.');
+    const company = (window.currentInvitation && (window.currentInvitation.client_company || window.currentInvitation.pre_filled_company_name))
+                 || document.getElementById('incorp-company-name')?.value?.trim()
+                 || document.getElementById('entity-name')?.value?.trim()
+                 || null;
+    const { data: sess, error } = await sb.from('kyc_ubo_sessions').insert({
+      application_id: currentAppId,
+      person_name: name,
+      person_email: email || null,
+      client_company: company
+    }).select('id').single();
+    if(error) throw error;
+    const url = location.origin + '/ubo.html?u=' + sess.id;
+    if(btn) btn.style.display = 'none';
+    _renderUBOLinkUI(idx, sess.id, url, email ? '' : 'No email on file for this person — share the link or QR code with them yourself.');
+    if(email) _sendUBOEmail(sess.id, idx, email);
+    _startUBOPolling();
+  } catch(err){
+    console.error('sendUBOLink:', err);
+    if(window._handleSessionExpiry && (await window._handleSessionExpiry(err))) return;
+    if(btn){ btn.disabled = false; btn.innerHTML = '<i class="ti ti-link" style="font-size:13px"></i>Retry sending link'; }
+    alert('Could not create the link: ' + ((err && err.message) || 'please try again'));
+  }
+}
+
+function _renderUBOLinkUI(idx, sessionId, url, note){
+  const area = document.getElementById('ubo-link-area-' + idx);
+  if(!area) return;
+  area.style.display = 'block';
+  area.dataset.sessionId = sessionId;
+  area.innerHTML =
+    '<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">' +
+      '<div id="ubo-qr-' + idx + '" style="background:#fff;border:0.5px solid rgba(0,0,0,.1);border-radius:10px;padding:8px;flex-shrink:0"></div>' +
+      '<div style="flex:1;min-width:220px">' +
+        '<div style="font-size:12px;font-weight:700;margin-bottom:4px">Personal KYC link created</div>' +
+        '<div style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px">They can scan the QR code with their phone camera, or open the link below on any device. This page updates automatically once they finish.</div>' +
+        '<div style="font-size:11px;color:var(--blue);word-break:break-all;margin-bottom:8px">' + url + '</div>' +
+        '<button type="button" class="btn btn-sm" onclick="_copyUBOLink(this,\'' + url + '\')" style="border:0.5px solid var(--blue-border);background:var(--card);color:var(--blue)"><i class="ti ti-copy" style="font-size:12px"></i>Copy link</button>' +
+        '<div id="ubo-email-status-' + idx + '" style="font-size:11px;color:var(--muted);margin-top:8px">' + (note || '') + '</div>' +
+        '<div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;font-weight:600;color:var(--blue)"><span class="save-dot"></span>Waiting for them to complete…</div>' +
+      '</div>' +
+    '</div>';
+  if(window.QRCode){
+    try {
+      new window.QRCode(document.getElementById('ubo-qr-' + idx), { text: url, width: 110, height: 110, colorDark: '#1A2332', colorLight: '#ffffff', correctLevel: window.QRCode.CorrectLevel.M });
+    } catch(e){ console.warn('UBO QR render:', e); }
+  }
+}
+
+function _copyUBOLink(btn, url){
+  const done = () => { if(btn){ const orig = btn.innerHTML; btn.innerHTML = '<i class="ti ti-check" style="font-size:12px"></i>Copied'; setTimeout(() => { btn.innerHTML = orig; }, 1800); } };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(done).catch(() => _copyUBOLinkFallback(url, done));
+  } else {
+    _copyUBOLinkFallback(url, done);
+  }
+}
+function _copyUBOLinkFallback(url, done){
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    done();
+  } catch(e){ alert('Copy failed — please select and copy the link text manually.'); }
+}
+
+async function _sendUBOEmail(sessionId, idx, email){
+  const st = document.getElementById('ubo-email-status-' + idx);
+  if(st) st.innerHTML = 'Sending email to ' + _uboEscHtml(email) + '…';
+  try {
+    const resp = await fetch(SUPABASE_URL + '/functions/v1/kyc-ubo-invitation-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'apikey': SUPABASE_ANON_KEY },
+      body: JSON.stringify({ session_id: sessionId })
+    });
+    let ok = resp.ok;
+    try { const j = await resp.json(); if(j && j.ok === false) ok = false; } catch(e){}
+    if(st) st.innerHTML = ok
+      ? '<span style="color:var(--teal);font-weight:600"><i class="ti ti-mail-check"></i> Email sent to ' + _uboEscHtml(email) + '</span>'
+      : '<span style="color:var(--amber);font-weight:600"><i class="ti ti-mail-off"></i> Email could not be sent — please share the link or QR code yourself.</span>';
+  } catch(e){
+    console.warn('UBO invitation email:', e);
+    if(st) st.innerHTML = '<span style="color:var(--amber);font-weight:600"><i class="ti ti-mail-off"></i> Email could not be sent — please share the link or QR code yourself.</span>';
+  }
+}
+
+function _startUBOPolling(){
+  if(window._uboPoll) return;
+  window._uboPoll = setInterval(_pollUBOSessions, 4000);
+}
+function _stopUBOPolling(){
+  if(window._uboPoll){ clearInterval(window._uboPoll); window._uboPoll = null; }
+}
+async function _pollUBOSessions(){
+  if(!sb || !currentAppId){ return; }
+  try {
+    const { data, error } = await sb.from('kyc_ubo_sessions').select('*').eq('application_id', currentAppId);
+    if(error || !Array.isArray(data)) return;
+    window._uboSessions = data;
+    let adoptedNew = false;
+    data.forEach(s => {
+      if(s.status === 'completed' && !window._uboAdopted[s.id]){
+        _adoptUBOSession(s);
+        window._uboAdopted[s.id] = true;
+        adoptedNew = true;
+      }
+    });
+    // Persist adopted answers through the normal save path
+    if(adoptedNew){ try { saveDraftToDB(); } catch(e){} }
+    // Nothing left pending → stop polling
+    if(!data.some(s => s.status === 'pending')) _stopUBOPolling();
+  } catch(e){ console.warn('UBO session poll:', e); }
+}
+
+// One-shot refresh used by submit() so session answers merge into
+// kyc_shareholders even if the applicant never revisited Step 2.
+async function _refreshUBOSessions(){
+  if(!sb || !currentAppId) return;
+  try {
+    const { data, error } = await sb.from('kyc_ubo_sessions').select('*').eq('application_id', currentAppId);
+    if(!error && Array.isArray(data)) window._uboSessions = data;
+  } catch(e){}
+}
+
+// Fill the Step 2 card with the answers the UBO submitted on their own device.
+function _adoptUBOSession(sess){
+  const card = (typeof _findUBOCardByName === 'function') ? _findUBOCardByName(sess.person_name) : null;
+  if(!card) return;  // Step 2 not rendered — the save-time merge still persists the data
+  if(sess.fields){
+    Object.entries(sess.fields).forEach(([k, v]) => {
+      const el = card.querySelector('[data-field="' + k + '"]');
+      if(!el) return;
+      el.value = v;
+      // Country widgets keep the value in a hidden input — mirror it into the visible search box
+      if(el.type === 'hidden'){
+        const si = el.closest('.sw')?.querySelector('.si');
+        if(si) si.value = v;
+      }
+    });
+  }
+  const idx = (card.id || '').replace('ubo-card-', '');
+  const statusEl = document.getElementById('ubo-status-' + idx);
+  if(statusEl){
+    statusEl.className = 'ubo-id-status ubo-status-complete';
+    statusEl.textContent = 'Completed via their own link ✓';
+  }
+  const btn = document.getElementById('send-btn-' + idx);
+  if(btn) btn.style.display = 'none';
+  const area = document.getElementById('ubo-link-area-' + idx);
+  if(area){
+    area.style.display = 'block';
+    area.innerHTML = '<div style="font-size:11px;font-weight:600;color:var(--teal)"><i class="ti ti-circle-check"></i> ' + _uboEscHtml(sess.person_name) + ' completed their identity form, documents and selfie via their own secure link' + (sess.completed_at ? ' on ' + new Date(sess.completed_at).toLocaleString('en-GB') : '') + '. Their details below were filled in automatically.</div>';
+  }
+}
+
+// Restore the "link sent, waiting" UI on a pending session's card (page reload / step re-entry)
+function _restorePendingUBOLink(sess){
+  const card = (typeof _findUBOCardByName === 'function') ? _findUBOCardByName(sess.person_name) : null;
+  if(!card) return;
+  const idx = (card.id || '').replace('ubo-card-', '');
+  const area = document.getElementById('ubo-link-area-' + idx);
+  if(!area || area.dataset.sessionId === sess.id) return;
+  const btn = document.getElementById('send-btn-' + idx);
+  if(btn) btn.style.display = 'none';
+  _renderUBOLinkUI(idx, sess.id, location.origin + '/ubo.html?u=' + sess.id,
+    sess.person_email ? 'Previously emailed to ' + _uboEscHtml(sess.person_email) + '.' : '');
+}
+
+// Called after renderUBOIdentityCards on Step 2 entry: reapply session states.
+async function _syncUBOSessionUI(){
+  if(!sb || !currentAppId) return;
+  try {
+    const { data, error } = await sb.from('kyc_ubo_sessions').select('*').eq('application_id', currentAppId);
+    if(error || !Array.isArray(data) || !data.length) return;
+    window._uboSessions = data;
+    data.forEach(s => {
+      if(s.status === 'completed'){
+        _adoptUBOSession(s);
+        window._uboAdopted[s.id] = true;
+      } else if(s.status === 'pending'){
+        _restorePendingUBOLink(s);
+      }
+    });
+    if(data.some(s => s.status === 'pending')) _startUBOPolling();
+  } catch(e){ console.warn('_syncUBOSessionUI:', e); }
 }
 
 // ── QUESTIONNAIRE ──
@@ -4596,6 +4797,8 @@ function generateRef(){
 }
 
 async function submit(){
+  // Load any UBO self-service sessions so their answers merge into kyc_shareholders
+  try { await _refreshUBOSessions(); } catch(e){}
   const submitBtn = document.querySelector('#s7 .btn-blue');
   // Cheap pre-check — if invitation already expired in memory, gate immediately.
   if(window._isLikelyExpiredClientSide && window._isLikelyExpiredClientSide()){
@@ -4712,16 +4915,39 @@ async function submit(){
 //  - generateApplicationReport()     : the full compliance-grade summary (success screen)
 // Both rely on jspdf + jspdf-autotable loaded from CDN in <head>.
 
+// ── Brand palette (mirrors the form's CSS :root tokens) ──
+const PDF_C = {
+  blue:     [28, 117, 188],   // --blue #1C75BC
+  blueDark: [21, 93, 150],    // --blue-dark
+  bluePale: [240, 247, 253],  // --blue-pale #F0F7FD
+  surface:  [245, 246, 248],  // --surface
+  text:     [26, 35, 50],     // --text #1A2332
+  muted:    [90, 100, 120],   // --muted #5A6478
+  subtle:   [138, 150, 168],  // --subtle #8A96A8
+  teal:     [29, 158, 117],   // --teal #1D9E75
+  red:      [192, 57, 43],    // --red #C0392B
+  border:   [225, 228, 232],
+  stripe:   [250, 251, 253],
+};
+// White Predeevo wordmark (472x100 PNG) — drawn inside the blue header bar.
+const PREDEEVO_LOGO = 'data:image/png;base64,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';
+
 function _pdfHeader(doc, title){
   const w = doc.internal.pageSize.getWidth();
-  doc.setFillColor(28, 117, 188);            // Predeevo blue
+  doc.setFillColor(...PDF_C.blue);
   doc.rect(0, 0, w, 18, 'F');
-  doc.setTextColor(255,255,255);
-  doc.setFont('helvetica','bold'); doc.setFontSize(11);
-  doc.text('PREDEEVO', 12, 11);
-  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  // Logo (white wordmark on the blue bar); text fallback if the image fails.
+  try {
+    doc.addImage(PREDEEVO_LOGO, 'PNG', 12, 5.3, 35.4, 7.5);
+  } catch(e){
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.text('PREDEEVO', 12, 11);
+  }
+  doc.setTextColor(210, 228, 244);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
   doc.text(title, w - 12, 11, {align:'right'});
-  doc.setTextColor(0,0,0);
+  doc.setTextColor(...PDF_C.text);
 }
 function _pdfFooter(doc, ref){
   const w = doc.internal.pageSize.getWidth();
@@ -4729,20 +4955,53 @@ function _pdfFooter(doc, ref){
   const total = doc.internal.getNumberOfPages();
   for(let i=1;i<=total;i++){
     doc.setPage(i);
-    doc.setFontSize(7); doc.setTextColor(120,120,120);
-    doc.text('Predeevo Ltd · Sintika Hanum 58, 6051 Larnaca, Cyprus · Cyprus AML Law 188(I)/2007', 12, h-7);
-    doc.text(`${ref || ''} · Page ${i} of ${total}`, w-12, h-7, {align:'right'});
-    doc.setTextColor(0,0,0);
+    doc.setDrawColor(...PDF_C.border); doc.setLineWidth(0.2);
+    doc.line(12, h-10, w-12, h-10);
+    doc.setFontSize(7); doc.setTextColor(...PDF_C.subtle);
+    doc.text('Predeevo Ltd · Sintika Hanum 58, 6051 Larnaca, Cyprus · Cyprus AML Law 188(I)/2007', 12, h-6.5);
+    doc.text(`${ref || ''} · Page ${i} of ${total}`, w-12, h-6.5, {align:'right'});
+    doc.setTextColor(...PDF_C.text);
   }
 }
 function _sectionTitle(doc, y, text){
   const w = doc.internal.pageSize.getWidth();
-  doc.setFillColor(234, 243, 251);            // var(--blue-pale)
-  doc.rect(12, y, w-24, 6, 'F');
-  doc.setTextColor(28,117,188); doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
-  doc.text(text.toUpperCase(), 14, y+4.2);
-  doc.setTextColor(0,0,0); doc.setFont('helvetica','normal'); doc.setFontSize(9);
-  return y + 9;
+  doc.setFillColor(...PDF_C.bluePale);
+  doc.roundedRect(12, y, w-24, 7, 1.2, 1.2, 'F');
+  doc.setTextColor(...PDF_C.blue); doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
+  doc.text(text.toUpperCase(), 15, y+4.8);
+  doc.setTextColor(...PDF_C.text); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  return y + 10;
+}
+// Money formatter — 'EUR 250,000' (EUR spelled out: the built-in Helvetica euro
+// glyph is unreliable across PDF viewers).
+function _eur(n){
+  if(n === null || n === undefined || n === '' || isNaN(Number(n))) return '—';
+  return 'EUR ' + Number(n).toLocaleString('en-GB');
+}
+// Shared autoTable wrapper: brand styling + header bar repainted on every page
+// the table spawns (margin.top keeps continuation rows below the bar).
+function _tbl(doc, opts){
+  const base = {
+    styles:      {font:'helvetica', fontSize:8, cellPadding:1.7, textColor:PDF_C.text, lineColor:PDF_C.border, lineWidth:0.1},
+    headStyles:  {fillColor:PDF_C.bluePale, textColor:PDF_C.blue, fontStyle:'bold'},
+    alternateRowStyles: {fillColor:PDF_C.stripe},
+    margin:      {top:24, left:12, right:12},
+    didDrawPage: () => _pdfHeader(doc, opts._title || 'KYC Application Report'),
+  };
+  const merged = Object.assign({}, base, opts);
+  merged.styles     = Object.assign({}, base.styles, opts.styles || {});
+  merged.headStyles = Object.assign({}, base.headStyles, opts.headStyles || {});
+  merged.margin     = Object.assign({}, base.margin, opts.margin || {});
+  delete merged._title;
+  doc.autoTable(merged);
+  return doc.lastAutoTable.finalY;
+}
+// Key-value table (label column muted bold, value column full width)
+function _kv(doc, y, rows, title){
+  return _tbl(doc, { startY:y, head:[['Field','Value']], body:rows, theme:'plain',
+    styles:{fontSize:8, cellPadding:1.5},
+    columnStyles:{0:{cellWidth:52, textColor:PDF_C.muted, fontStyle:'bold'}},
+    _title: title });
 }
 
 // Build the data snapshot used by both PDFs and (optionally) for audit-anchoring.
@@ -4755,21 +5014,24 @@ function _buildPDFSnapshot(){
   const sigMethod = document.querySelector('.sig-opt.on input')?.value || null;
   const sigUpload = (window.sigUploads && sigMethod) ? window.sigUploads[sigMethod] : null;
   const eidasRef = document.getElementById('sig-eidas-reference')?.value?.trim() || null;
-  // Applicant is the shareholder row with is_applicant=true; allow a preview override.
-  const applicant = window._previewApplicant
-                 || sh.find(s => s.is_applicant || s.isApplicant)
-                 || (typeof _collectApplicantData === 'function' ? _collectApplicantData() : {})
-                 || {};
-  // Document list: prefer in-memory sigUploads + any visible doc rows in Step 3.
+  // Applicant is the shareholder row flagged is_applicant.
+  const applicant = sh.find(s => s.is_applicant) || {};
+  // Document list: the live Step 3 rows (uploaded ones carry .done + the file
+  // name in .doc-desc strong), plus selfie and signed-declaration uploads.
   const docs = [];
-  Array.from(document.querySelectorAll('#docs-list .doc-row, #doc-list .doc-row, [data-doc-row]')).forEach(el => {
+  document.querySelectorAll('#dynamic-doc-rows .doc-row.done').forEach(el => {
     docs.push({
-      type: el.dataset.docType || el.querySelector('.doc-type')?.textContent?.trim() || '—',
-      file: el.dataset.fileName || el.querySelector('.doc-file')?.textContent?.trim() || '—'
+      type: el.querySelector('.doc-name')?.textContent?.replace(/\s*\*\s*$/, '').trim() || el.dataset.docType || '—',
+      file: el.querySelector('.doc-desc strong')?.textContent?.trim() || '—'
     });
   });
+  const cvRow = document.getElementById('dr-cv');
+  if(cvRow && !cvRow.classList.contains('done') && ad.cv_manual){
+    docs.push({type:'Curriculum Vitae', file:'Completed via inline employment & education form'});
+  }
+  if(window.selfieUpload?.fileName) docs.push({type:'Identity selfie', file: window.selfieUpload.fileName});
   if(window.sigUploads){
-    if(window.sigUploads.own)      docs.push({type:'Signed declaration (eIDAS)', file: window.sigUploads.own.fileName});
+    if(window.sigUploads.own)      docs.push({type:'Signed declaration (electronic)', file: window.sigUploads.own.fileName});
     if(window.sigUploads.physical) docs.push({type:'Signed declaration (wet ink)', file: window.sigUploads.physical.fileName});
   }
   return { appData: ad, shareholders: sh, sof, sow, questionnaire: q, sigMethod, sigUpload, eidasRef, applicant, docs };
@@ -4783,22 +5045,23 @@ function generateDeclarationPDF(){
   const ref = currentRef || '';
   const w = doc.internal.pageSize.getWidth();
   _pdfHeader(doc, 'Client KYC Declaration');
-  let y = 24;
+  let y = 26;
 
-  doc.setFontSize(13); doc.setFont('helvetica','bold');
-  doc.text('Client KYC Declaration', 12, y); y += 5;
-  doc.setFontSize(9); doc.setFont('helvetica','normal');
-  doc.text(`Reference: ${ref}   ·   Issued: ${new Date().toLocaleString('en-GB')}`, 12, y); y += 6;
+  doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.setTextColor(...PDF_C.text);
+  doc.text('Client KYC Declaration', 12, y); y += 5.5;
+  doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(...PDF_C.muted);
+  doc.text(`Reference: ${ref}   ·   Issued: ${new Date().toLocaleString('en-GB')}`, 12, y);
+  doc.setTextColor(...PDF_C.text); y += 7;
 
   const snap = _buildPDFSnapshot();
   const ad = snap.appData || {};
   const ap = snap.applicant || {};
-  const name = [ap.first_name || ap.firstName, ap.surname || ap.lastName].filter(Boolean).join(' ') || '________________________';
+  const name = ap.full_name || [ap.first_name, ap.surname].filter(Boolean).join(' ') || '________________________';
 
   y = _sectionTitle(doc, y, 'Applicant');
   doc.text(`Name: ${name}`, 14, y); y += 4.5;
   doc.text(`Email: ${ap.email || '—'}`, 14, y); y += 4.5;
-  doc.text(`DOB: ${ap.dob || '—'}    Nationality: ${ap.nationality || ad.applicant_nationality || '—'}`, 14, y); y += 7;
+  doc.text(`Date of birth: ${ap.dob || '—'}    Nationality: ${ap.nationality || '—'}`, 14, y); y += 7;
 
   y = _sectionTitle(doc, y, 'Declaration under Cyprus AML Law 188(I)/2007');
   const decls = [
@@ -4813,20 +5076,21 @@ function generateDeclarationPDF(){
   doc.setFontSize(9);
   decls.forEach((t, i) => {
     const lines = doc.splitTextToSize(`${i+1}.  ${t}`, w-28);
-    if(y + lines.length*4 > 270){ doc.addPage(); _pdfHeader(doc, 'Client KYC Declaration'); y = 24; }
+    if(y + lines.length*4 > 270){ doc.addPage(); _pdfHeader(doc, 'Client KYC Declaration'); y = 26; }
     doc.text(lines, 14, y);
     y += lines.length*4 + 1.5;
   });
 
   y += 4;
-  if(y > 250){ doc.addPage(); _pdfHeader(doc, 'Client KYC Declaration'); y = 24; }
+  if(y > 250){ doc.addPage(); _pdfHeader(doc, 'Client KYC Declaration'); y = 26; }
   y = _sectionTitle(doc, y, 'Signature');
+  doc.setDrawColor(...PDF_C.muted); doc.setLineWidth(0.25);
   doc.text('Name:', 14, y); doc.line(28, y, 110, y);
   doc.text('Date:', 120, y); doc.line(134, y, 198, y); y += 10;
   doc.text('Signature:', 14, y); doc.line(34, y, 198, y); y += 8;
-  doc.setFontSize(8); doc.setTextColor(120,120,120);
+  doc.setFontSize(8); doc.setTextColor(...PDF_C.subtle);
   doc.text('Sign with your own qualified or advanced electronic signature, OR print, sign by hand, and upload a clear scan.', 14, y);
-  doc.setTextColor(0,0,0);
+  doc.setTextColor(...PDF_C.text);
 
   _pdfFooter(doc, ref);
   doc.save(`Predeevo-Declaration-${ref || 'KYC'}.pdf`);
@@ -4839,157 +5103,181 @@ function generateApplicationReport(){
   const doc = new jsPDF({unit:'mm', format:'a4'});
   const ref = currentRef || (document.getElementById('ref-num')?.textContent) || '';
   const w = doc.internal.pageSize.getWidth();
+  const T = 'KYC Application Report';
   const snap = _buildPDFSnapshot();
   const ad = snap.appData || {};
   const ap = snap.applicant || {};
-  const fullName = [ap.first_name || ap.firstName, ap.surname || ap.lastName].filter(Boolean).join(' ') || '—';
-  _pdfHeader(doc, 'KYC Application Report');
-  let y = 22;
+  const fullName = ap.full_name || [ap.first_name, ap.surname].filter(Boolean).join(' ') || '—';
+  _pdfHeader(doc, T);
+  let y = 26;
 
-  // Header block
-  doc.setFontSize(15); doc.setFont('helvetica','bold');
-  doc.text('Client KYC Application Report', 12, y); y += 6;
-  doc.setFontSize(9); doc.setFont('helvetica','normal');
-  doc.text(`Reference: ${ref}`, 12, y);
-  doc.text(`Submitted: ${(ad.submitted_at ? new Date(ad.submitted_at) : new Date()).toLocaleString('en-GB')}`, w-12, y, {align:'right'});
-  y += 4.5;
-  doc.text(`Applicant: ${fullName}`, 12, y);
-  doc.text(`Status: Submitted — pending review`, w-12, y, {align:'right'});
-  y += 7;
+  // Title + meta panel
+  doc.setFontSize(15); doc.setFont('helvetica','bold'); doc.setTextColor(...PDF_C.text);
+  doc.text('Client KYC Application Report', 12, y); y += 4;
+  doc.setFillColor(...PDF_C.surface);
+  doc.roundedRect(12, y, w-24, 13, 1.2, 1.2, 'F');
+  doc.setFontSize(8); doc.setFont('helvetica','normal');
+  doc.setTextColor(...PDF_C.muted);
+  doc.text('Reference', 16, y+5);      doc.text('Submitted', 76, y+5);       doc.text('Applicant', 136, y+5);
+  doc.setTextColor(...PDF_C.text); doc.setFont('helvetica','bold');
+  doc.text(String(ref || '—'), 16, y+9.5);
+  doc.text((ad.submitted_at ? new Date(ad.submitted_at) : new Date()).toLocaleString('en-GB'), 76, y+9.5);
+  doc.text(fullName.slice(0, 30), 136, y+9.5);
+  doc.setFont('helvetica','normal');
+  y += 17;
+  doc.setFontSize(7.5); doc.setTextColor(...PDF_C.subtle);
+  doc.text('Status: Submitted — pending compliance review. Generated automatically by the Predeevo KYC portal.', 12, y);
+  doc.setTextColor(...PDF_C.text); y += 6;
 
   // 1 — Applicant identity (sourced from the shareholder row flagged is_applicant)
-  y = _sectionTitle(doc, y, '1.  Applicant identity');
+  y = _sectionTitle(doc, y, '1. Applicant identity');
+  const idDocBits = [];
+  if(ap.passport_number) idDocBits.push('Passport ' + ap.passport_number + (ap.passport_expiry ? ' (expires ' + ap.passport_expiry + ')' : ''));
+  if(ap.id_card_number)  idDocBits.push('ID card ' + ap.id_card_number + (ap.id_card_expiry ? ' (expires ' + ap.id_card_expiry + ')' : ''));
   const idRows = [
     ['Full name', fullName],
     ['Date of birth', ap.dob || '—'],
-    ['Nationality', ap.nationality || ad.applicant_nationality || '—'],
-    ['Country of residence', ap.country_of_residence || ap.country || '—'],
-    ['ID / passport', [ap.id_type, ap.passport || ap.id_number].filter(Boolean).join(' — ') || '—'],
+    ['Nationality', ap.nationality || '—'],
+    ['Country of residence', ap.country_of_residence || '—'],
+    ['Identity document', idDocBits.join('  ·  ') || '—'],
     ['Email', ap.email || '—'],
-    ['Mobile', ap.mobile || ap.phone || '—'],
-    ['Address', [ap.addrStreet || ap.address_line1, ap.addrTown || ap.city, ap.addrPostcode || ap.postcode, ap.country].filter(Boolean).join(', ') || '—'],
-    ['PEP status', (ap.pep_status === 'yes' || ad.applicant_pep_status === 'yes') ? ('Yes — ' + (ap.pep_role || ad.applicant_pep_role || 'role not specified')) : 'No'],
-    ['Tax residency', ap.tax_residency || ap.tin_country || '—']
+    ['Mobile', [ap.mobile_country_code, ap.mobile].filter(Boolean).join(' ') || '—'],
+    ['Address', [ap.addr_street, ap.addr_town, ap.addr_postcode].filter(Boolean).join(', ') || '—'],
+    ['Occupation', [ap.occupation, ap.employment_status].filter(Boolean).join(' — ') || '—'],
+    ['Tax residence / TIN', [ap.tax_country, ap.tin].filter(Boolean).join(' / ') || '—'],
+    ['Annual income', ap.annual_income || '—'],
+    ['PEP status', ap.pep_status === 'yes' ? 'Yes — enhanced due diligence applies' : (ap.pep_status === 'no' ? 'No' : '—')]
   ];
-  doc.autoTable({ startY:y, head:[['Field','Value']], body:idRows, theme:'plain',
-    styles:{fontSize:8, cellPadding:1.4}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
-    columnStyles:{0:{cellWidth:48, textColor:[107,114,128]}}, margin:{left:12,right:12}
-  });
-  y = doc.lastAutoTable.finalY + 5;
+  y = _kv(doc, y, idRows, T) + 6;
 
-  // 2 — Engagement
-  if(y > 240){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
-  y = _sectionTitle(doc, y, '2.  Engagement details');
+  // 2 — Engagement (empty rows filtered — only what the client actually provided)
+  if(y > 240){ doc.addPage(); _pdfHeader(doc, T); y = 26; }
+  y = _sectionTitle(doc, y, '2. Engagement details');
   const services = Array.isArray(ad.services) ? ad.services.join(', ') : (ad.services || '—');
-  const engRows = [
+  const engAll = [
     ['Services selected', services],
     ['Introduced by', ad.introduced_by || '—'],
-    ['Principal activities', ad.principal_activities || ad.entity_activities || '—'],
-    ['Economic rationale', ad.economic_rationale || ad.entity_rationale || '—'],
     ['Proposed company name', ad.company_name || '—'],
-    ['Alt name', ad.alt_company_name || '—'],
+    ['Alternative name', ad.alt_company_name || '—'],
     ['Company type', ad.company_type || '—'],
     ['Country of incorporation', ad.country_of_incorp || '—'],
-    ['Expected turnover Y1 / Y2', `${ad.turnover_y1 ?? ad.entity_turnover_y1 ?? '—'} / ${ad.turnover_y2 ?? ad.entity_turnover_y2 ?? '—'}`],
-    ['Share capital', ad.share_capital ?? '—'],
+    ['Principal activities', ad.principal_activities || ad.entity_activities || '—'],
+    ['Economic rationale', ad.economic_rationale || ad.entity_rationale || '—'],
+    ['Operating funds source', ad.operating_funds_source || '—'],
+    ['Expected turnover Y1', _eur(ad.turnover_y1 ?? ad.entity_turnover_y1)],
+    ['Expected turnover Y2', _eur(ad.turnover_y2 ?? ad.entity_turnover_y2)],
+    ['Share capital', _eur(ad.share_capital)],
     ['Expected employees', ad.expected_employees || '—'],
     ['Countries of operation', ad.countries_operation || '—'],
-    ['Existing entity (if any)', [ad.entity_name, ad.entity_country, ad.entity_reg_number].filter(Boolean).join(' · ') || '—']
+    ['Existing entity', [ad.entity_name, ad.entity_country, ad.entity_reg_number].filter(Boolean).join(' · ') || '—']
   ];
-  doc.autoTable({ startY:y, head:[['Field','Value']], body:engRows, theme:'plain',
-    styles:{fontSize:8, cellPadding:1.4}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
-    columnStyles:{0:{cellWidth:48, textColor:[107,114,128]}}, margin:{left:12,right:12}
-  });
-  y = doc.lastAutoTable.finalY + 5;
+  const engRows = engAll.filter((r, i) => i === 0 || r[1] !== '—');
+  y = _kv(doc, y, engRows, T) + 6;
 
   // 3 — Shareholders & UBOs
-  if(y > 230){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
-  y = _sectionTitle(doc, y, '3.  Shareholders & UBOs');
+  if(y > 230){ doc.addPage(); _pdfHeader(doc, T); y = 26; }
+  y = _sectionTitle(doc, y, '3. Shareholders & UBOs');
   const sh = snap.shareholders || [];
   if(sh.length){
     const shRows = sh.map(r => [
-      [r.first_name, r.surname].filter(Boolean).join(' ') || r.name || '—',
+      r.full_name || [r.first_name, r.surname].filter(Boolean).join(' ') || '—',
       r.dob || '—',
       r.nationality || '—',
-      r.country_of_residence || r.country || '—',
-      (r.percentage != null ? (r.percentage + '%') : '—'),
-      [r.is_ubo && 'UBO', r.is_director && 'Director', r.is_controlling && 'Controlling'].filter(Boolean).join(', ') || (r.role || '—'),
-      r.pep_status === 'yes' ? 'PEP' : '—'
+      r.country_of_residence || '—',
+      (r.shareholding_pct !== null && r.shareholding_pct !== undefined ? r.shareholding_pct + '%' : '—'),
+      [r.is_applicant && 'Applicant', r.is_ubo && 'UBO'].filter(Boolean).join(' · ') || 'Shareholder',
+      r.pep_status === 'yes' ? 'PEP' : (r.pep_status === 'no' ? 'No' : '—')
     ]);
-    doc.autoTable({ startY:y, head:[['Name','DOB','Nat.','Residence','%','Role','PEP']], body:shRows,
-      styles:{fontSize:7.5, cellPadding:1.2}, headStyles:{fillColor:[28,117,188], textColor:255, fontStyle:'bold'},
-      margin:{left:12,right:12}
-    });
-    y = doc.lastAutoTable.finalY + 5;
+    y = _tbl(doc, { startY:y, head:[['Name','DOB','Nationality','Residence','%','Role','PEP']], body:shRows,
+      styles:{fontSize:7.5, cellPadding:1.4},
+      headStyles:{fillColor:PDF_C.blue, textColor:[255,255,255]},
+      columnStyles:{4:{halign:'right', cellWidth:12}},
+      _title:T }) + 6;
   } else {
-    doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text('None declared.', 14, y); doc.setTextColor(0,0,0); y += 6;
+    doc.setFontSize(8); doc.setTextColor(...PDF_C.subtle); doc.text('None declared.', 14, y); doc.setTextColor(...PDF_C.text); y += 6;
   }
 
   // 4 — Source of funds
-  if(y > 240){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
-  y = _sectionTitle(doc, y, '4.  Source of funds');
+  if(y > 240){ doc.addPage(); _pdfHeader(doc, T); y = 26; }
+  y = _sectionTitle(doc, y, '4. Source of funds');
+  const SOF_LABELS = {employment_income:'Employment income / salary', savings_deposits:'Savings / accumulated deposits', property_sale:'Sale of property or assets', share_sale:'Sale of shares or investments', loan:'Loan (director, bank, or other)', company_sale:'Sale of business or company', company_dividends:'Company dividends / profits', inheritance:'Inheritance or gift', other:'Other'};
   const sof = snap.sof || [];
   if(sof.length){
-    const sofRows = sof.map(r => [r.source_type || r.type || '—', r.value != null ? String(r.value) : '—', r.description || '—']);
-    doc.autoTable({ startY:y, head:[['Source','Value (EUR)','Description']], body:sofRows,
-      styles:{fontSize:8, cellPadding:1.3}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
-      columnStyles:{0:{cellWidth:50},1:{cellWidth:30, halign:'right'}}, margin:{left:12,right:12}
-    });
-    y = doc.lastAutoTable.finalY + 5;
+    const sofTotal = sof.reduce((a, r) => a + (Number(r.amount_eur) || 0), 0);
+    const sofRows = sof.map(r => [SOF_LABELS[r.sof_type] || r.sof_type || '—', _eur(r.amount_eur)]);
+    sofRows.push(['Total', _eur(sofTotal)]);
+    y = _tbl(doc, { startY:y, head:[['Source','Amount']], body:sofRows,
+      columnStyles:{1:{cellWidth:40, halign:'right'}},
+      didParseCell: d => { if(d.section === 'body' && d.row.index === sofRows.length - 1){ d.cell.styles.fontStyle = 'bold'; d.cell.styles.fillColor = PDF_C.bluePale; } },
+      _title:T }) + 6;
   } else {
-    doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text('No sources of funds declared.', 14, y); doc.setTextColor(0,0,0); y += 6;
+    doc.setFontSize(8); doc.setTextColor(...PDF_C.subtle); doc.text('No sources of funds declared.', 14, y); doc.setTextColor(...PDF_C.text); y += 6;
   }
 
-  // 5 — Source of wealth (PEP / EDD only)
+  // 5 — Source of wealth (only rendered when the PEP flow collected it)
   const sow = snap.sow;
-  if(sow && Array.isArray(sow.sources) && sow.sources.length){
-    if(y > 230){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
-    y = _sectionTitle(doc, y, '5.  Source of wealth  (PEP / EDD)');
-    const sowRows = sow.sources.map(s => [s.type || '—', s.value != null ? String(s.value) : '—', s.description || '—']);
-    doc.autoTable({ startY:y, head:[['Source','Value (EUR)','Description']], body:sowRows,
-      styles:{fontSize:8, cellPadding:1.3}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
-      columnStyles:{0:{cellWidth:50},1:{cellWidth:30, halign:'right'}}, margin:{left:12,right:12}
-    });
-    y = doc.lastAutoTable.finalY + 2;
-    if(sow.total_declared_wealth != null){
-      doc.setFontSize(8.5); doc.setFont('helvetica','bold');
-      doc.text(`Total declared wealth: EUR ${sow.total_declared_wealth}`, 14, y+3);
-      doc.setFont('helvetica','normal'); y += 7;
-    }
+  const sowMap = sow && sow.sow_sources;
+  if(sowMap && Object.keys(sowMap).length){
+    if(y > 230){ doc.addPage(); _pdfHeader(doc, T); y = 26; }
+    y = _sectionTitle(doc, y, '5. Source of wealth (PEP / EDD)');
+    const SOW_LABELS = {employment:'Long-term employment / professional income', business:'Business ownership or sale of business', inheritance:'Inheritance or gifts', property:'Sale of property or assets', investments:'Investments / portfolio growth', other:'Other'};
+    const sowRows = Object.entries(sowMap).map(([k, v]) => [
+      document.querySelector('.sow-row[data-sow-key="' + k + '"] label')?.textContent?.trim() || SOW_LABELS[k] || k,
+      _eur(v),
+      k === 'other' ? (sow.sow_other_description || '—') : ''
+    ]);
+    sowRows.push(['Total declared wealth', _eur(sow.sow_total_declared), '']);
+    y = _tbl(doc, { startY:y, head:[['Source','Amount','Notes']], body:sowRows,
+      columnStyles:{1:{cellWidth:40, halign:'right'}},
+      didParseCell: d => { if(d.section === 'body' && d.row.index === sowRows.length - 1){ d.cell.styles.fontStyle = 'bold'; d.cell.styles.fillColor = PDF_C.bluePale; } },
+      _title:T }) + 6;
   }
 
-  // 6 — Background questionnaire
-  if(y > 235){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
-  y = _sectionTitle(doc, y, '6.  Background questionnaire');
+  // 6 — Background questionnaire (question text restored from the QS constant)
+  if(y > 235){ doc.addPage(); _pdfHeader(doc, T); y = 26; }
+  y = _sectionTitle(doc, y, '6. Background questionnaire');
   const qa = snap.questionnaire || [];
   if(qa.length){
-    const qaRows = qa.map((r,i) => [String(i+1), r.question || r.q || '—', (r.answer || r.a || '—').toString().toUpperCase(), r.detail || '']);
-    doc.autoTable({ startY:y, head:[['#','Question','Answer','Detail']], body:qaRows,
-      styles:{fontSize:7.5, cellPadding:1.2, valign:'top'}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
-      columnStyles:{0:{cellWidth:8},2:{cellWidth:18, halign:'center'}}, margin:{left:12,right:12}
+    const qaAdverse = [];
+    const qaRows = qa.map((r, i) => {
+      const meta = (typeof QS !== 'undefined' ? QS.find(q => q.id === r.question_id) : null) || {};
+      // Adverse = the answer that opens the explanation box (YES normally, NO for inverted questions)
+      qaAdverse.push(meta.inv ? r.answer === false : r.answer === true);
+      const title = meta.t ? meta.t.charAt(0) + meta.t.slice(1).toLowerCase() : r.question_id;
+      const qText = meta.q ? title + '\n' + meta.q : title;
+      return [String(i+1), qText, r.answer ? 'YES' : 'NO', r.details || '—'];
     });
-    y = doc.lastAutoTable.finalY + 5;
+    y = _tbl(doc, { startY:y, head:[['#','Question','Answer','Details']], body:qaRows,
+      styles:{fontSize:7, cellPadding:1.4, valign:'top'},
+      columnStyles:{0:{cellWidth:7}, 1:{cellWidth:105}, 2:{cellWidth:14, halign:'center'}},
+      didParseCell: d => {
+        if(d.section === 'body' && d.column.index === 2){
+          d.cell.styles.fontStyle = 'bold';
+          d.cell.styles.textColor = qaAdverse[d.row.index] ? PDF_C.red : PDF_C.teal;
+        }
+        if(d.section === 'body' && d.column.index === 1){
+          d.cell.styles.cellPadding = {top:1.4, bottom:1.4, left:1.4, right:1.4};
+        }
+      },
+      _title:T }) + 6;
   } else {
-    doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text('No questionnaire answers captured.', 14, y); doc.setTextColor(0,0,0); y += 6;
+    doc.setFontSize(8); doc.setTextColor(...PDF_C.subtle); doc.text('No questionnaire answers captured.', 14, y); doc.setTextColor(...PDF_C.text); y += 6;
   }
 
   // 7 — Documents
-  if(y > 235){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
-  y = _sectionTitle(doc, y, '7.  Documents submitted');
-  const docList = snap.docs && snap.docs.length ? snap.docs : null;
-  if(docList){
-    doc.autoTable({ startY:y, head:[['Document type','File name']], body:docList.map(d=>[d.type, d.file]),
-      styles:{fontSize:8, cellPadding:1.3}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
-      margin:{left:12,right:12}
-    });
-    y = doc.lastAutoTable.finalY + 5;
+  if(y > 235){ doc.addPage(); _pdfHeader(doc, T); y = 26; }
+  y = _sectionTitle(doc, y, '7. Documents submitted');
+  if(snap.docs && snap.docs.length){
+    y = _tbl(doc, { startY:y, head:[['Document','File']], body: snap.docs.map(d => [d.type, d.file]),
+      columnStyles:{0:{cellWidth:70}},
+      _title:T }) + 6;
   } else {
-    doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text('Document list rendered from server-side audit (not collected in client snapshot).', 14, y); doc.setTextColor(0,0,0); y += 6;
+    doc.setFontSize(8); doc.setTextColor(...PDF_C.subtle); doc.text('No documents captured in this snapshot.', 14, y); doc.setTextColor(...PDF_C.text); y += 6;
   }
 
   // 8 — Declarations (confirmed)
-  if(y > 220){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
-  y = _sectionTitle(doc, y, '8.  Declarations confirmed by applicant');
+  if(y > 220){ doc.addPage(); _pdfHeader(doc, T); y = 26; }
+  y = _sectionTitle(doc, y, '8. Declarations confirmed by applicant');
   const declLabels = [
     'Data protection consent (GDPR & Personal Data Protection Laws)',
     'Accuracy of information — criminal offence to falsify (Article 3, Cyprus AML Law)',
@@ -4999,21 +5287,22 @@ function generateApplicationReport(){
     'Acknowledgment of MOKAS reporting obligation (no tipping off)',
     'AML awareness — Cyprus laws and regulations'
   ];
-  const ids = ['dc1','dc2','dc3','dc4','dc5','dc6','dc7'];
-  const declRows = declLabels.map((t, i) => [
-    String(i+1),
-    t,
-    document.getElementById(ids[i])?.checked ? 'Confirmed' : 'NOT confirmed'
-  ]);
-  doc.autoTable({ startY:y, head:[['#','Declaration','Status']], body:declRows,
-    styles:{fontSize:8, cellPadding:1.3, valign:'top'}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
-    columnStyles:{0:{cellWidth:8},2:{cellWidth:30, halign:'center', fontStyle:'bold'}}, margin:{left:12,right:12}
-  });
-  y = doc.lastAutoTable.finalY + 5;
+  const dIds = ['dc1','dc2','dc3','dc4','dc5','dc6','dc7'];
+  const declRows = declLabels.map((t, i) => [String(i+1), t, document.getElementById(dIds[i])?.checked ? 'Confirmed' : 'NOT confirmed']);
+  y = _tbl(doc, { startY:y, head:[['#','Declaration','Status']], body:declRows,
+    styles:{cellPadding:1.5, valign:'top'},
+    columnStyles:{0:{cellWidth:7}, 2:{cellWidth:28, halign:'center'}},
+    didParseCell: d => {
+      if(d.section === 'body' && d.column.index === 2){
+        d.cell.styles.fontStyle = 'bold';
+        d.cell.styles.textColor = d.cell.raw === 'Confirmed' ? PDF_C.teal : PDF_C.red;
+      }
+    },
+    _title:T }) + 6;
 
   // 9 — Signature & verification
-  if(y > 245){ doc.addPage(); _pdfHeader(doc, 'KYC Application Report'); y = 22; }
-  y = _sectionTitle(doc, y, '9.  Signature & verification');
+  if(y > 245){ doc.addPage(); _pdfHeader(doc, T); y = 26; }
+  y = _sectionTitle(doc, y, '9. Signature & verification');
   const sigLbl = snap.sigMethod === 'own'      ? 'Own electronic signature (eIDAS AdES/QES)'
               : snap.sigMethod === 'physical' ? 'Wet ink — printed and signed by hand'
               : '—';
@@ -5026,10 +5315,7 @@ function generateApplicationReport(){
     ['Submitted at', (ad.submitted_at ? new Date(ad.submitted_at) : new Date()).toISOString()],
     ['User agent', navigator.userAgent.slice(0,90)]
   ];
-  doc.autoTable({ startY:y, head:[['Field','Value']], body:sigRows, theme:'plain',
-    styles:{fontSize:8, cellPadding:1.3}, headStyles:{fillColor:[243,244,246], textColor:[55,65,81], fontStyle:'bold'},
-    columnStyles:{0:{cellWidth:48, textColor:[107,114,128]}}, margin:{left:12,right:12}
-  });
+  _kv(doc, y, sigRows, T);
 
   _pdfFooter(doc, ref);
   doc.save(`Predeevo-KYC-${ref || 'application'}.pdf`);
@@ -5216,6 +5502,23 @@ function _collectShareholders(){
           }
         }
       });
+    }
+
+    // Merge fields the UBO submitted via their own secure link (kyc_ubo_sessions).
+    // Card-typed values win (the applicant may correct a typo after adoption); the
+    // session fills whatever is still empty — so the UBO's answers persist even if
+    // the applicant never re-opened Step 2 after the UBO finished.
+    const uboSess = (window._uboSessions || []).find(s =>
+      s.status === 'completed' && s.fields && (s.person_name || '').trim() === name);
+    if(uboSess){
+      const S1_KEYS = ['full_name', 'email', 'shareholding_pct', 'is_applicant', 'is_ubo'];
+      Object.entries(uboSess.fields).forEach(([k, v]) => {
+        if(S1_KEYS.includes(k)) return;
+        if(row[k] === undefined || row[k] === null || row[k] === ''){
+          row[k] = v;
+        }
+      });
+      row.kyc_status = 'self_completed';
     }
     rows.push(row);
   });
