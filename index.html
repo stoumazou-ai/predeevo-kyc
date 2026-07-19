@@ -413,7 +413,7 @@ body{font-family:'Manrope',sans-serif;color:var(--text);background:var(--surface
 .fg{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
 .fg:last-child{margin-bottom:0}
 .lbl{font-size:11px;color:var(--muted);font-weight:600}
-.lbl .req{color:var(--red);margin-left:2px}
+.lbl .req{color:var(--red);margin-left:2px;font-weight:800;font-size:12px}
 .lbl .hint{font-size:10px;color:var(--subtle);font-weight:400;margin-left:4px}
 input,select,textarea{border:0.5px solid rgba(0,0,0,.14);border-radius:8px;padding:9px 11px;font-size:13px;font-family:'Manrope',sans-serif;color:var(--text);background:var(--card);width:100%;transition:border-color .13s;font-weight:400}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(28,117,188,.1)}
@@ -589,7 +589,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .validation-list{list-style:none;padding:0;margin:0}
 .validation-list li{font-size:12px;color:var(--red);padding:3px 0;display:flex;align-items:center;gap:6px}
 .validation-list li::before{content:"→";font-weight:700}
-.req-asterisk{color:var(--red)}
+.req-legend{font-size:11px;color:var(--muted);margin:0 0 14px;font-weight:500}
 /* ── RESUME BANNER ── */
 .resume-banner{background:var(--amber-light);border:0.5px solid var(--amber-border);border-radius:10px;padding:13px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px}
 .resume-banner i{font-size:20px;color:var(--amber);flex-shrink:0}
@@ -785,6 +785,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following required fields before continuing:</div>
     <ul class="validation-list" id="val-list-s1"></ul>
   </div>
+  <div class="req-legend">Fields marked <span style="color:var(--red);font-weight:800">*</span> are required</div>
 <div class="card">
     <div class="card-title"><i class="ti ti-door-enter"></i>Introduction</div>
     <div class="fgrid">
@@ -858,7 +859,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
         <div id="sof-rows">
           <div class="sof-row">
             <div class="fg" style="margin-bottom:0">
-              <label class="lbl">Source</label>
+              <label class="lbl">Source <span class="req">*</span></label>
               <select class="sof-type" onchange="calcSOF()">
                 <option value="">Select source...</option>
                 <option value="employment_income">Employment income / salary</option>
@@ -873,7 +874,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
               </select>
             </div>
             <div class="fg" style="margin-bottom:0">
-              <label class="lbl">Amount (EUR)</label>
+              <label class="lbl">Amount (EUR) <span class="req">*</span></label>
               <input type="number" class="sof-val" placeholder="0" oninput="calcSOF()" min="0" step="1" step="1">
             </div>
             <div style="padding-bottom:1px">
@@ -1121,6 +1122,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following required fields before continuing:</div>
     <ul class="validation-list" id="val-list-s2"></ul>
   </div>
+  <div class="req-legend">Fields marked <span style="color:var(--red);font-weight:800">*</span> are required</div>
 
   <!-- UBO IDENTITY COLLECTION — dynamically populated from Step 1 -->
   <div id="ubo-identity-section" style="display:none">
@@ -1469,6 +1471,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <div class="validation-banner-title"><i class="ti ti-alert-circle" style="font-size:16px"></i>Please complete the following required fields before continuing:</div>
     <ul class="validation-list" id="val-list-s7"></ul>
   </div>
+  <div class="req-legend">Fields marked <span style="color:var(--red);font-weight:800">*</span> are required</div>
 <div class="card">
     <div class="card-title"><i class="ti ti-certificate"></i>Electronic signature</div>
     <div class="info-box"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Only you — the person named in this form — may sign this declaration. Please select your preferred method.</div>
@@ -1752,6 +1755,8 @@ function gs(n){
       _stopSelfiePolling();
       window._selfieSessionId = null;
     }
+    // Sync the Step 6 continue-button state on entry (chkD otherwise only fires onchange)
+    if(n === 6 && typeof chkD === 'function'){ try { chkD(); } catch(e){} }
     // Update SoW step counter dynamically — accounts for selfie-skip
     if(n === 's-sow'){
       const sowEl = document.getElementById('sow-step-count');
@@ -3609,9 +3614,15 @@ function toggleCvManual(){
 
 // ── DECLARATIONS ──
 function chkD(){
-  const all=['dc1','dc2','dc3','dc4','dc5','dc6','dc7'].every(id=>document.getElementById(id).checked);
+  const ids=['dc1','dc2','dc3','dc4','dc5','dc6','dc7'];
+  const all=ids.every(id=>document.getElementById(id).checked);
   const btn=document.getElementById('d-next');
   btn.disabled=!all;btn.style.opacity=all?'1':'.4';btn.style.cursor=all?'pointer':'not-allowed';
+  // Clear the red validation tint from any declaration that is now ticked
+  ids.forEach(id=>{
+    const cb=document.getElementById(id);
+    if(cb?.checked){ cb.closest('.decl')?.style.removeProperty('border-color'); cb.closest('.decl')?.style.removeProperty('background'); }
+  });
   if(all)saveProgress();
 }
 
@@ -3729,12 +3740,25 @@ async function clearSigFile(method){
 // Field definitions per step — [selector, label, optional custom check fn name]
 const STEP_REQUIRED = {
   1: [
+    {check:'introduced_by', label:'Introduced by — please provide the name of the person or firm'},
     {check:'services', label:'At least one service must be selected'},
     {check:'company_name', label:'Proposed company name is required (incorporation services)'},
+    {check:'company_type', label:'Type of company is required'},
+    {check:'incorp_country', label:'Country of incorporation is required'},
     {check:'principal_activities', label:'Principal business activities are required'},
-    {check:'turnover_y1', label:'Expected turnover Year 1 is required'},
+    {check:'economic_rationale', label:'Economic rationale and purpose is required'},
+    {check:'operating_funds', label:'Source of funds for the company is required'},
     {check:'sof', label:'Please specify at least one source of funds (incorporation services)'},
+    {check:'turnover_y1', label:'Expected turnover Year 1 is required'},
+    {check:'share_capital', label:'Share capital is required'},
+    {check:'countries_operation', label:'Expected countries of operation are required'},
+    {check:'entity_name', label:'Full registered name of the entity is required'},
+    {check:'entity_country', label:'Country of registration is required'},
+    {check:'entity_reg_number', label:'Registration / company number is required'},
+    {check:'entity_rationale', label:'Economic rationale for engaging Predeevo is required'},
+    {check:'entity_turnover_y1', label:'Last year annual turnover is required'},
     {check:'shareholders_100', label:'Total shareholding must equal exactly 100% before proceeding — all shareholders must be disclosed'},
+    {check:'controlling_person', label:'Please designate the controlling person for UBO purposes'},
   ],
   2: [
     {check:'ubo_cards_started', label:'Please complete the identity form for each UBO — at minimum first name, surname, date of birth, and email are required for each person'},
@@ -3764,9 +3788,35 @@ const STEP_REQUIRED = {
   ],
 };
 
+// ── Validation helpers ──
+// _flagInvalid red-highlights a failing field and remembers the FIRST one so
+// validateAndProceed can scroll to and focus it. Reset at the top of validateStep.
+window._firstInvalidEl = null;
+function _flagInvalid(el){
+  if(!el) return;
+  highlightField(el);
+  if(!window._firstInvalidEl) window._firstInvalidEl = el;
+}
+// Country-search widgets keep their value in a hidden input — highlight the
+// visible search box instead so the user can see (and type into) the red field.
+function _countryVisibleInput(hiddenEl){
+  return (hiddenEl && hiddenEl.closest('.sw')?.querySelector('.si')) || hiddenEl;
+}
+function _isIncorpVisible(){ return document.getElementById('incorp-f')?.style.display !== 'none'; }
+function _isEntityVisible(){ return document.getElementById('entity-f')?.style.display !== 'none'; }
+// Generic required-by-id check: pushes the label and red-flags the field when empty.
+function _reqValue(id, f, errors){
+  const el = document.getElementById(id);
+  if(!el || !String(el.value || '').trim()){
+    errors.push(f.label);
+    _flagInvalid(el && el.type === 'hidden' ? _countryVisibleInput(el) : el);
+  }
+}
+
 function validateStep(stepNum){
   const errors = [];
   const fields = STEP_REQUIRED[stepNum] || [];
+  window._firstInvalidEl = null;
 
   fields.forEach(f => {
     if(f.optional) return;
@@ -3774,46 +3824,63 @@ function validateStep(stepNum){
     // Custom checks
     if(f.check){
       switch(f.check){
-        case 'services':
+        case 'services': {
           if(!document.querySelectorAll('.svc-item.on').length) errors.push(f.label);
           break;
-        case 'company_name': {
-          const incorpVis2 = document.getElementById('incorp-f')?.style.display !== 'none';
-          if(incorpVis2){
-            const nameInp = document.getElementById('incorp-company-name');
-            if(!nameInp || !nameInp.value.trim()) errors.push(f.label);
-          }
+        }
+        case 'introduced_by': {
+          // Required only when the "introduced by someone?" select is set to yes
+          const introSel = document.querySelector('select[onchange*="intro-by"]');
+          if(introSel && introSel.value === 'yes') _reqValue('introduced-by-name', f, errors);
           break;
         }
+        case 'company_name': {
+          if(_isIncorpVisible()) _reqValue('incorp-company-name', f, errors);
+          break;
+        }
+        case 'company_type':        { if(_isIncorpVisible()) _reqValue('incorp-company-type', f, errors); break; }
+        case 'incorp_country':      { if(_isIncorpVisible()) _reqValue('incorp-country', f, errors); break; }
+        case 'economic_rationale':  { if(_isIncorpVisible()) _reqValue('incorp-economic-rationale', f, errors); break; }
+        case 'operating_funds':     { if(_isIncorpVisible()) _reqValue('incorp-operating-funds', f, errors); break; }
+        case 'share_capital':       { if(_isIncorpVisible()) _reqValue('incorp-share-capital', f, errors); break; }
+        case 'countries_operation': { if(_isIncorpVisible()) _reqValue('incorp-countries-operation', f, errors); break; }
+        case 'entity_name':         { if(_isEntityVisible()) _reqValue('entity-name', f, errors); break; }
+        case 'entity_country':      { if(_isEntityVisible()) _reqValue('entity-country', f, errors); break; }
+        case 'entity_reg_number':   { if(_isEntityVisible()) _reqValue('entity-reg-number', f, errors); break; }
+        case 'entity_rationale':    { if(_isEntityVisible()) _reqValue('entity-rationale', f, errors); break; }
+        case 'entity_turnover_y1':  { if(_isEntityVisible()) _reqValue('entity-turnover-y1', f, errors); break; }
         case 'principal_activities': {
           // Check whichever form is visible
-          const incorpVis3 = document.getElementById('incorp-f')?.style.display !== 'none';
-          const entityVis3 = document.getElementById('entity-f')?.style.display !== 'none';
-          if(incorpVis3){
+          if(_isIncorpVisible()){
             const actInp = document.getElementById('incorp-activities');
-            if(!actInp || !actInp.value.trim()) errors.push(f.label);
-          } else if(entityVis3){
+            if(!actInp || !actInp.value.trim()){ errors.push(f.label); _flagInvalid(actInp); }
+          } else if(_isEntityVisible()){
             const actInp = document.getElementById('entity-activities');
-            if(!actInp || !actInp.value.trim()) errors.push(f.label);
+            if(!actInp || !actInp.value.trim()){ errors.push(f.label); _flagInvalid(actInp); }
           }
           break;
         }
         case 'turnover_y1': {
-          const incorpVis4 = document.getElementById('incorp-f')?.style.display !== 'none';
-          if(incorpVis4){
-            const t1 = document.getElementById('incorp-turnover-y1');
-            if(!t1 || !t1.value.trim()) errors.push(f.label);
+          if(_isIncorpVisible()) _reqValue('incorp-turnover-y1', f, errors);
+          break;
+        }
+        case 'sof': {
+          // Only validate SOF when the incorporation form is visible.
+          // Every row with a selected source must also carry a positive amount.
+          if(_isIncorpVisible()){
+            const rows = Array.from(document.querySelectorAll('.sof-row'));
+            const withType = rows.filter(r => r.querySelector('.sof-type')?.value);
+            if(!withType.length) errors.push(f.label);
+            let amountMissing = false;
+            withType.forEach(r => {
+              const valInp = r.querySelector('.sof-val');
+              const v = parseFloat(valInp?.value);
+              if(!(v > 0)){ amountMissing = true; _flagInvalid(valInp); }
+            });
+            if(amountMissing) errors.push('Enter an amount (EUR) for each selected source of funds');
           }
           break;
         }
-        case 'sof':
-          // Only validate SOF when incorporation form is visible
-          const incorpVisible = document.getElementById('incorp-f')?.style.display !== 'none';
-          if(incorpVisible){
-            const sofTypes = Array.from(document.querySelectorAll('.sof-type')).filter(s=>s.value);
-            if(!sofTypes.length) errors.push(f.label);
-          }
-          break;
         case 'shareholders_100': {
           const incorpVis = document.getElementById('incorp-f')?.style.display !== 'none';
           const entityVis = document.getElementById('entity-f')?.style.display !== 'none';
@@ -3828,12 +3895,17 @@ function validateStep(stepNum){
           }
           break;
         }
-        case 'nationality':
-          const natInput = document.querySelector('#s2 .sw input[placeholder*="nationality"], #s2 input[placeholder*="Type country"]');
-          // Check if nationality sw has a value
-          const natHidden = document.getElementById('nat-v');
-          if(!natHidden || !natHidden.value) errors.push(f.label);
+        case 'controlling_person': {
+          // Required only when the UBO-determination engine revealed the selector
+          // (nobody above 25%, or tied top shareholders).
+          const wrap = _isIncorpVisible() ? document.getElementById('controlling-person-wrap') : document.getElementById('entity-controlling-wrap');
+          const sel  = _isIncorpVisible() ? document.getElementById('controlling-person-select') : document.getElementById('entity-controlling-select');
+          if(wrap && wrap.style.display !== 'none' && sel && !sel.value){
+            errors.push(f.label);
+            _flagInvalid(sel);
+          }
           break;
+        }
         case 'ubo_cards_started': {
           const uboCards = document.querySelectorAll('.ubo-id-card');
           if(uboCards.length === 0) break;
@@ -3846,11 +3918,18 @@ function validateStep(stepNum){
               form = body?.querySelector('.ubo-id-form');
             }
             if(!form) return;
-            const nameInp  = form.querySelector('input[placeholder*="As on passport"]');
-            const emailInp = form.querySelector('input[type="email"]');
-            // DOB is the first date input that is NOT a document expiry field
-            const allDateInputs = Array.from(form.querySelectorAll('input[type="date"]'));
-            const dobInp = allDateInputs.find(inp => !inp.classList.contains('doc-passport-exp') && !inp.classList.contains('doc-id-exp'));
+            // Anchor on data-field attributes (stable) with legacy fallbacks
+            const nameInp  = form.querySelector('input[data-field="first_name"]') || form.querySelector('input[placeholder*="As on passport"]');
+            const surInp   = form.querySelector('input[data-field="surname"]');
+            const emailInp = form.querySelector('input[data-field="email"]') || form.querySelector('input[type="email"]');
+            const natHid   = form.querySelector('input[data-field="nationality"]');
+            const resHid   = form.querySelector('input[data-field="country_of_residence"]');
+            let dobInp = form.querySelector('input[data-field="dob"]');
+            if(!dobInp){
+              // DOB fallback: the first date input that is NOT a document expiry field
+              const allDateInputs = Array.from(form.querySelectorAll('input[type="date"]'));
+              dobInp = allDateInputs.find(inp => !inp.classList.contains('doc-passport-exp') && !inp.classList.contains('doc-id-exp'));
+            }
             const passNum  = form.querySelector('.doc-passport-num');
             const passExp  = form.querySelector('.doc-passport-exp');
             const idNum    = form.querySelector('.doc-id-num');
@@ -3859,95 +3938,25 @@ function validateStep(stepNum){
             const hasPassport = passNum?.value?.trim() && passExp?.value && passExp.value > today2;
             const hasID       = idNum?.value?.trim() && idExp?.value && idExp.value > today2;
             const hasDoc      = hasPassport || hasID;
-            const personName  = nameInp?.value?.trim() || 'Person '+(i+1);
-            const pepSel = form.querySelector('select[id^="pep-"]');
-            // Find PEP select — it's the last select in the form (no fixed id since template literal)
+            const personName  = ((nameInp?.value?.trim() || '') + ' ' + (surInp?.value?.trim() || '')).trim() || 'Person '+(i+1);
             const allSelects = form.querySelectorAll('select');
-            const pepSelect = allSelects[allSelects.length - 1]; // PEP is always last select
+            const pepSelect = form.querySelector('select[data-field="pep_status"]') || allSelects[allSelects.length - 1];
             const hasPEP = pepSelect?.value && pepSelect.value !== '';
             const issues = [];
-            if(!nameInp?.value?.trim()) issues.push('name');
-            if(!dobInp?.value) issues.push('date of birth');
-            if(!emailInp?.value?.trim()) issues.push('email');
-            if(!hasDoc) issues.push('passport or ID card details (number + expiry)');
-            if(!hasPEP) issues.push('PEP declaration');
+            if(!nameInp?.value?.trim()){ issues.push('first name'); _flagInvalid(nameInp); }
+            if(!surInp?.value?.trim()){ issues.push('surname'); _flagInvalid(surInp); }
+            if(!dobInp?.value){ issues.push('date of birth'); _flagInvalid(dobInp); }
+            if(!natHid?.value){ issues.push('nationality'); _flagInvalid(_countryVisibleInput(natHid)); }
+            if(!resHid?.value){ issues.push('country of residence'); _flagInvalid(_countryVisibleInput(resHid)); }
+            if(!emailInp?.value?.trim()){ issues.push('email'); _flagInvalid(emailInp); }
+            if(!hasDoc){ issues.push('passport or ID card details (number + expiry)'); _flagInvalid(passNum); }
+            if(!hasPEP){ issues.push('PEP declaration'); _flagInvalid(pepSelect); }
             if(issues.length) missing.push(`${personName}: missing ${issues.join(', ')}`);
           });
           if(missing.length) errors.push(...missing.map(m=>'Identity form incomplete — '+m));
           break;
         }
-        case 'addr_street':
-          const street = document.querySelector('#s2 input[placeholder*="Street name"]');
-          if(street && !street.value.trim()) errors.push(f.label);
-          break;
-        case 'addr_town':
-          const town = document.querySelector('#s2 input[placeholder*="Town or city"]');
-          if(!town || !town.value.trim()) errors.push(f.label);
-          break;
-        case 'addr_postcode':
-          const pc = document.querySelector('#s2 input[placeholder*="Postcode"]');
-          if(!pc || !pc.value.trim()) errors.push(f.label);
-          break;
-        case 'addr_country':
-          const ac = document.getElementById('addr-v');
-          if(!ac || !ac.value) errors.push(f.label);
-          break;
-        case 'mobile':
-          const mob = document.querySelector('#s2 input[type="tel"]');
-          if(!mob || !mob.value.trim()) errors.push(f.label);
-          break;
-        case 'occupation':
-          const occ = document.querySelector('#s2 input[placeholder*="Accountant, Director"]');
-          if(!occ || !occ.value.trim()) errors.push(f.label);
-          break;
-        case 'emp_status':
-          const empSel = document.querySelector('#s2 select');
-          // Find employment status select (3rd select in s2 after title, marital)
-          const s2Sels = document.querySelectorAll('#s2 select');
-          let empFound = false;
-          s2Sels.forEach(s => { if(s.previousElementSibling?.textContent?.includes('Employment status') || s.closest('.fg')?.querySelector('.lbl')?.textContent?.includes('Employment status')) { if(s.value) empFound = true; }});
-          // Simplified: check any employment status select
-          const empS = Array.from(document.querySelectorAll('#s2 .fg')).find(fg=>fg.querySelector('.lbl')?.textContent?.includes('Employment status'));
-          const empSel2 = empS?.querySelector('select');
-          if(empSel2 && !empSel2.value) errors.push(f.label);
-          break;
-        case 'annual_income':
-          const incFg = Array.from(document.querySelectorAll('#s2 .fg')).find(fg=>fg.querySelector('.lbl')?.textContent?.includes('Annual income'));
-          const incSel = incFg?.querySelector('select');
-          if(incSel && !incSel.value) errors.push(f.label);
-          break;
-        case 'tax_country':
-          const taxFg = Array.from(document.querySelectorAll('#s2 .fg')).find(fg=>fg.querySelector('.lbl')?.textContent?.includes('tax residence'));
-          const taxInp = taxFg?.querySelector('input[type=hidden]');
-          if(!taxInp || !taxInp.value) errors.push(f.label);
-          break;
-        case 'tin':
-          const tinInp = document.querySelector('#s2 input[placeholder*="TIN"]');
-          if(!tinInp || !tinInp.value.trim()) errors.push(f.label);
-          break;
-        case 'pep':
-          // PEP is now declared per-UBO inside Step 2 identity cards.
-          // Validate that the applicant has answered their PEP question.
-          {
-            const list = window._lastSavedShareholders || window._resumedShareholders;
-            let pepAnswered = false;
-            if(Array.isArray(list)){
-              const applicant = list.find(s => s.is_applicant);
-              if(applicant && (applicant.pep_status === 'yes' || applicant.pep_status === 'no')) pepAnswered = true;
-            }
-            // Also check live Step 2 cards (PEP may have been set but not yet saved)
-            if(!pepAnswered){
-              document.querySelectorAll('#ubo-identity-cards .ubo-id-card').forEach(card => {
-                if(card.dataset.applicant === 'true' || card.querySelector('.ubo-id-name')?.textContent?.includes('You')){
-                  const pep = card.querySelector('[data-field="pep_status"]')?.value;
-                  if(pep === 'yes' || pep === 'no') pepAnswered = true;
-                }
-              });
-            }
-            if(!pepAnswered) errors.push(f.label);
-          }
-          break;
-        case 'dynamic_required_docs':
+        case 'dynamic_required_docs': {
           // Walk every required doc-row in the dynamic container.
           // CV is checked separately (its case follows below) because CV can be
           // satisfied by manual form OR upload — so we skip it here.
@@ -3964,13 +3973,15 @@ function validateStep(stepNum){
             errors.push(missing.map(n => 'Required: ' + n).join(' · '));
           }
           break;
-        case 'cv':
+        }
+        case 'cv': {
           // CV is satisfied EITHER by uploading a CV file OR by filling the inline employment form
           const cvDone = document.getElementById('dr-cv')?.classList.contains('done');
           const empInp = document.querySelector('#emp-list input[placeholder*="Company"]');
           if(!cvDone && (!empInp || !empInp.value.trim())) errors.push(f.label);
           break;
-        case 'questionnaire':
+        }
+        case 'questionnaire': {
           const allQsAnswered = QS.every(q => {
             const noBtn = document.getElementById('qno-'+q.id);
             const yesBtn = document.getElementById('qyes-'+q.id);
@@ -3978,11 +3989,26 @@ function validateStep(stepNum){
                    noBtn?.classList.contains('sel-yes') || yesBtn?.classList.contains('sel-no');
           });
           if(!allQsAnswered) errors.push(f.label);
+          // When an answer opens the detail box (YES normally, NO for inverted
+          // questions), the explanation textarea becomes required.
+          QS.forEach(q => {
+            const exp = document.getElementById('qe-'+q.id);
+            if(exp?.classList.contains('show')){
+              const ta = exp.querySelector('textarea');
+              if(ta && !ta.value.trim()){
+                const t = q.t.charAt(0) + q.t.slice(1).toLowerCase();
+                errors.push('Details required — ' + t + ': please provide the requested explanation');
+                _flagInvalid(ta);
+              }
+            }
+          });
           break;
-        case 'signature':
+        }
+        case 'signature': {
           const sigSelected = document.querySelector('.sig-opt.on');
           if(!sigSelected) errors.push(f.label);
           break;
+        }
         case 'signature_file': {
           // Require an uploaded signed declaration for the selected method
           const sigOpt = document.querySelector('.sig-opt.on input');
@@ -3990,11 +4016,12 @@ function validateStep(stepNum){
           if(m && !(window.sigUploads && window.sigUploads[m])) errors.push(f.label);
           break;
         }
-        case 'selfie_file':
+        case 'selfie_file': {
           // Require a successfully uploaded identity selfie before continuing past Step 4.
           // Skipped entirely when the AMLCO didn't require a selfie on this invitation.
           if(_requireSelfie() && !window.selfieUpload) errors.push(f.label);
           break;
+        }
       }
       return;
     }
@@ -4008,6 +4035,7 @@ function validateStep(stepNum){
           errors.push(f.label);
           el.closest('.decl')?.style.setProperty('border-color','var(--red)');
           el.closest('.decl')?.style.setProperty('background','var(--red-light)');
+          if(!window._firstInvalidEl) window._firstInvalidEl = el;
         } else {
           el.closest('.decl')?.style.removeProperty('border-color');
           el.closest('.decl')?.style.removeProperty('background');
@@ -4015,7 +4043,7 @@ function validateStep(stepNum){
       } else {
         if(!el.value || !el.value.trim()){
           errors.push(f.label);
-          highlightField(el);
+          _flagInvalid(el);
         } else {
           clearHighlight(el);
         }
@@ -4102,7 +4130,15 @@ function validateAndProceed(fromStep, toStep){
   if(errors.length && banner && list){
     list.innerHTML = errors.map(e=>`<li>${e}</li>`).join('');
     banner.classList.add('show');
-    banner.scrollIntoView({behavior:'smooth',block:'start'});
+    // Scroll to and focus the first offending field when one was captured and
+    // is actually visible (fields in collapsed UBO cards fall back to the banner).
+    const firstEl = window._firstInvalidEl;
+    if(firstEl && firstEl.offsetParent !== null){
+      firstEl.scrollIntoView({behavior:'smooth',block:'center'});
+      try { firstEl.focus({preventScroll:true}); } catch(e){}
+    } else {
+      banner.scrollIntoView({behavior:'smooth',block:'start'});
+    }
     return;
   }
 
