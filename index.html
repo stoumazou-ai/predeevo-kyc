@@ -642,6 +642,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 <input type="file" id="kyc-file-input" accept="application/pdf,image/jpeg,image/png" style="display:none">
 <!-- Hidden file input used by the Step 7 signed-declaration uploader -->
 <input type="file" id="sig-file-input" accept="application/pdf,image/jpeg,image/png" style="display:none">
+<!-- Hidden file input used by the on-behalf UBO document rows (Step 3 cards) -->
+<input type="file" id="onbehalf-file-input" accept="application/pdf,image/jpeg,image/png" style="display:none">
 
 
 <!-- ── ACCESS GATE — shown until token is validated (denial states) ── -->
@@ -2301,6 +2303,32 @@ function renderUBOIdentityCards(){
               <option value="yes">Yes — is or has been a PEP</option>
             </select>
           </div>
+          ${!ubo.isApplicant ? `
+          <hr>
+          <div class="sec-lbl ob-docs-section">Documents for ${firstName||'this person'}</div>
+          <div class="ob-docs-section" style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Upload their identity document (ID card for Cypriot nationals, passport otherwise), a recent proof of address, and their CV. PDF, JPG or PNG &middot; max 10 MB each. Skipped automatically if they complete their own secure link.</div>
+          <div class="ob-docs-section">
+            <div class="doc-row" id="obdoc-${i}-passport" onclick="obPickDoc(${i},'passport')">
+              <div class="doc-icon"><i class="ti ti-file-certificate"></i></div>
+              <div class="doc-info"><div class="doc-name">Passport copy</div><div class="doc-desc" id="obdesc-${i}-passport">Photo page — or upload their ID card below instead</div></div>
+              <span class="doc-st ds-req" id="obst-${i}-passport">One required</span>
+            </div>
+            <div class="doc-row" id="obdoc-${i}-id_card" onclick="obPickDoc(${i},'id_card')">
+              <div class="doc-icon"><i class="ti ti-id-badge-2"></i></div>
+              <div class="doc-info"><div class="doc-name">National ID card copy</div><div class="doc-desc" id="obdesc-${i}-id_card">Both sides — required instead of passport for Cypriot nationals</div></div>
+              <span class="doc-st ds-req" id="obst-${i}-id_card">One required</span>
+            </div>
+            <div class="doc-row" id="obdoc-${i}-proof_of_address" onclick="obPickDoc(${i},'proof_of_address')">
+              <div class="doc-icon"><i class="ti ti-home"></i></div>
+              <div class="doc-info"><div class="doc-name">Proof of address <span style="color:var(--red)">*</span></div><div class="doc-desc" id="obdesc-${i}-proof_of_address">Utility bill or bank statement issued within the last 6 months</div></div>
+              <span class="doc-st ds-req" id="obst-${i}-proof_of_address">Required</span>
+            </div>
+            <div class="doc-row" id="obdoc-${i}-cv" onclick="obPickDoc(${i},'cv')">
+              <div class="doc-icon"><i class="ti ti-file-text"></i></div>
+              <div class="doc-info"><div class="doc-name">Curriculum Vitae <span style="color:var(--red)">*</span></div><div class="doc-desc" id="obdesc-${i}-cv">A recent CV covering employment history and qualifications</div></div>
+              <span class="doc-st ds-req" id="obst-${i}-cv">Required</span>
+            </div>
+          </div>` : ''}
           <div style="margin-top:12px;padding-top:12px;border-top:0.5px solid rgba(0,0,0,.07);display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:11px;color:var(--muted)">Fields marked * are required</span>
             <button type="button" class="btn btn-sm btn-blue" onclick="markUBOComplete(${i})"><i class="ti ti-check" style="font-size:12px"></i>Confirm details</button>
@@ -2350,6 +2378,8 @@ function renderUBOIdentityCards(){
   // The applicant's nationality decides which identity document is required —
   // refresh the personal doc rows shortly after they edit it (the country
   // dropdown commits the hidden value just after the input blurs).
+  try { _restoreOnbehalfDocRows(); } catch(e){ console.warn('_restoreOnbehalfDocRows:', e); }
+
   const apNatSi = document.querySelector('#applicant-card-container .ubo-id-card [data-field="nationality"]')
     ?.closest('.sw')?.querySelector('.si');
   if(apNatSi && !apNatSi._docRerenderHooked){
@@ -2397,6 +2427,145 @@ function markUBOComplete(i){
   const nextChev = document.getElementById('ubo-chev-'+(i+1));
   if(next&&!next.classList.contains('open')){next.classList.add('open');nextChev?.classList.add('open');}
   saveProgress();
+}
+
+// ── ON-BEHALF UBO DOCUMENT UPLOADS ──
+// When the applicant fills a co-UBO's details instead of sending them a link,
+// they must also upload that person's documents (identity doc per the
+// nationality rule + proof of address + CV). Files go to storage under the
+// application + kyc_documents rows tagged person_label — identical to what
+// ubo.html produces, so the dashboard groups them per person automatically.
+window._onbehalfDocs = window._onbehalfDocs || {};   // personName -> { docType: {docId, path, fileName} }
+document.addEventListener('DOMContentLoaded', () => {
+  const obInp = document.getElementById('onbehalf-file-input');
+  if(obInp) obInp.addEventListener('change', function(){ _obHandleFile(this.files && this.files[0]); });
+});
+window._obPick = null;                                // { idx, name, docType }
+const OB_DOC_TYPES = ['passport', 'id_card', 'proof_of_address', 'cv'];
+const OB_DOC_DESCS = {
+  passport: 'Photo page — or upload their ID card below instead',
+  id_card: 'Both sides — required instead of passport for Cypriot nationals',
+  proof_of_address: 'Utility bill or bank statement issued within the last 6 months',
+  cv: 'A recent CV covering employment history and qualifications'
+};
+
+function _obCardName(idx){
+  const nameEl = document.querySelector('#ubo-card-' + idx + ' .ubo-id-name');
+  return nameEl ? nameEl.textContent.replace(/\s*You\s*$/i, '').trim() : '';
+}
+
+function obPickDoc(idx, docType){
+  const name = _obCardName(idx);
+  if(!name) return;
+  if((window._onbehalfDocs[name] || {})[docType]) return;  // uploaded — use Remove first
+  window._obPick = { idx, name, docType };
+  const inp = document.getElementById('onbehalf-file-input');
+  if(inp){ inp.value = ''; inp.click(); }
+}
+
+async function _obHandleFile(file){
+  const pick = window._obPick;
+  window._obPick = null;
+  if(!file || !pick) return;
+  const { idx, name, docType } = pick;
+  if(!ALLOWED_MIME.includes(file.type || _mimeFromName(file.name))){ alert('Unsupported file type — PDF, JPG or PNG only.'); return; }
+  if(file.size > MAX_FILE_BYTES){ alert('File too large — maximum 10 MB.'); return; }
+  if(file.size === 0){ alert('That file is empty.'); return; }
+  const desc = document.getElementById('obdesc-' + idx + '-' + docType);
+  const st = document.getElementById('obst-' + idx + '-' + docType);
+  if(desc) desc.textContent = 'Uploading ' + file.name + '…';
+  try {
+    if(!sb) throw new Error('Not connected — please refresh and try again.');
+    if(!currentAppId){ await saveDraftToDB(); }
+    if(!currentAppId) throw new Error('Could not save your progress — click Save draft first, then retry.');
+    const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+    const path = currentAppId + '/onbehalf/' + docType + '-' + Date.now() + '-' + safeName;
+    const { error: upErr } = await sb.storage.from(KYC_BUCKET).upload(path, file, {
+      cacheControl: '3600', upsert: false, contentType: file.type || 'application/octet-stream'
+    });
+    if(upErr) throw upErr;
+    const { data: row, error: insErr } = await sb.from('kyc_documents').insert({
+      application_id: currentAppId,
+      doc_type: docType,
+      file_name: file.name,
+      file_size: file.size,
+      mime_type: file.type || null,
+      storage_path: path,
+      person_label: name
+    }).select('id').single();
+    if(insErr){ console.warn('On-behalf doc insert:', insErr.message); }
+    const bucket = window._onbehalfDocs[name] = window._onbehalfDocs[name] || {};
+    bucket[docType] = { docId: row?.id || null, path, fileName: file.name };
+    _obMarkRow(idx, docType, file.name, name);
+    try { saveProgress(); } catch(e){}
+  } catch(err){
+    console.error('On-behalf upload:', err);
+    if(desc) desc.textContent = 'Upload failed — please try again.';
+    if(window._handleSessionExpiry && (await window._handleSessionExpiry(err))) return;
+    alert('Upload failed: ' + ((err && err.message) || 'please try again'));
+    if(desc) setTimeout(() => { if(desc.textContent === 'Upload failed — please try again.') desc.textContent = OB_DOC_DESCS[docType] || ''; }, 4000);
+  }
+}
+
+function _obMarkRow(idx, docType, fileName, name){
+  const rowEl = document.getElementById('obdoc-' + idx + '-' + docType);
+  const desc = document.getElementById('obdesc-' + idx + '-' + docType);
+  const st = document.getElementById('obst-' + idx + '-' + docType);
+  if(rowEl) rowEl.classList.add('done');
+  if(desc) desc.innerHTML = '<strong>' + _uboEscHtml(fileName) + '</strong> &nbsp; <a href="#" onclick="obRemoveDoc(' + idx + ',\'' + docType + '\');return false" style="color:var(--red);font-weight:600">Remove</a>';
+  if(st){ st.className = 'doc-st ds-done'; st.textContent = 'Uploaded ✓'; }
+}
+
+async function obRemoveDoc(idx, docType){
+  const name = _obCardName(idx);
+  const rec = (window._onbehalfDocs[name] || {})[docType];
+  if(!rec) return;
+  try {
+    if(rec.path) await sb.storage.from(KYC_BUCKET).remove([rec.path]);
+    if(rec.docId) await sb.from('kyc_documents').delete().eq('id', rec.docId);
+  } catch(e){ console.warn('On-behalf doc remove:', e); }
+  delete window._onbehalfDocs[name][docType];
+  const rowEl = document.getElementById('obdoc-' + idx + '-' + docType);
+  const desc = document.getElementById('obdesc-' + idx + '-' + docType);
+  const st = document.getElementById('obst-' + idx + '-' + docType);
+  if(rowEl) rowEl.classList.remove('done');
+  if(desc) desc.textContent = OB_DOC_DESCS[docType] || '';
+  if(st){
+    st.className = 'doc-st ds-req';
+    st.textContent = (docType === 'passport' || docType === 'id_card') ? 'One required' : 'Required';
+  }
+}
+
+// Re-mark uploaded rows after the cards are rebuilt (step entry / resume)
+function _restoreOnbehalfDocRows(){
+  document.querySelectorAll('#ubo-identity-cards .ubo-id-card').forEach(card => {
+    const idx = (card.id || '').replace('ubo-card-', '');
+    const name = _obCardName(idx);
+    const recs = window._onbehalfDocs[name];
+    if(!recs) return;
+    OB_DOC_TYPES.forEach(t => { if(recs[t]) _obMarkRow(idx, t, recs[t].fileName || 'document', name); });
+  });
+}
+
+// Missing on-behalf documents for a person — nationality-aware (card value
+// first, saved row as fallback). Empty array = documents complete.
+function _onbehalfDocIssues(name){
+  const recs = window._onbehalfDocs[name] || {};
+  const card = (typeof _findUBOCardByName === 'function') ? _findUBOCardByName(name) : null;
+  let nat = card?.querySelector('[data-field="nationality"]')?.value?.trim() || '';
+  if(!nat){
+    const list = (Array.isArray(window._lastSavedShareholders) && window._lastSavedShareholders.length)
+      ? window._lastSavedShareholders : window._resumedShareholders;
+    const r = Array.isArray(list) ? list.find(s => (s.full_name || '').trim() === (name || '').trim()) : null;
+    nat = (r && r.nationality) || '';
+  }
+  const issues = [];
+  if(_isCypriotNat(nat)){ if(!recs.id_card) issues.push('national ID card copy'); }
+  else if(nat){ if(!recs.passport) issues.push('passport copy'); }
+  else if(!recs.passport && !recs.id_card){ issues.push('passport or ID card copy'); }
+  if(!recs.proof_of_address) issues.push('proof of address');
+  if(!recs.cv) issues.push('CV');
+  return issues;
 }
 
 // ── UBO SELF-SERVICE LINKS ──
@@ -2546,10 +2715,16 @@ async function _sendUBOEmail(sessionId, idx, email){
       body: JSON.stringify({ session_id: sessionId })
     });
     let ok = resp.ok;
-    try { const j = await resp.json(); if(j && j.ok === false) ok = false; } catch(e){}
+    let errDetail = '';
+    try {
+      const j = await resp.json();
+      if(j && j.ok === false) ok = false;
+      if(j && j.error) errDetail = String(j.error);
+    } catch(e){}
+    if(!ok) console.warn('UBO email send failed:', resp.status, errDetail);
     if(st) st.innerHTML = ok
       ? '<span style="color:var(--teal);font-weight:600"><i class="ti ti-mail-check"></i> Email sent to ' + _uboEscHtml(email) + '</span>'
-      : '<span style="color:var(--amber);font-weight:600"><i class="ti ti-mail-off"></i> Email could not be sent — please share the link or QR code yourself.</span>';
+      : '<span style="color:var(--amber);font-weight:600"><i class="ti ti-mail-off"></i> Email could not be sent' + (errDetail ? ' <span style="font-weight:400">(' + _uboEscHtml(errDetail) + ')</span>' : '') + ' — please share the link or QR code yourself.</span>';
   } catch(e){
     console.warn('UBO invitation email:', e);
     if(st) st.innerHTML = '<span style="color:var(--amber);font-weight:600"><i class="ti ti-mail-off"></i> Email could not be sent — please share the link or QR code yourself.</span>';
@@ -2618,6 +2793,8 @@ function _adoptUBOSession(sess){
     statusEl.className = 'ubo-id-status ubo-status-complete';
     statusEl.textContent = 'Completed via their own link ✓';
   }
+  // Their link already collected documents — hide the on-behalf upload section
+  card.querySelectorAll('.ob-docs-section').forEach(el => { el.style.display = 'none'; });
   const btn = document.getElementById('send-btn-' + idx);
   if(btn) btn.style.display = 'none';
   const area = document.getElementById('ubo-link-area-' + idx);
@@ -4417,7 +4594,8 @@ function validateStep(stepNum){
             if(_uboSessionFor(name)) return;  // link created — pending is fine here
             const form = card.querySelector('.ubo-id-form');
             const issues = form ? _cardIdentityIssues(form) : ['identity details'];
-            if(issues.length) errors.push(name + ' — send them their personal KYC link, or fill in their details on their behalf (missing: ' + issues.join(', ') + ')');
+            issues.push(..._onbehalfDocIssues(name));
+            if(issues.length) errors.push(name + ' — send them their personal KYC link, or complete on their behalf (missing: ' + issues.join(', ') + ')');
           });
           break;
         }
@@ -4438,7 +4616,8 @@ function validateStep(stepNum){
             const card = _findUBOCardByName(name);
             const form = card ? card.querySelector('.ubo-id-form') : null;
             const cardOk = form ? _cardIdentityIssues(form).length === 0 : false;
-            if(!(viaLink || cardOk || _savedRowComplete(name))){
+            const docsOk = _onbehalfDocIssues(name).length === 0;
+            if(!(viaLink || ((cardOk || _savedRowComplete(name)) && docsOk))){
               errors.push('Waiting for ' + name + ' — they have not finished their personal KYC yet. Resend their link from Step 3, or fill in their details on their behalf there.');
             }
           });
@@ -4794,6 +4973,15 @@ async function resumeDraft(draftInfo){
     // Stash application-level docs (no person_label) so renderDocRows can re-mark
     // uploaded rows on Steps 2/3. UBO-labelled docs must NOT mark the applicant's rows.
     window._resumedDocs = (docList || []).filter(d => d && !d.person_label);
+    // Seed the on-behalf document store from person-labelled rows so card doc
+    // rows re-mark on render AND the Step 7 gate sees them without a render.
+    window._onbehalfDocs = window._onbehalfDocs || {};
+    (docList || []).forEach(d => {
+      if(!d || !d.person_label) return;
+      if(!['passport','id_card','proof_of_address','cv'].includes(d.doc_type)) return;
+      const bucket = window._onbehalfDocs[d.person_label] = window._onbehalfDocs[d.person_label] || {};
+      if(!bucket[d.doc_type]) bucket[d.doc_type] = { docId: d.id, path: d.storage_path, fileName: d.file_name, restored: true };
+    });
 
     // ── Restore Step 1: services (and trigger conditional incorp/entity forms) ──
     if(Array.isArray(app.services)){
