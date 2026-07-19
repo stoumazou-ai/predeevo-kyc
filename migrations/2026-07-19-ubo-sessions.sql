@@ -75,3 +75,9 @@ CREATE POLICY admin_all_ubo_sessions ON public.kyc_ubo_sessions
 --   WHERE polrelid = 'public.kyc_ubo_sessions'::regclass;
 --   SELECT column_name FROM information_schema.columns
 --   WHERE table_name = 'kyc_documents' AND column_name = 'person_label';
+
+-- HOTFIX 2026-07-19 late: the edge function (service role) got "permission
+-- denied [42501]" — this project's default privileges don't auto-grant
+-- service_role on new tables. Applied separately in prod the same night:
+GRANT ALL ON public.kyc_ubo_sessions TO service_role;
+GRANT ALL ON public.kyc_selfie_sessions TO service_role;

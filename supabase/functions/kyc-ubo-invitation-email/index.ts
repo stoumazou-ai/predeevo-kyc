@@ -60,7 +60,12 @@ serve(async (req) => {
 
     if (sessErr || !sess) {
       console.error("UBO session lookup failed:", sessErr);
-      return new Response(JSON.stringify({ error: "session not found" }), {
+      // Diagnostic detail: distinguishes a genuinely missing row from a failing
+      // service-role query (bad key, schema issue, etc.)
+      const detail = sessErr
+        ? `${sessErr.message}${sessErr.code ? " [" + sessErr.code + "]" : ""}`
+        : "query ok but no row returned";
+      return new Response(JSON.stringify({ error: "session not found", detail }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
