@@ -2246,7 +2246,7 @@ function renderUBOIdentityCards(){
         ${!ubo.isApplicant ? `
         <div class="ubo-id-actions">
           <button type="button" class="ubo-send-btn" id="send-btn-${i}" onclick="sendUBOLink(${i},'${_uboEscJs(ubo.name)}','${_uboEscJs(prefillEmail)}')">
-            <i class="ti ti-link" style="font-size:13px"></i>Send KYC link${prefillEmail?' to '+prefillEmail:''}
+            <i class="ti ti-link" style="font-size:13px"></i>Send KYC link${prefillEmail?' to '+_uboEscHtml(prefillEmail):''}
           </button>
           <span style="font-size:11px;color:var(--muted)">or fill in details below on their behalf</span>
         </div>
@@ -2280,7 +2280,7 @@ function renderUBOIdentityCards(){
             <div class="fg full"><label class="lbl">Street address</label><input data-field="addr_street" placeholder="Street name and number" value="${prefillAddrStr}"></div>
             <div class="fg"><label class="lbl">Town / City</label><input data-field="addr_town" placeholder="Town or city" value="${prefillAddrTown}"></div>
             <div class="fg"><label class="lbl">Postcode</label><input data-field="addr_postcode" placeholder="Postcode / ZIP" value="${prefillAddrPC}"></div>
-            <div class="fg"><label class="lbl">Email address <span class="req">*</span></label><input data-field="email" type="email" placeholder="email@domain.com" value="${prefillEmail}" oninput="updateUBOStatus(${i})"></div>
+            <div class="fg"><label class="lbl">Email address <span class="req">*</span></label><input data-field="email" type="email" placeholder="email@domain.com" value="${_uboEscHtml(prefillEmail)}" oninput="updateUBOStatus(${i})"></div>
             <div class="fg"><label class="lbl">Mobile</label><div class="phone-row"><div style="position:relative"><input data-field="mobile_country_code" class="si" placeholder="+357" style="width:100%" oninput="spc(this)" onfocus="spdd(this)" onblur="sphdd(this)"><div class="dropdown" style="width:200px"></div></div><input data-field="mobile" placeholder="Number" type="tel" inputmode="numeric" pattern="[-0-9 +()]*" oninput="this.value=this.value.replace(/[^-0-9 +()]/g,'')"></div></div>
             <div class="fg"><label class="lbl">Occupation / profession</label><input data-field="occupation" placeholder="e.g. Director, Investor" value="${prefillOccup}"></div>
             <div class="fg"><label class="lbl">Employment status</label><select data-field="employment_status"><option value="">Select...</option><option>Self-employed</option><option>Employed</option><option>Business owner</option><option>Retired</option><option>Investor</option><option>Other</option></select></div>
@@ -2346,6 +2346,24 @@ function renderUBOIdentityCards(){
       }
     }
   });
+
+  // The applicant's nationality decides which identity document is required —
+  // refresh the personal doc rows shortly after they edit it (the country
+  // dropdown commits the hidden value just after the input blurs).
+  const apNatSi = document.querySelector('#applicant-card-container .ubo-id-card [data-field="nationality"]')
+    ?.closest('.sw')?.querySelector('.si');
+  if(apNatSi && !apNatSi._docRerenderHooked){
+    apNatSi._docRerenderHooked = true;
+    apNatSi.addEventListener('blur', () => setTimeout(() => {
+      try {
+        // No-op unless the committed nationality actually changed — an unconditional
+        // re-render would wipe live-typed CV data and race the file-picker dialog.
+        const now = (typeof _applicantNationality === 'function' ? _applicantNationality() : '').toLowerCase();
+        if(now === (window._lastNatRender ?? '')) return;
+        renderDocRows();
+      } catch(e){}
+    }, 250));
+  }
 }
 
 function toggleUBOCard(i){
@@ -2423,7 +2441,7 @@ async function sendUBOLink(idx, name, email){
     if(error) throw error;
     const url = location.origin + '/ubo.html?u=' + sess.id;
     if(btn) btn.style.display = 'none';
-    _renderUBOLinkUI(idx, sess.id, url, email ? '' : 'No email on file for this person — share the link or QR code with them yourself.');
+    _renderUBOLinkUI(idx, sess.id, url, email ? '' : 'Type their email and press Send email — or share the link / QR code yourself.', email);
     if(email) _sendUBOEmail(sess.id, idx, email);
     _startUBOPolling();
   } catch(err){
@@ -2434,7 +2452,7 @@ async function sendUBOLink(idx, name, email){
   }
 }
 
-function _renderUBOLinkUI(idx, sessionId, url, note){
+function _renderUBOLinkUI(idx, sessionId, url, note, email){
   const area = document.getElementById('ubo-link-area-' + idx);
   if(!area) return;
   area.style.display = 'block';
@@ -2447,6 +2465,10 @@ function _renderUBOLinkUI(idx, sessionId, url, note){
         '<div style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px">They can scan the QR code with their phone camera, or open the link below on any device. This page updates automatically once they finish.</div>' +
         '<div style="font-size:11px;color:var(--blue);word-break:break-all;margin-bottom:8px">' + url + '</div>' +
         '<button type="button" class="btn btn-sm" onclick="_copyUBOLink(this,\'' + url + '\')" style="border:0.5px solid var(--blue-border);background:var(--card);color:var(--blue)"><i class="ti ti-copy" style="font-size:12px"></i>Copy link</button>' +
+        '<div style="display:flex;gap:6px;margin-top:10px;align-items:center;flex-wrap:wrap">' +
+          '<input id="ubo-email-input-' + idx + '" type="email" placeholder="their@email.com" value="' + _uboEscHtml(email || '') + '" style="flex:1;min-width:170px;font-size:12px;padding:7px 10px">' +
+          '<button type="button" class="btn btn-sm btn-blue" onclick="_sendUBOEmailFromInput(' + idx + ',\'' + sessionId + '\')"><i class="ti ti-mail-forward" style="font-size:12px"></i>Send email</button>' +
+        '</div>' +
         '<div id="ubo-email-status-' + idx + '" style="font-size:11px;color:var(--muted);margin-top:8px">' + (note || '') + '</div>' +
         '<div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;font-weight:600;color:var(--blue)"><span class="save-dot"></span>Waiting for them to complete…</div>' +
       '</div>' +
@@ -2456,6 +2478,38 @@ function _renderUBOLinkUI(idx, sessionId, url, note){
       new window.QRCode(document.getElementById('ubo-qr-' + idx), { text: url, width: 110, height: 110, colorDark: '#1A2332', colorLight: '#ffffff', correctLevel: window.QRCode.CorrectLevel.M });
     } catch(e){ console.warn('UBO QR render:', e); }
   }
+}
+
+// "Send email" button on the link UI: syncs the (possibly newly typed) address
+// onto the session row, then asks the edge function to send the invite.
+async function _sendUBOEmailFromInput(idx, sessionId){
+  const inp = document.getElementById('ubo-email-input-' + idx);
+  const email = inp?.value?.trim();
+  const st = document.getElementById('ubo-email-status-' + idx);
+  if(!email || email.indexOf('@') === -1){
+    if(st) st.innerHTML = '<span style="color:var(--red);font-weight:600">Enter a valid email address first.</span>';
+    if(inp){ inp.focus(); }
+    return;
+  }
+  // Update the session's address and CONFIRM a row was hit — an RLS-filtered
+  // update silently matches zero rows (session/invitation no longer valid).
+  try {
+    const { data, error } = await sb.from('kyc_ubo_sessions')
+      .update({ person_email: email }).eq('id', sessionId).select('id');
+    if(error){
+      if(window._handleSessionExpiry && (await window._handleSessionExpiry(error))) return;
+      throw error;
+    }
+    if(!data || !data.length){
+      if(st) st.innerHTML = '<span style="color:var(--red);font-weight:600">Could not update the address — this KYC session may have expired. Refresh the page and try again.</span>';
+      return;
+    }
+  } catch(e){
+    console.warn('Session email update:', e);
+    if(st) st.innerHTML = '<span style="color:var(--red);font-weight:600">Could not update the address — please try again.</span>';
+    return;
+  }
+  _sendUBOEmail(sessionId, idx, email);
 }
 
 function _copyUBOLink(btn, url){
@@ -2478,6 +2532,11 @@ function _copyUBOLinkFallback(url, done){
 }
 
 async function _sendUBOEmail(sessionId, idx, email){
+  // One send at a time per card — prevents auto-send + button double-emails and
+  // out-of-order status overwrites.
+  window._uboEmailBusy = window._uboEmailBusy || {};
+  if(window._uboEmailBusy[idx]) return;
+  window._uboEmailBusy[idx] = true;
   const st = document.getElementById('ubo-email-status-' + idx);
   if(st) st.innerHTML = 'Sending email to ' + _uboEscHtml(email) + '…';
   try {
@@ -2494,6 +2553,8 @@ async function _sendUBOEmail(sessionId, idx, email){
   } catch(e){
     console.warn('UBO invitation email:', e);
     if(st) st.innerHTML = '<span style="color:var(--amber);font-weight:600"><i class="ti ti-mail-off"></i> Email could not be sent — please share the link or QR code yourself.</span>';
+  } finally {
+    window._uboEmailBusy[idx] = false;
   }
 }
 
@@ -2576,7 +2637,7 @@ function _restorePendingUBOLink(sess){
   const btn = document.getElementById('send-btn-' + idx);
   if(btn) btn.style.display = 'none';
   _renderUBOLinkUI(idx, sess.id, location.origin + '/ubo.html?u=' + sess.id,
-    sess.person_email ? 'Previously emailed to ' + _uboEscHtml(sess.person_email) + '.' : '');
+    sess.person_email ? 'Email on file: ' + _uboEscHtml(sess.person_email) + ' — press Send email to (re)send their link.' : '', sess.person_email || '');
 }
 
 // Called after renderUBOIdentityCards on Step 2 entry: reapply session states.
@@ -3417,6 +3478,12 @@ function renderDocRows(){
 
   // Snapshot upload state before clearing the containers
   const uploadedSnap = _snapshotUploadedDocs();
+  // Preserve live-typed manual CV data across the rebuild (applyCvManualRestore
+  // reads window._pendingCvManual at the end of this function).
+  try {
+    const liveCv = (typeof _collectCvManual === 'function') ? _collectCvManual() : null;
+    if(liveCv) window._pendingCvManual = liveCv;
+  } catch(e){}
 
   // Determine the doc list to render
   let docList = [];
@@ -3457,6 +3524,33 @@ function renderDocRows(){
   };
   const personal = docList.filter(d => PERSONAL_DOC_TYPES.includes(d.doc_type));
   const company  = docList.filter(d => !PERSONAL_DOC_TYPES.includes(d.doc_type));
+
+  // Nationality drives which identity document is required: Cypriot nationals
+  // need their ID card (passport optional); everyone else needs a passport
+  // (ID card optional). Falls back to the DB rules while nationality is unknown.
+  const natOverride = (typeof _applicantNationality === 'function' ? _applicantNationality() : '').toLowerCase();
+  window._lastNatRender = natOverride;
+  if(natOverride){
+    const cypriot = _isCypriotNat(natOverride);
+    const ensureRow = (type, label, guidance, sort) => {
+      if(!personal.find(d => d.doc_type === type)){
+        personal.push({ doc_type: type, state: 'optional', label: label, guidance: guidance, category: 'identity', sort_order: sort });
+      }
+    };
+    ensureRow('passport', 'Passport copy', 'Photo page of your passport.', 1);
+    ensureRow('id_card', 'National ID card copy', 'Both sides of your national ID card.', 2);
+    personal.forEach(d => {
+      if(d.doc_type === 'passport'){
+        d.state = cypriot ? 'optional' : 'required';
+        if(cypriot) d.guidance = 'Optional for Cypriot nationals — your ID card covers identity verification.';
+      }
+      if(d.doc_type === 'id_card'){
+        d.state = cypriot ? 'required' : 'optional';
+        if(cypriot) d.guidance = 'Both sides of your national ID card — required for Cypriot nationals.';
+      }
+    });
+  }
+
   renderInto(personalContainer, personal);
   renderInto(companyContainer, company);
 
@@ -3548,6 +3642,11 @@ function _resetDocRow(row){
 
 // Render a doc-row as "uploaded": filename, size, Replace/Remove actions
 function _renderDocRowUploaded(row, fileName, fileSize, docId){
+  // The row element may have been replaced by a re-render while the file picker
+  // or upload was in flight — resolve the live element by doc type.
+  if(row && row.dataset && row.dataset.docType){
+    row = document.getElementById('dr-' + row.dataset.docType) || row;
+  }
   const icon = row.querySelector('.doc-icon');
   const info = row.querySelector('.doc-info');
   const st   = row.querySelector('.doc-st');
@@ -4112,20 +4211,58 @@ function _cardIdentityIssues(form){
   if(!natHid?.value){ issues.push('nationality'); _flagInvalid(_countryVisibleInput(natHid)); }
   if(!resHid?.value){ issues.push('country of residence'); _flagInvalid(_countryVisibleInput(resHid)); }
   if(!emailInp?.value?.trim()){ issues.push('email'); _flagInvalid(emailInp); }
-  if(!(hasPassport || hasID)){ issues.push('passport or ID card details (number + expiry)'); _flagInvalid(passNum); }
+  const natRule = (natHid?.value || '').trim().toLowerCase();
+  if(_isCypriotNat(natRule)){
+    if(!hasID){ issues.push('national ID card details (number + future expiry — required for Cypriot nationals)'); _flagInvalid(idNum); }
+  } else if(natRule){
+    if(!hasPassport){ issues.push('passport details (number + future expiry — required for non-Cypriot nationals)'); _flagInvalid(passNum); }
+  } else if(!(hasPassport || hasID)){
+    issues.push('passport or ID card details (number + expiry)'); _flagInvalid(passNum);
+  }
   if(!hasPEP){ issues.push('PEP declaration'); _flagInvalid(pepSelect); }
   return issues;
 }
-// Missing required-doc errors for one container ('#personal-doc-rows' or '#dynamic-doc-rows')
-function _requiredDocErrors(containerSel, errors){
+// Tolerant Cypriot-nationality matcher: covers 'Cyprus', 'Cypriot', 'Republic
+// of Cyprus', Greek 'Κύπρος'/'Κυπριακή', and near-typos ('Cypru...').
+function _isCypriotNat(nat){
+  nat = String(nat || '').trim().toLowerCase();
+  return nat.includes('cypr') || nat.includes('κυπρ') || nat.includes('κύπρ');
+}
+// The applicant's nationality (live card value, falling back to saved rows)
+function _applicantNationality(){
+  const card = document.querySelector('#applicant-card-container .ubo-id-card');
+  const v = card?.querySelector('[data-field="nationality"]')?.value?.trim();
+  if(v) return v;
+  const list = (Array.isArray(window._lastSavedShareholders) && window._lastSavedShareholders.length)
+    ? window._lastSavedShareholders : window._resumedShareholders;
+  const ap = Array.isArray(list) ? list.find(s => s.is_applicant) : null;
+  return (ap && ap.nationality) || '';
+}
+// Missing required-doc errors for one container. idDocLogic=true applies the
+// nationality rule to the passport/id_card pair: Cypriot nationals must upload
+// their ID card; everyone else their passport; unknown nationality: either one.
+function _requiredDocErrors(containerSel, errors, idDocLogic){
   const missing = [];
   document.querySelectorAll(containerSel + ' .doc-row[data-required="true"]').forEach(r => {
     if(r.dataset.docType === 'cv') return;  // CV satisfied by upload OR the manual form ('cv' check)
+    if(idDocLogic && (r.dataset.docType === 'passport' || r.dataset.docType === 'id_card')) return;
     if(!r.classList.contains('done')){
       const name = r.querySelector('.doc-name')?.textContent?.replace(/\s*\*\s*$/, '').trim() || r.dataset.docType;
       missing.push(name);
     }
   });
+  if(idDocLogic){
+    const nat = (typeof _applicantNationality === 'function' ? _applicantNationality() : '').toLowerCase();
+    const passDone = document.getElementById('dr-passport')?.classList.contains('done');
+    const idDone   = document.getElementById('dr-id_card')?.classList.contains('done');
+    if(_isCypriotNat(nat)){
+      if(!idDone) missing.push('National ID card copy (required for Cypriot nationals)');
+    } else if(nat){
+      if(!passDone) missing.push('Passport copy (required for non-Cypriot nationals)');
+    } else if(!passDone && !idDone){
+      missing.push('Passport or National ID card copy');
+    }
+  }
   if(missing.length) errors.push(missing.map(n => 'Required: ' + n).join(' · '));
 }
 // The kyc_ubo_sessions row for a person (matched by exact trimmed name), if any
@@ -4141,8 +4278,10 @@ function _savedRowComplete(name){
   const r = src.find(s => (s.full_name || '').trim() === (name || '').trim());
   if(!r) return false;
   const today = new Date().toISOString().split('T')[0];
-  const hasDoc = (r.passport_number && r.passport_expiry && r.passport_expiry > today) ||
-                 (r.id_card_number && r.id_card_expiry && r.id_card_expiry > today);
+  const passOk = r.passport_number && r.passport_expiry && r.passport_expiry > today;
+  const idOk   = r.id_card_number && r.id_card_expiry && r.id_card_expiry > today;
+  const natS = String(r.nationality || '').trim();
+  const hasDoc = _isCypriotNat(natS) ? idOk : (natS ? passOk : (passOk || idOk));
   return !!(r.first_name && r.surname && r.dob && r.email && hasDoc && (r.pep_status === 'yes' || r.pep_status === 'no'));
 }
 // Names of every NON-applicant person who requires KYC (>25% or designated controlling)
@@ -4283,7 +4422,7 @@ function validateStep(stepNum){
           break;
         }
         case 'personal_required_docs': {
-          _requiredDocErrors('#personal-doc-rows', errors);
+          _requiredDocErrors('#personal-doc-rows', errors, true);
           break;
         }
         case 'company_required_docs': {
@@ -5647,8 +5786,12 @@ function _collectShareholders(){
       s.status === 'completed' && s.fields && (s.person_name || '').trim() === name);
     if(uboSess){
       const S1_KEYS = ['full_name', 'email', 'shareholding_pct', 'is_applicant', 'is_ubo'];
+      // Only merge keys that are real kyc_shareholders columns — the session's
+      // fields jsonb also carries non-column payloads (sig_method, questionnaire)
+      // that would break the shareholders insert if copied onto the row.
+      const MERGE_KEYS = ['title','marital_status','first_name','surname','prev_surname','dob','place_of_birth','nationality','dual_nationality','passport_number','passport_expiry','id_card_number','id_card_expiry','country_of_residence','addr_street','addr_town','addr_postcode','mobile_country_code','mobile','occupation','employment_status','tax_country','tin','annual_income','pep_status'];
       Object.entries(uboSess.fields).forEach(([k, v]) => {
-        if(S1_KEYS.includes(k)) return;
+        if(S1_KEYS.includes(k) || !MERGE_KEYS.includes(k)) return;
         if(row[k] === undefined || row[k] === null || row[k] === ''){
           row[k] = v;
         }

@@ -84,6 +84,20 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);bo
 .done-box h2{font-size:16px;font-weight:700}
 .done-box p{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6}
 .req-legend{font-size:11px;color:var(--muted);margin:0 0 14px;font-weight:500}
+.q-item{border:0.5px solid rgba(0,0,0,.1);border-radius:10px;margin-bottom:10px;overflow:hidden}
+.q-row{display:flex;align-items:stretch}
+.q-text{flex:1;padding:12px 14px}
+.q-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;color:var(--text)}
+.q-question{font-size:12px;color:var(--muted);line-height:1.5}
+.q-buttons{display:flex;flex-direction:column;border-left:0.5px solid rgba(0,0,0,.08);flex-shrink:0;min-width:64px}
+.qb{flex:1;padding:0 14px;font-size:11px;font-weight:700;cursor:pointer;background:none;border:none;font-family:'Manrope',sans-serif;color:var(--subtle);transition:all .13s;display:flex;align-items:center;justify-content:center;gap:4px}
+.qb:first-child{border-bottom:0.5px solid rgba(0,0,0,.08)}
+.qb:hover{background:var(--blue-pale);color:var(--blue)}
+.qb.sel-no{background:var(--blue-pale);color:var(--blue)}
+.qb.sel-yes{background:var(--blue-pale);color:var(--blue)}
+.q-expand{display:none;padding:10px 14px;border-top:0.5px solid rgba(0,0,0,.07);background:var(--blue-pale)}
+.q-expand.show{display:block}
+.q-expand textarea{font-size:12px;min-height:56px;background:white}
 .hide{display:none!important}
 </style>
 </head>
@@ -138,7 +152,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);bo
         <div class="fg"><label class="lbl">Dual nationality?</label><select data-field="dual_nationality"><option value="no">No</option><option value="yes">Yes</option></select></div>
         <div class="fg full">
           <div style="background:var(--blue-pale);border:0.5px solid var(--blue-border);border-radius:9px;padding:12px 14px">
-            <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Identity document — at least one required <span style="color:var(--red)">*</span></div>
+            <div id="id-doc-header" style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Identity document — at least one required <span style="color:var(--red)">*</span></div>
             <div class="fgrid" style="gap:0 8px">
               <div class="fg" style="margin-bottom:8px"><label class="lbl">Passport number</label><input data-field="passport_number" placeholder="Passport number"></div>
               <div class="fg" style="margin-bottom:8px"><label class="lbl">Passport expiry date</label><input data-field="passport_expiry" type="date" max="2099-12-31"></div>
@@ -174,15 +188,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);bo
     <!-- DOCUMENTS -->
     <div class="card">
       <div class="card-title"><i class="ti ti-files"></i>Your documents</div>
-      <div class="info-box"><i class="ti ti-info-circle"></i>Upload clear scans or photos. PDF, JPG or PNG · max 10 MB each. Your passport <em>or</em> ID card is required (whichever you entered above).</div>
+      <div class="info-box"><i class="ti ti-info-circle"></i><span>Upload clear scans or photos. PDF, JPG or PNG · max 10 MB each. <span id="docs-id-note">Your passport <em>or</em> ID card is required (whichever you entered above).</span></span></div>
       <div class="doc-row" id="doc-passport" onclick="pickDoc('passport')">
         <div class="doc-icon"><i class="ti ti-file-certificate"></i></div>
-        <div class="doc-info"><div class="doc-name">Passport copy <span style="color:var(--red)">*</span></div><div class="doc-desc" id="desc-passport">Photo page of your passport — or upload your ID card below instead</div></div>
+        <div class="doc-info"><div class="doc-name" id="name-passport">Passport copy <span style="color:var(--red)">*</span></div><div class="doc-desc" id="desc-passport">Photo page of your passport — or upload your ID card below instead</div></div>
         <span class="doc-st ds-req" id="st-passport">Required</span>
       </div>
       <div class="doc-row" id="doc-id_card" onclick="pickDoc('id_card')">
         <div class="doc-icon"><i class="ti ti-id-badge-2"></i></div>
-        <div class="doc-info"><div class="doc-name">National ID card copy</div><div class="doc-desc" id="desc-id_card">Both sides of your national ID card — alternative to the passport</div></div>
+        <div class="doc-info"><div class="doc-name" id="name-id_card">National ID card copy</div><div class="doc-desc" id="desc-id_card">Both sides of your national ID card — alternative to the passport</div></div>
         <span class="doc-st ds-opt" id="st-id_card">Alternative</span>
       </div>
       <div class="doc-row" id="doc-proof_of_address" onclick="pickDoc('proof_of_address')">
@@ -196,6 +210,13 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);bo
         <span class="doc-st ds-req" id="st-cv">Required</span>
       </div>
       <input type="file" id="doc-file-input" accept="application/pdf,image/jpeg,image/png" style="display:none">
+    </div>
+
+    <!-- BACKGROUND QUESTIONNAIRE -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-list-check"></i>Background questionnaire <span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:4px">&mdash; all questions required</span></div>
+      <div class="info-box"><i class="ti ti-info-circle"></i>These declarations are required from every beneficial owner personally under Cyprus AML Law 188(I)/2007. Answer honestly &mdash; a YES answer is not automatically disqualifying, but details are required.</div>
+      <div id="q-list"></div>
     </div>
 
     <!-- SELFIE -->
@@ -352,6 +373,13 @@ async function _handleWriteError(err){
 }
 function _fld(name){ return document.querySelector('[data-field="' + name + '"]'); }
 function _val(name){ return _fld(name)?.value?.trim() || ''; }
+// Tolerant Cypriot-nationality matcher — covers 'Cyprus', 'Cypriot', 'Republic
+// of Cyprus', Greek 'Κύπρος'/'Κυπριακή', and near-typos, since nationality here
+// is a free-text datalist input.
+function _isCypriotNat(nat){
+  nat = String(nat || '').trim().toLowerCase();
+  return nat.includes('cypr') || nat.includes('κυπρ') || nat.includes('κύπρ');
+}
 
 // ── Load & validate the session ──
 async function init(){
@@ -389,6 +417,11 @@ async function init(){
     const today = new Date().toISOString().split('T')[0];
     const pe = _fld('passport_expiry'); if(pe) pe.min = today;
     const ie = _fld('id_card_expiry'); if(ie) ie.min = today;
+    // Nationality decides which identity document is required — keep the doc
+    // rows' marks in sync as they type/pick their nationality.
+    const natInp = _fld('nationality');
+    if(natInp) natInp.addEventListener('input', _updateUboDocRequirements);
+    _updateUboDocRequirements();
     _show('state-main');
     _capState('cap-idle');
   } catch(e){
@@ -459,6 +492,48 @@ document.getElementById('doc-file-input').addEventListener('change', async funct
     alert('Upload failed: ' + (err.message || 'please try again'));
   }
 });
+// Nationality drives which identity document is required: Cypriot nationals →
+// ID card (passport optional); everyone else → passport (ID card optional);
+// blank nationality → either one. Updates the doc-row marks/pills/descriptions.
+function _updateUboDocRequirements(){
+  const nat = _val('nationality');
+  const known = !!nat;
+  const cypriot = _isCypriotNat(nat);
+  const REQ = ' <span style="color:var(--red)">*</span>';
+  const namePass = document.getElementById('name-passport');
+  const nameId   = document.getElementById('name-id_card');
+  if(namePass) namePass.innerHTML = 'Passport copy' + (!known || !cypriot ? REQ : '');
+  if(nameId)   nameId.innerHTML   = 'National ID card copy' + (known && cypriot ? REQ : '');
+  const setSt = (id, req, optText) => {
+    const el = document.getElementById(id);
+    if(!el || el.classList.contains('ds-done')) return;
+    el.className = 'doc-st ' + (req ? 'ds-req' : 'ds-opt');
+    el.textContent = req ? 'Required' : optText;
+  };
+  setSt('st-passport', !known || !cypriot, 'Optional');
+  setSt('st-id_card', known && cypriot, known ? 'Optional' : 'Alternative');
+  // Never clobber a row's live upload feedback ('Uploading …' / 'Upload failed')
+  const descSafe = el => el && !/^Uploading |^Upload failed/.test(el.textContent || '');
+  const descPass = document.getElementById('desc-passport');
+  const descId   = document.getElementById('desc-id_card');
+  if(descSafe(descPass) && !DOCS.passport) descPass.textContent = cypriot
+    ? 'Optional for Cypriot nationals — your ID card covers identity verification'
+    : 'Photo page of your passport' + (known ? '' : ' — or upload your ID card below instead');
+  if(descSafe(descId) && !DOCS.id_card) descId.textContent = cypriot
+    ? 'Both sides of your national ID card — required for Cypriot nationals'
+    : 'Both sides of your national ID card — alternative to the passport';
+  // Keep the identity-details panel header + docs note consistent with the rule
+  const hdr = document.getElementById('id-doc-header');
+  if(hdr) hdr.innerHTML = (known
+    ? (cypriot ? 'Identity document — national ID card required' : 'Identity document — passport required')
+    : 'Identity document — at least one required') + ' <span style="color:var(--red)">*</span>';
+  const note = document.getElementById('docs-id-note');
+  if(note) note.innerHTML = known
+    ? (cypriot ? 'As a Cypriot national, your <em>national ID card</em> copy is required (passport optional).'
+               : 'Your <em>passport</em> copy is required (ID card optional).')
+    : 'Your passport <em>or</em> ID card is required (whichever you entered above).';
+}
+
 async function removeDoc(docType){
   const rec = DOCS[docType];
   if(!rec) return;
@@ -477,6 +552,8 @@ async function removeDoc(docType){
     st.className = 'doc-st ' + (docType === 'id_card' ? 'ds-opt' : 'ds-req');
     st.textContent = docType === 'id_card' ? 'Alternative' : 'Required';
   }
+  // Re-apply the nationality-driven marks after resetting the row
+  if(docType === 'passport' || docType === 'id_card') _updateUboDocRequirements();
 }
 
 // ── Personalised declaration PDF (mirrors the main form's legal text exactly) ──
@@ -709,6 +786,40 @@ async function _cleanupSelfie(){
   SELFIE = null;
 }
 
+// ── Background questionnaire (same 11 questions as the main form, verbatim) ──
+// Answers live in the session's fields jsonb as fields.questionnaire — per
+// PERSON, unlike kyc_questionnaire which is per application.
+const QS=[
+  {id:'other_names',t:'OTHER NAMES',q:'Have you ever used, or do you currently use, a name other than the name mentioned in your Passport or Identity Card? Are you today known by any other name(s)?',exp:'Please specify the other name(s) used:'},
+  {id:'ownership',t:'OWNERSHIP',q:'Are you a beneficial owner acting on your own behalf and not as nominee, trustee or in a fiduciary capacity on behalf of any other person(s)?',exp:'If no, please specify:',inv:true},
+  {id:'entry',t:'ENTRY REFUSAL',q:'Have you ever been refused entry into any foreign country?',exp:'Please specify the country and circumstances:'},
+  {id:'ml',t:'MONEY LAUNDERING AWARENESS',q:'Are you fully aware of the Prevention and Suppression of Money Laundering Activities Laws and relevant regulations issued by the competent authorities?',exp:'If no, please specify:',inv:true},
+  {id:'prohibited',t:'PROHIBITED ACTIVITIES',q:'Have you ever been involved in any of the following activities: money laundering, receiving the proceeds of drug trafficking and/or criminal and/or terrorist activities, trading in arms and weapons, soliciting funds from the general public, trading with countries subject to any embargo issued by the United Nations or any affiliate organisation?',exp:'Please specify:'},
+  {id:'investigations',t:'INVESTIGATIONS',q:'Are you, or any corporation of which you have been a director, officer, or 10%+ shareholder, indicated or the subject of any investigation by any law enforcement agency, regulatory body or government?',exp:'Please specify:'},
+  {id:'convictions',t:'CONVICTIONS',q:'Have you, or any corporation of which you have been a director, officer, or 10%+ shareholder, ever been convicted for any crime (other than minor traffic violations)?',exp:'Please specify:'},
+  {id:'bankruptcy',t:'BANKRUPTCY / LIQUIDATION / INSOLVENCY',q:'Have you ever been under bankruptcy, or has any corporation of which you have been a director, officer, or 10%+ shareholder, ever been obliged to compound with creditors, or been under liquidation or insolvent?',exp:'Please specify:'},
+  {id:'tax_audit',t:'TAX AUDIT',q:'Are you currently being audited by the tax authorities of any jurisdiction?',exp:'Please specify the jurisdiction and nature of the audit:'},
+  {id:'insurance',t:'INSURANCE',q:'Have you ever been refused malpractice insurance, liability insurance, or professional indemnity insurance?',exp:'Please specify:'},
+  {id:'litigation',t:'LITIGATION FOR DAMAGES OR DEBTS',q:'Are there, to the best of your knowledge, any actions filed or threatened against you in any court for the recovery of damages or debts?',exp:'Please specify:'},
+];
+function buildQ(){
+  const list = document.getElementById('q-list');
+  if(!list || list.children.length > 0) return;
+  QS.forEach(q => {
+    const el = document.createElement('div');
+    el.className = 'q-item';
+    el.innerHTML = '<div class="q-row"><div class="q-text"><div class="q-title">' + q.t + '</div><div class="q-question">' + q.q + '</div></div><div class="q-buttons"><button type="button" class="qb" id="qno-' + q.id + '" onclick="qSel(\'' + q.id + '\',\'no\',' + (!!q.inv) + ')">NO</button><button type="button" class="qb" id="qyes-' + q.id + '" onclick="qSel(\'' + q.id + '\',\'yes\',' + (!!q.inv) + ')">YES</button></div></div><div class="q-expand" id="qe-' + q.id + '"><label style="font-size:11px;font-weight:700;color:var(--red);display:block;margin-bottom:5px">' + q.exp + '</label><textarea placeholder="Please provide full details..."></textarea></div>';
+    list.appendChild(el);
+  });
+}
+function qSel(id, val, inv){
+  document.getElementById('qno-' + id).className = 'qb' + (val === 'no' ? ' sel-no' : '');
+  document.getElementById('qyes-' + id).className = 'qb' + (val === 'yes' ? ' sel-yes' : '');
+  const show = inv ? val === 'no' : val === 'yes';
+  document.getElementById('qe-' + id).className = 'q-expand' + (show ? ' show' : '');
+}
+buildQ();
+
 // ── Validation + submit ──
 function _highlight(el){
   if(!el) return;
@@ -731,7 +842,20 @@ function validateUBO(){
   const today = new Date().toISOString().split('T')[0];
   const hasPassport = _val('passport_number') && _val('passport_expiry') && _val('passport_expiry') > today;
   const hasID = _val('id_card_number') && _val('id_card_expiry') && _val('id_card_expiry') > today;
-  if(!hasPassport && !hasID){
+  // Cypriot nationals must provide their ID card; everyone else their passport;
+  // while nationality is blank, either one is accepted.
+  const natDetails = _val('nationality');
+  if(_isCypriotNat(natDetails)){
+    if(!hasID){
+      errors.push('Cypriot nationals: provide your national ID card details (number + a future expiry date)');
+      const el = _fld('id_card_number'); _highlight(el); if(!firstEl) firstEl = el;
+    }
+  } else if(natDetails){
+    if(!hasPassport){
+      errors.push('Provide your passport details (number + a future expiry date)');
+      const el = _fld('passport_number'); _highlight(el); if(!firstEl) firstEl = el;
+    }
+  } else if(!hasPassport && !hasID){
     errors.push('Provide either passport or ID card details (number + a future expiry date)');
     const el = _fld('passport_number'); _highlight(el); if(!firstEl) firstEl = el;
   }
@@ -739,9 +863,33 @@ function validateUBO(){
     errors.push('Please answer the PEP declaration');
     const el = _fld('pep_status'); _highlight(el); if(!firstEl) firstEl = el;
   }
-  if(!DOCS.passport && !DOCS.id_card) errors.push('Upload a copy of your passport or ID card');
+  const natDocs = _val('nationality');
+  if(_isCypriotNat(natDocs)){
+    if(!DOCS.id_card) errors.push('Upload a copy of your national ID card (required for Cypriot nationals)');
+  } else if(natDocs){
+    if(!DOCS.passport) errors.push('Upload a copy of your passport');
+  } else if(!DOCS.passport && !DOCS.id_card){
+    errors.push('Upload a copy of your passport or ID card');
+  }
   if(!DOCS.proof_of_address) errors.push('Upload a proof of address');
   if(!DOCS.cv) errors.push('Upload your CV');
+  // Questionnaire: every question answered; details required whenever the
+  // answer opened the explanation box (YES normally, NO for inverted questions)
+  let qUnanswered = 0;
+  QS.forEach(q => {
+    const noSel = document.getElementById('qno-' + q.id)?.classList.contains('sel-no');
+    const yesSel = document.getElementById('qyes-' + q.id)?.classList.contains('sel-yes');
+    if(!noSel && !yesSel){ qUnanswered++; return; }
+    const exp = document.getElementById('qe-' + q.id);
+    if(exp?.classList.contains('show')){
+      const ta = exp.querySelector('textarea');
+      if(ta && !ta.value.trim()){
+        errors.push('Questionnaire — ' + (q.t.charAt(0) + q.t.slice(1).toLowerCase()) + ': please provide the requested details');
+        _highlight(ta); if(!firstEl) firstEl = ta;
+      }
+    }
+  });
+  if(qUnanswered) errors.push(qUnanswered + ' questionnaire question' + (qUnanswered > 1 ? 's' : '') + ' not yet answered — select YES or NO for each');
   if(!SELFIE) errors.push('Take your identity selfie');
   const sigSel = document.getElementById('sig-method');
   if(!sigSel?.value){
@@ -780,6 +928,20 @@ async function submitUBO(){
     // Record how the declaration was signed (mirrors kyc_applications.sig_method values)
     const sigMethod = document.getElementById('sig-method')?.value;
     if(sigMethod) fields.sig_method = sigMethod;
+    // Questionnaire answers ride in the fields jsonb (per person; the main
+    // kyc_questionnaire table is per application and stays applicant-only)
+    const qRows = [];
+    QS.forEach(q => {
+      const yes = document.getElementById('qyes-' + q.id)?.classList.contains('sel-yes');
+      const no = document.getElementById('qno-' + q.id)?.classList.contains('sel-no');
+      if(!yes && !no) return;
+      qRows.push({
+        question_id: q.id,
+        answer: !!yes,
+        details: document.getElementById('qe-' + q.id)?.querySelector('textarea')?.value?.trim() || null
+      });
+    });
+    fields.questionnaire = qRows;
     const { error } = await sb.from('kyc_ubo_sessions').update({
       status: 'completed',
       fields: fields,
