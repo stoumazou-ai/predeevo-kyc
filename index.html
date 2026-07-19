@@ -4524,6 +4524,16 @@ async function submit(){
       if(error) console.warn('Questionnaire insert error:', error);
     }
 
+    // ── Audit log ──
+    if(sb){
+      const { error: _auditErr } = await sb.from('kyc_audit_log').insert({
+        application_id: appId,
+        event: 'kyc_submitted',
+        details: { services: appData.services, sig_method: appData.sig_method, selfie_doc_id: appData.selfie_doc_id }
+      });
+      if(_auditErr) console.warn('Audit log write failed (submission still recorded):', _auditErr.message);
+    }
+
     // ── Mark invitation as completed ──
     if(sb && window.currentToken){
       try {
@@ -4533,16 +4543,6 @@ async function submit(){
           application_id: appId
         }).eq('token', window.currentToken);
       } catch(e){ console.warn('Invitation update warning:', e); }
-    }
-
-    // ── Audit log ──
-    if(sb){
-      const { error: _auditErr } = await sb.from('kyc_audit_log').insert({
-        application_id: appId,
-        event: 'kyc_submitted',
-        details: { services: appData.services, sig_method: appData.sig_method, selfie_doc_id: appData.selfie_doc_id }
-      });
-      if(_auditErr) console.warn('Audit log write failed (submission still recorded):', _auditErr.message);
     }
 
     // ── Clear localStorage draft ──
