@@ -1229,7 +1229,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   </div>
 
   <div class="btn-row">
-    <button class="btn-back" onclick="gs(1)"><i class="ti ti-arrow-left"></i> Back</button>
+    <button class="btn-back" onclick="saveDraftToDB();gs(1)"><i class="ti ti-arrow-left"></i> Back</button>
     <span class="step-count">Step 2 of 6</span>
     <span class="save-indicator" id="save-ind"><span class="save-dot"></span>Saved</span>
     <button class="btn-save-row" onclick="saveDraftToDB()"><i class="ti ti-device-floppy"></i>Save draft</button>
@@ -1622,8 +1622,35 @@ function sc(inp){
   });
   dd.classList.add('open');
 }
-function sdd(inp){const dd=inp.closest('.sw')?.querySelector('.dropdown');if(dd&&inp.value)dd.classList.add('open');}
-function hdd(inp){setTimeout(()=>{const dd=inp.closest('.sw')?.querySelector('.dropdown');if(dd)dd.classList.remove('open');},180);}
+function sdd(inp){ if(inp.value) sc(inp); }
+function hdd(inp){
+  setTimeout(()=>{
+    const wrap = inp.closest('.sw');
+    const dd = wrap?.querySelector('.dropdown');
+    if(dd) dd.classList.remove('open');
+    // Auto-commit: users often TYPE the country fully and tab away without
+    // clicking a suggestion — previously the hidden value never got set and
+    // validation kept rejecting an apparently-filled field.
+    const hidden = wrap?.querySelector('input[type=hidden]');
+    if(!hidden) return;
+    const t = (inp.value || '').trim();
+    if(!t){ hidden.value = ''; return; }
+    const exact = COUNTRIES.find(c => c.toLowerCase() === t.toLowerCase());
+    let commit = exact || null;
+    if(!commit){
+      const starts = COUNTRIES.filter(c => c.toLowerCase().startsWith(t.toLowerCase()));
+      if(starts.length === 1) commit = starts[0];  // unambiguous prefix, e.g. "cypr"
+    }
+    if(commit){
+      hidden.value = commit;
+      inp.value = commit;
+      try { if(inp.id==='addr-ci'||inp.closest('#s2')) chkHR(commit); } catch(e){}
+    } else if(hidden.value && hidden.value.toLowerCase() !== t.toLowerCase()){
+      // Visible text no longer matches the committed value — clear the stale commit
+      hidden.value = '';
+    }
+  },180);
+}
 function scAddr(inp){sc(inp);chkHR(inp.value);}
 function chkHR(c){document.getElementById('highrisk-warn').classList.toggle('show',HIGH_RISK.includes(c));}
 
@@ -2262,7 +2289,7 @@ function renderUBOIdentityCards(){
             <div class="fg"><label class="lbl">First name(s) <span class="req">*</span></label><input data-field="first_name" placeholder="As on passport" value="${firstName}" oninput="updateUBOStatus(${i})"></div>
             <div class="fg"><label class="lbl">Surname <span class="req">*</span></label><input data-field="surname" placeholder="As on passport" value="${lastName}" oninput="updateUBOStatus(${i})"></div>
             <div class="fg full"><label class="lbl">Previous or other surname</label><input data-field="prev_surname" placeholder="Maiden name or other legal name"></div>
-            <div class="fg"><label class="lbl">Date of birth <span class="req">*</span></label><input data-field="dob" type="date" value="${prefillDOB}" min="1900-01-01" max="2099-12-31" oninput="updateUBOStatus(${i})"></div>
+            <div class="fg"><label class="lbl">Date of birth <span class="req">*</span></label><input data-field="dob" type="date" value="${prefillDOB}" min="1900-01-01" max="${new Date().toISOString().split('T')[0]}" oninput="updateUBOStatus(${i})"></div>
             <div class="fg"><label class="lbl">Place / country of birth</label><input data-field="place_of_birth" placeholder="e.g. Nicosia, Cyprus"></div>
             <div class="fg"><label class="lbl">Nationality <span class="req">*</span></label><div class="sw"><input class="si" placeholder="Type country..." value="${prefillNat||''}" oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" data-field="nationality" value="${prefillNat||''}"><div class="dropdown"></div></div></div>
             <div class="fg"><label class="lbl">Dual nationality?</label><select data-field="dual_nationality"><option value="no">No</option><option value="yes">Yes</option></select></div>
@@ -2419,7 +2446,31 @@ function updateUBOStatus(i){
 }
 
 function markUBOComplete(i){
+  // "Confirm details" validates the card instead of blindly marking it done:
+  // missing fields get red-flagged + listed on the status pill; only a genuinely
+  // complete card collapses and shows Complete.
+  const card = document.getElementById('ubo-card-'+i);
+  const form = document.getElementById('ubo-form-'+i);
   const statusEl = document.getElementById('ubo-status-'+i);
+  window._firstInvalidEl = null;
+  let issues = form ? _cardIdentityIssues(form) : [];
+  const isApplicant = !!(card && card.closest('#applicant-card-container'));
+  if(!isApplicant && card){
+    const name = card.querySelector('.ubo-id-name')?.textContent?.replace(/\s*You\s*$/i,'').trim() || '';
+    if(name && !_uboSessionFor(name)) issues = issues.concat(_onbehalfDocIssues(name));
+  }
+  if(issues.length){
+    if(statusEl){
+      statusEl.className = 'ubo-id-status ubo-status-partial';
+      statusEl.textContent = 'Missing: ' + issues.slice(0,3).join(', ') + (issues.length > 3 ? ' +' + (issues.length - 3) + ' more' : '');
+    }
+    const firstEl = window._firstInvalidEl;
+    if(firstEl && firstEl.offsetParent !== null){
+      firstEl.scrollIntoView({behavior:'smooth',block:'center'});
+      try { firstEl.focus({preventScroll:true}); } catch(e){}
+    }
+    return;
+  }
   if(statusEl){statusEl.className='ubo-id-status ubo-status-complete';statusEl.textContent='Complete ✓';}
   toggleUBOCard(i);
   // Open next card if exists
@@ -4385,6 +4436,7 @@ function _cardIdentityIssues(form){
   if(!nameInp?.value?.trim()){ issues.push('first name'); _flagInvalid(nameInp); }
   if(!surInp?.value?.trim()){ issues.push('surname'); _flagInvalid(surInp); }
   if(!dobInp?.value){ issues.push('date of birth'); _flagInvalid(dobInp); }
+  else if(dobInp.value > today2){ issues.push('date of birth cannot be in the future'); _flagInvalid(dobInp); }
   if(!natHid?.value){ issues.push('nationality'); _flagInvalid(_countryVisibleInput(natHid)); }
   if(!resHid?.value){ issues.push('country of residence'); _flagInvalid(_countryVisibleInput(resHid)); }
   if(!emailInp?.value?.trim()){ issues.push('email'); _flagInvalid(emailInp); }
@@ -5470,6 +5522,26 @@ function _kv(doc, y, rows, title){
 function _buildPDFSnapshot(){
   const ad = _collectAppData(false);
   const sh = _collectShareholders();
+  // The live DOM can be incomplete (e.g. resumed session where Step 2/3 were
+  // never re-opened) — fill each person's gaps from the last saved/resumed
+  // rows, and append anyone missing from the DOM entirely.
+  const _savedRows = (Array.isArray(window._lastSavedShareholders) && window._lastSavedShareholders.length)
+    ? window._lastSavedShareholders : (window._resumedShareholders || []);
+  if(Array.isArray(_savedRows) && _savedRows.length){
+    const byName = {};
+    _savedRows.forEach(r => { if(r && r.full_name) byName[r.full_name.trim()] = r; });
+    sh.forEach(row => {
+      const saved = byName[(row.full_name || '').trim()];
+      if(!saved) return;
+      Object.entries(saved).forEach(([k, v]) => {
+        if(v === null || v === undefined || v === '') return;
+        if(row[k] === undefined || row[k] === null || row[k] === '') row[k] = v;
+      });
+    });
+    _savedRows.forEach(r => {
+      if(r && r.full_name && !sh.find(x => (x.full_name || '').trim() === r.full_name.trim())) sh.push({...r});
+    });
+  }
   const sof = _collectSOF();
   const q = _collectQuestionnaire();
   const sow = (typeof _collectSOW === 'function') ? _collectSOW() : null;
@@ -6045,12 +6117,15 @@ function _flashSaved(msg){
 // Public: save current form state as a draft application in the DB.
 // Returns the application id, or null on failure.
 async function saveDraftToDB(){
+  // Coalesce concurrent saves: if one is already running, queue exactly ONE
+  // follow-up run (the old behavior silently DROPPED the newer form state —
+  // that is how "my page 2 data wasn't saved" happened on slow connections).
+  if(window._saveInFlight){ window._savePending = true; return null; }
   // Snapshot form state SYNCHRONOUSLY before any await — a step-change re-render
   // repopulates cards from the last save and must never wipe unsaved edits mid-save.
   const _earlySh  = _collectShareholders();
   const _earlySof = _collectSOF();
   const _earlyQ   = _collectQuestionnaire();
-  if(window._saveInFlight) return null;
   if(!sb){
     console.warn('Supabase client not initialised — cannot save draft');
     alert('Could not save: connection unavailable. Please check your internet and try again.');
@@ -6139,6 +6214,11 @@ async function saveDraftToDB(){
     window._saveInFlight = false;
     if(hdrBtn){ hdrBtn.disabled = false; }
     document.querySelectorAll('.btn-save-row').forEach(b => b.disabled = false);
+    if(window._savePending){
+      window._savePending = false;
+      // A save was requested while this one ran — rerun with the freshest state
+      setTimeout(() => { try { saveDraftToDB(); } catch(e){} }, 60);
+    }
   }
 }
 

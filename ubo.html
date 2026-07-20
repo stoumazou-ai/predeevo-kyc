@@ -413,10 +413,11 @@ async function init(){
     if(parts.length){ const f = _fld('first_name'); if(f && !f.value) f.value = parts.slice(0, -1).join(' ') || parts[0]; }
     if(parts.length > 1){ const s = _fld('surname'); if(s && !s.value) s.value = parts[parts.length - 1]; }
     if(data.person_email){ const e = _fld('email'); if(e && !e.value) e.value = data.person_email; }
-    // Expiry dates must be in the future
+    // Expiry dates must be in the future; date of birth must be in the past
     const today = new Date().toISOString().split('T')[0];
     const pe = _fld('passport_expiry'); if(pe) pe.min = today;
     const ie = _fld('id_card_expiry'); if(ie) ie.min = today;
+    const dobInp = _fld('dob'); if(dobInp) dobInp.max = today;
     // Nationality decides which identity document is required — keep the doc
     // rows' marks in sync as they type/pick their nationality.
     const natInp = _fld('nationality');
@@ -836,6 +837,11 @@ function validateUBO(){
   req('first_name', 'First name is required');
   req('surname', 'Surname is required');
   req('dob', 'Date of birth is required');
+  const todayDob = new Date().toISOString().split('T')[0];
+  if(_val('dob') && _val('dob') > todayDob){
+    errors.push('Date of birth cannot be in the future');
+    const el = _fld('dob'); _highlight(el); if(!firstEl) firstEl = el;
+  }
   req('nationality', 'Nationality is required');
   req('country_of_residence', 'Country of residence is required');
   req('email', 'Email address is required');
