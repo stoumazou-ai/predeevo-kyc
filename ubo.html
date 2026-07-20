@@ -149,7 +149,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);bo
         <div class="fg"><label class="lbl">Date of birth <span class="req">*</span></label><input data-field="dob" type="date" min="1900-01-01" max="2099-12-31"></div>
         <div class="fg"><label class="lbl">Place / country of birth</label><input data-field="place_of_birth" placeholder="e.g. Nicosia, Cyprus"></div>
         <div class="fg"><label class="lbl">Nationality <span class="req">*</span></label><input data-field="nationality" list="country-list" placeholder="Type country..."></div>
-        <div class="fg"><label class="lbl">Dual nationality?</label><select data-field="dual_nationality"><option value="no">No</option><option value="yes">Yes</option></select></div>
+        <div class="fg"><label class="lbl">Dual nationality?</label><select data-field="dual_nationality" onchange="document.getElementById('sec-nat-wrap').style.display=this.value==='yes'?'':'none'"><option value="no">No</option><option value="yes">Yes</option></select></div>
+        <div class="fg" id="sec-nat-wrap" style="display:none"><label class="lbl">Second nationality <span class="req">*</span></label><input data-field="second_nationality" list="country-list" placeholder="Type country..."></div>
         <div class="fg full">
           <div style="background:var(--blue-pale);border:0.5px solid var(--blue-border);border-radius:9px;padding:12px 14px">
             <div id="id-doc-header" style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Identity document — at least one required <span style="color:var(--red)">*</span></div>
@@ -170,7 +171,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);bo
         <div class="fg"><label class="lbl">Occupation / profession</label><input data-field="occupation" placeholder="e.g. Director, Investor"></div>
         <div class="fg"><label class="lbl">Employment status</label><select data-field="employment_status"><option value="">Select...</option><option>Self-employed</option><option>Employed</option><option>Business owner</option><option>Retired</option><option>Investor</option><option>Other</option></select></div>
         <div class="fg"><label class="lbl">Country of tax residence</label><input data-field="tax_country" list="country-list" placeholder="Type country..."></div>
-        <div class="fg"><label class="lbl">TIN / AFM</label><input data-field="tin" placeholder="Tax identification number"></div>
+        <div class="fg"><label class="lbl">TIN</label><input data-field="tin" placeholder="Tax identification number"></div>
         <div class="fg"><label class="lbl">Annual income (EUR)</label><select data-field="annual_income"><option value="">Select...</option><option>Under €30,000</option><option>€30,000–€100,000</option><option>€100,000–€500,000</option><option>€500,000–€2,000,000</option><option>Over €2,000,000</option></select></div>
       </div>
       <div class="sec-lbl">PEP declaration</div>
@@ -875,6 +876,21 @@ function validateUBO(){
   if(!_val('pep_status')){
     errors.push('Please answer the PEP declaration');
     const el = _fld('pep_status'); _highlight(el); if(!firstEl) firstEl = el;
+  }
+  if(_val('dual_nationality') === 'yes' && !_val('second_nationality')){
+    errors.push('Please enter your second nationality');
+    const el = _fld('second_nationality'); _highlight(el); if(!firstEl) firstEl = el;
+  }
+  const mobDigits = _val('mobile').replace(/\D/g, '');
+  if(mobDigits){
+    const cc = _val('mobile_country_code').replace(/\s/g, '');
+    if(cc === '+357' && mobDigits.length !== 8){
+      errors.push('Cyprus mobile numbers have exactly 8 digits');
+      const el = _fld('mobile'); _highlight(el); if(!firstEl) firstEl = el;
+    } else if(cc !== '+357' && (mobDigits.length < 6 || mobDigits.length > 15)){
+      errors.push('Mobile number should be 6–15 digits');
+      const el = _fld('mobile'); _highlight(el); if(!firstEl) firstEl = el;
+    }
   }
   const natDocs = _val('nationality');
   if(_isCypriotNat(natDocs)){

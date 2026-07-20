@@ -801,14 +801,12 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <div class="card-title"><i class="ti ti-briefcase"></i>Services requested <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:4px">— select all that apply</span></div>
     <div class="info-box" style="margin-bottom:12px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Select all services you require. For services involving a company or entity, an engagement details form will appear below for you to complete.</div>
     <div class="svc-grid">
+      <label class="svc-item" onclick="svcT(this,'incorp')"><input type="checkbox" value="incorp"><span class="svc-label">Company incorporation</span></label>
       <label class="svc-item" onclick="svcT(this,'audit')"><input type="checkbox" value="audit"><span class="svc-label">Audit &amp; assurance</span></label>
       <label class="svc-item" onclick="svcT(this,'accounting')"><input type="checkbox" value="accounting"><span class="svc-label">Accounting &amp; bookkeeping</span></label>
       <label class="svc-item" onclick="svcT(this,'tax')"><input type="checkbox" value="tax"><span class="svc-label">Tax advisory &amp; compliance</span></label>
       <label class="svc-item" onclick="svcT(this,'payroll')"><input type="checkbox" value="payroll"><span class="svc-label">Payroll services</span></label>
-      <label class="svc-item" onclick="svcT(this,'incorp')"><input type="checkbox" value="incorp"><span class="svc-label">Company incorporation</span></label>
-      <label class="svc-item" onclick="svcT(this,'admin')"><input type="checkbox" value="admin"><span class="svc-label">Company administration</span></label>
-      <label class="svc-item" onclick="svcT(this,'director')"><input type="checkbox" value="director"><span class="svc-label">Director / nominee</span></label>
-      <label class="svc-item" onclick="svcT(this,'trust')"><input type="checkbox" value="trust"><span class="svc-label">Trust &amp; foundation</span></label>
+      <label class="svc-item" onclick="svcT(this,'director')"><input type="checkbox" value="director"><span class="svc-label">Nominee services</span></label>
       <label class="svc-item" onclick="svcT(this,'reg')"><input type="checkbox" value="reg"><span class="svc-label">Registered office</span></label>
       <label class="svc-item" style="grid-column:1/-1" onclick="svcT(this,'other')"><input type="checkbox" value="other"><span class="svc-label">Other (describe below)</span></label>
     </div>
@@ -846,9 +844,6 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
         </div>
         <div class="fg full"><label class="lbl">Economic rationale and purpose <span class="req">*</span></label>
           <textarea placeholder="Why is this company being incorporated? Why this jurisdiction? What commercial or economic purpose does it serve?" id="incorp-economic-rationale" oninput="saveProgress()"></textarea>
-        </div>
-        <div class="fg full"><label class="lbl">Source of funds for the company <span class="req">*</span></label>
-          <textarea placeholder="Where will the company's operating funds come from? (e.g. capital injection from shareholders, bank loans, trading income)" id="incorp-operating-funds" oninput="saveProgress()"></textarea>
         </div>
       </div><!-- close fgrid -->
       <div style="margin-top:14px">
@@ -913,6 +908,17 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
           <input placeholder="e.g. Cyprus, Greece, UAE" id="incorp-countries-operation" oninput="saveProgress()">
         </div>
 
+      </div>
+
+      <div class="sec-lbl" style="color:var(--blue);border-color:var(--blue-border)">Company officers <span class="hint" style="text-transform:none;letter-spacing:0">(optional — deciding now speeds up your incorporation)</span></div>
+      <div class="info-box" style="margin-bottom:12px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i>Who will act as director(s), secretary, and where will the registered office be? If you selected <strong>Nominee services</strong> or <strong>Registered office</strong> above, Predeevo can provide these — type "Predeevo" or leave blank to discuss.</div>
+      <div id="director-list">
+        <div class="director-row fg"><label class="lbl">Director 1</label><input class="director-name" placeholder="Full name — or 'Predeevo' for a nominee director" oninput="saveProgress()"></div>
+      </div>
+      <button type="button" class="btn btn-sm" onclick="addDirector()" style="margin-bottom:12px"><i class="ti ti-plus" style="font-size:12px"></i>Add another director</button>
+      <div class="fgrid">
+        <div class="fg"><label class="lbl">Company secretary</label><input id="incorp-secretary" placeholder="Full name — or 'Predeevo'" oninput="saveProgress()"></div>
+        <div class="fg"><label class="lbl">Registered office address</label><input id="incorp-registered-office" placeholder="Address — or 'Predeevo registered office'" oninput="saveProgress()"></div>
       </div>
 
       <hr>
@@ -1828,6 +1834,19 @@ function svcT(el,val){
   saveProgress();
 }
 
+// ── COMPANY OFFICERS (incorporation) ──
+function addDirector(){
+  const list = document.getElementById('director-list');
+  if(!list) return;
+  const n = list.querySelectorAll('.director-row').length + 1;
+  const row = document.createElement('div');
+  row.className = 'director-row fg';
+  row.innerHTML = '<label class="lbl" style="display:flex;justify-content:space-between">Director ' + n +
+    '<button type="button" onclick="this.closest(\'.director-row\').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;font-family:Manrope,sans-serif;padding:0">Remove</button></label>' +
+    '<input class="director-name" placeholder="Full name" oninput="saveProgress()">';
+  list.appendChild(row);
+}
+
 // ── PEP ──
 // Legacy stub: kept as a no-op for backwards compatibility with any stale callers.
 // The original `#pep-select` / `#pep-detail` / `#sow-section` elements have been
@@ -2292,7 +2311,8 @@ function renderUBOIdentityCards(){
             <div class="fg"><label class="lbl">Date of birth <span class="req">*</span></label><input data-field="dob" type="date" value="${prefillDOB}" min="1900-01-01" max="${new Date().toISOString().split('T')[0]}" oninput="updateUBOStatus(${i})"></div>
             <div class="fg"><label class="lbl">Place / country of birth</label><input data-field="place_of_birth" placeholder="e.g. Nicosia, Cyprus"></div>
             <div class="fg"><label class="lbl">Nationality <span class="req">*</span></label><div class="sw"><input class="si" placeholder="Type country..." value="${prefillNat||''}" oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" data-field="nationality" value="${prefillNat||''}"><div class="dropdown"></div></div></div>
-            <div class="fg"><label class="lbl">Dual nationality?</label><select data-field="dual_nationality"><option value="no">No</option><option value="yes">Yes</option></select></div>
+            <div class="fg"><label class="lbl">Dual nationality?</label><select data-field="dual_nationality" onchange="this.closest('.fgrid').querySelector('.sec-nat-wrap').style.display=this.value==='yes'?'':'none'"><option value="no">No</option><option value="yes">Yes</option></select></div>
+            <div class="fg sec-nat-wrap" style="display:none"><label class="lbl">Second nationality <span class="req">*</span></label><div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" data-field="second_nationality"><div class="dropdown"></div></div></div>
             <div class="fg full" style="grid-column:1/-1">
               <div style="background:var(--blue-pale);border:0.5px solid var(--blue-border);border-radius:9px;padding:12px 14px;margin-bottom:0">
                 <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Identity document — at least one required <span style="color:var(--red)">*</span></div>
@@ -2314,7 +2334,7 @@ function renderUBOIdentityCards(){
             <div class="fg"><label class="lbl">Occupation / profession</label><input data-field="occupation" placeholder="e.g. Director, Investor" value="${prefillOccup}"></div>
             <div class="fg"><label class="lbl">Employment status</label><select data-field="employment_status"><option value="">Select...</option><option>Self-employed</option><option>Employed</option><option>Business owner</option><option>Retired</option><option>Investor</option><option>Other</option></select></div>
             <div class="fg"><label class="lbl">Country of tax residence</label><div class="sw"><input class="si" placeholder="Type country..." oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" data-field="tax_country"><div class="dropdown"></div></div></div>
-            <div class="fg"><label class="lbl">TIN / AFM</label><input data-field="tin" placeholder="Tax identification number" value="${prefillTIN}"></div>
+            <div class="fg"><label class="lbl">TIN</label><input data-field="tin" placeholder="Tax identification number" value="${prefillTIN}"></div>
             <div class="fg"><label class="lbl">Annual income (EUR)</label><select data-field="annual_income"><option value="">Select...</option><option>Under €30,000</option><option>€30,000–€100,000</option><option>€100,000–€500,000</option><option>€500,000–€2,000,000</option><option>Over €2,000,000</option></select></div>
           </div>
           <hr>
@@ -2397,6 +2417,15 @@ function renderUBOIdentityCards(){
         if(taxHidden && taxHidden.value){
           const taxVisible = taxHidden.previousElementSibling;
           if(taxVisible && taxVisible.classList.contains('si')) taxVisible.value = taxHidden.value;
+        }
+        const secNatHidden = card.querySelector('input[type=hidden][data-field="second_nationality"]');
+        if(secNatHidden && secNatHidden.value){
+          const secNatVisible = secNatHidden.previousElementSibling;
+          if(secNatVisible && secNatVisible.classList.contains('si')) secNatVisible.value = secNatHidden.value;
+        }
+        if(saved.dual_nationality === 'yes'){
+          const wrap = card.querySelector('.sec-nat-wrap');
+          if(wrap) wrap.style.display = '';
         }
       }
     }
@@ -2837,6 +2866,10 @@ function _adoptUBOSession(sess){
         if(si) si.value = v;
       }
     });
+    if(sess.fields.dual_nationality === 'yes'){
+      const wrap = card.querySelector('.sec-nat-wrap');
+      if(wrap) wrap.style.display = '';
+    }
   }
   const idx = (card.id || '').replace('ubo-card-', '');
   const statusEl = document.getElementById('ubo-status-' + idx);
@@ -4342,7 +4375,6 @@ const STEP_REQUIRED = {
     {check:'incorp_country', label:'Country of incorporation is required'},
     {check:'principal_activities', label:'Principal business activities are required'},
     {check:'economic_rationale', label:'Economic rationale and purpose is required'},
-    {check:'operating_funds', label:'Source of funds for the company is required'},
     {check:'sof', label:'Please specify at least one source of funds (incorporation services)'},
     {check:'turnover_y1', label:'Expected turnover Year 1 is required'},
     {check:'share_capital', label:'Share capital is required'},
@@ -4440,6 +4472,18 @@ function _cardIdentityIssues(form){
   if(!natHid?.value){ issues.push('nationality'); _flagInvalid(_countryVisibleInput(natHid)); }
   if(!resHid?.value){ issues.push('country of residence'); _flagInvalid(_countryVisibleInput(resHid)); }
   if(!emailInp?.value?.trim()){ issues.push('email'); _flagInvalid(emailInp); }
+  const dualSel = form.querySelector('[data-field="dual_nationality"]');
+  const secNatHid = form.querySelector('input[data-field="second_nationality"]');
+  if(dualSel?.value === 'yes' && !secNatHid?.value){
+    issues.push('second nationality'); _flagInvalid(_countryVisibleInput(secNatHid));
+  }
+  const mobInp = form.querySelector('[data-field="mobile"]');
+  const mobDigits = (mobInp?.value || '').replace(/\D/g, '');
+  if(mobDigits){
+    const cc = (form.querySelector('[data-field="mobile_country_code"]')?.value || '').replace(/\s/g, '');
+    if(cc === '+357' && mobDigits.length !== 8){ issues.push('mobile number (Cyprus numbers have exactly 8 digits)'); _flagInvalid(mobInp); }
+    else if(cc !== '+357' && (mobDigits.length < 6 || mobDigits.length > 15)){ issues.push('mobile number (6–15 digits)'); _flagInvalid(mobInp); }
+  }
   const natRule = (natHid?.value || '').trim().toLowerCase();
   if(_isCypriotNat(natRule)){
     if(!hasID){ issues.push('national ID card details (number + future expiry — required for Cypriot nationals)'); _flagInvalid(idNum); }
@@ -4561,7 +4605,6 @@ function validateStep(stepNum){
         case 'company_type':        { if(_isIncorpVisible()) _reqValue('incorp-company-type', f, errors); break; }
         case 'incorp_country':      { if(_isIncorpVisible()) _reqValue('incorp-country', f, errors); break; }
         case 'economic_rationale':  { if(_isIncorpVisible()) _reqValue('incorp-economic-rationale', f, errors); break; }
-        case 'operating_funds':     { if(_isIncorpVisible()) _reqValue('incorp-operating-funds', f, errors); break; }
         case 'share_capital':       { if(_isIncorpVisible()) _reqValue('incorp-share-capital', f, errors); break; }
         case 'countries_operation': { if(_isIncorpVisible()) _reqValue('incorp-countries-operation', f, errors); break; }
         case 'entity_name':         { if(_isEntityVisible()) _reqValue('entity-name', f, errors); break; }
@@ -5081,6 +5124,18 @@ async function resumeDraft(draftInfo){
     setVal('incorp-share-capital', app.share_capital);
     setVal('incorp-employees-count', app.expected_employees);
     setVal('incorp-countries-operation', app.countries_operation);
+    if(Array.isArray(app.directors) && app.directors.length){
+      const dl = document.getElementById('director-list');
+      if(dl){
+        app.directors.forEach((name, i) => {
+          let rows = dl.querySelectorAll('.director-name');
+          if(i >= rows.length){ try { addDirector(); } catch(e){} rows = dl.querySelectorAll('.director-name'); }
+          if(rows[i]) rows[i].value = name;
+        });
+      }
+    }
+    setVal('incorp-secretary', app.company_secretary);
+    setVal('incorp-registered-office', app.registered_office);
     // Also reflect country hidden value into the visible search input
     const incorpCountryHidden = document.getElementById('incorp-country');
     if(incorpCountryHidden && incorpCountryHidden.value){
@@ -5671,7 +5726,7 @@ function generateApplicationReport(){
   const idRows = [
     ['Full name', fullName],
     ['Date of birth', ap.dob || '—'],
-    ['Nationality', ap.nationality || '—'],
+    ['Nationality', [ap.nationality, ap.second_nationality].filter(Boolean).join(' / ') || '—'],
     ['Country of residence', ap.country_of_residence || '—'],
     ['Identity document', idDocBits.join('  ·  ') || '—'],
     ['Email', ap.email || '—'],
@@ -5703,6 +5758,9 @@ function generateApplicationReport(){
     ['Share capital', _eur(ad.share_capital)],
     ['Expected employees', ad.expected_employees || '—'],
     ['Countries of operation', ad.countries_operation || '—'],
+    ['Directors', Array.isArray(ad.directors) && ad.directors.length ? ad.directors.join(', ') : '—'],
+    ['Company secretary', ad.company_secretary || '—'],
+    ['Registered office', ad.registered_office || '—'],
     ['Existing entity', [ad.entity_name, ad.entity_country, ad.entity_reg_number].filter(Boolean).join(' · ') || '—']
   ];
   const engRows = engAll.filter((r, i) => i === 0 || r[1] !== '—');
@@ -5901,6 +5959,13 @@ function _collectAppData(forSubmit){
     share_capital: num('incorp-share-capital'),
     expected_employees: txt('incorp-employees-count') || txt('entity-employees-count'),
     countries_operation: txt('incorp-countries-operation') || txt('entity-countries-operation'),
+    directors: (() => {
+      const a = [];
+      document.querySelectorAll('#director-list .director-name').forEach(i => { const v = i.value.trim(); if(v) a.push(v); });
+      return a.length ? a : null;
+    })(),
+    company_secretary: txt('incorp-secretary'),
+    registered_office: txt('incorp-registered-office'),
 
     // Entity form
     entity_name: txt('entity-name'),
@@ -6049,7 +6114,7 @@ function _collectShareholders(){
       // Only merge keys that are real kyc_shareholders columns — the session's
       // fields jsonb also carries non-column payloads (sig_method, questionnaire)
       // that would break the shareholders insert if copied onto the row.
-      const MERGE_KEYS = ['title','marital_status','first_name','surname','prev_surname','dob','place_of_birth','nationality','dual_nationality','passport_number','passport_expiry','id_card_number','id_card_expiry','country_of_residence','addr_street','addr_town','addr_postcode','mobile_country_code','mobile','occupation','employment_status','tax_country','tin','annual_income','pep_status'];
+      const MERGE_KEYS = ['title','marital_status','first_name','surname','prev_surname','dob','place_of_birth','nationality','dual_nationality','passport_number','passport_expiry','id_card_number','id_card_expiry','country_of_residence','addr_street','addr_town','addr_postcode','mobile_country_code','mobile','occupation','employment_status','tax_country','tin','annual_income','pep_status','second_nationality'];
       Object.entries(uboSess.fields).forEach(([k, v]) => {
         if(S1_KEYS.includes(k) || !MERGE_KEYS.includes(k)) return;
         if(row[k] === undefined || row[k] === null || row[k] === ''){

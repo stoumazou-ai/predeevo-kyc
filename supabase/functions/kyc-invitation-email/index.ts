@@ -89,7 +89,7 @@ serve(async (req) => {
       payroll:      "Payroll services",
       audit:        "Audit & assurance",
       admin:        "Company administration",
-      director:     "Director / nominee",
+      director:     "Nominee services",
       trust:        "Trust & foundation",
       regoffice:    "Registered office",
       other:        "Other services",
