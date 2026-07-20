@@ -6101,6 +6101,24 @@ function _collectShareholders(){
           }
         }
       });
+    } else {
+      // This person's card is NOT rendered right now (e.g. a resumed draft being
+      // saved from Step 1, before Step 2/3 were ever opened). Without this branch
+      // the delete-and-reinsert save GUTS their previously saved identity fields.
+      // Fill the row from the last saved/resumed data instead.
+      const savedSrc = (Array.isArray(window._lastSavedShareholders) && window._lastSavedShareholders.length)
+        ? window._lastSavedShareholders : window._resumedShareholders;
+      const savedRow = Array.isArray(savedSrc)
+        ? savedSrc.find(s => (s.full_name || '').trim() === name) : null;
+      if(savedRow){
+        Object.entries(savedRow).forEach(([k, v]) => {
+          if(v === null || v === undefined || v === '') return;
+          if(['id', 'application_id', 'created_at', 'kyc_status'].includes(k)) return;
+          if(row[k] === undefined || row[k] === null || row[k] === ''){
+            row[k] = v;
+          }
+        });
+      }
     }
 
     // Merge fields the UBO submitted via their own secure link (kyc_ubo_sessions).
