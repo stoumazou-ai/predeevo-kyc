@@ -5452,7 +5452,7 @@ function _pdfHeader(doc, title){
   doc.rect(0, 0, w, 18, 'F');
   // Logo (white wordmark on the blue bar); text fallback if the image fails.
   try {
-    doc.addImage(PREDEEVO_LOGO, 'PNG', 12, 5.3, 35.4, 7.5);
+    doc.addImage(PREDEEVO_LOGO, 'PNG', 12, 4.6, 42, 8.9);
   } catch(e){
     doc.setTextColor(255,255,255);
     doc.setFont('helvetica','bold'); doc.setFontSize(11);
