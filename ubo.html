@@ -846,8 +846,12 @@ function validateUBO(){
   req('surname', 'Surname is required');
   req('dob', 'Date of birth is required');
   const todayDob = new Date().toISOString().split('T')[0];
+  const adultCutoff = (d => { d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })(new Date());
   if(_val('dob') && _val('dob') > todayDob){
     errors.push('Date of birth cannot be in the future');
+    const el = _fld('dob'); _highlight(el); if(!firstEl) firstEl = el;
+  } else if(_val('dob') && _val('dob') > adultCutoff){
+    errors.push('You must be at least 18 years old to complete this declaration');
     const el = _fld('dob'); _highlight(el); if(!firstEl) firstEl = el;
   }
   req('nationality', 'Nationality is required');
@@ -881,13 +885,16 @@ function validateUBO(){
     errors.push('Please enter your second nationality');
     const el = _fld('second_nationality'); _highlight(el); if(!firstEl) firstEl = el;
   }
-  const mobDigits = _val('mobile').replace(/\D/g, '');
+  let mobDigits = _val('mobile').replace(/\D/g, '');
   if(mobDigits){
-    const cc = _val('mobile_country_code').replace(/\s/g, '');
-    if(cc === '+357' && mobDigits.length !== 8){
+    const ccDigits = _val('mobile_country_code').replace(/\D/g, '');
+    if(mobDigits.indexOf('00357') === 0) mobDigits = mobDigits.slice(5);
+    else if(mobDigits.indexOf('357') === 0 && mobDigits.length > 8) mobDigits = mobDigits.slice(3);
+    const isCY = ccDigits === '357' || (!ccDigits && (_val('mobile').indexOf('+357') === 0 || _val('mobile').indexOf('00357') === 0));
+    if(isCY && mobDigits.length !== 8){
       errors.push('Cyprus mobile numbers have exactly 8 digits');
       const el = _fld('mobile'); _highlight(el); if(!firstEl) firstEl = el;
-    } else if(cc !== '+357' && (mobDigits.length < 6 || mobDigits.length > 15)){
+    } else if(!isCY && (mobDigits.length < 6 || mobDigits.length > 15)){
       errors.push('Mobile number should be 6–15 digits');
       const el = _fld('mobile'); _highlight(el); if(!firstEl) firstEl = el;
     }

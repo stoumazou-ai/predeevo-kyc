@@ -878,11 +878,11 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
         <div id="sof-other" style="display:none;margin-bottom:8px">
           <div class="fg" style="margin-bottom:0"><label class="lbl">Describe other source of funds</label><textarea placeholder="Full details of this source of funds including origin, amounts and supporting documentation"></textarea></div>
         </div>
+        <button type="button" class="btn btn-sm" onclick="addSOF()" style="margin-bottom:8px"><i class="ti ti-plus" style="font-size:12px"></i>Add another source</button>
         <div class="sof-total" style="margin-bottom:8px">
           <span class="sof-total-lbl">Total (EUR)</span>
           <span class="sof-total-val" id="sof-total">0</span>
         </div>
-        <button type="button" class="btn btn-sm" onclick="addSOF()"><i class="ti ti-plus" style="font-size:12px"></i>Add another source</button>
       </div>
       <div class="fgrid">
         <div class="fg"><label class="lbl">Expected turnover Year 1 (EUR) <span class="req">*</span></label>
@@ -2308,7 +2308,7 @@ function renderUBOIdentityCards(){
             <div class="fg"><label class="lbl">First name(s) <span class="req">*</span></label><input data-field="first_name" placeholder="As on passport" value="${firstName}" oninput="updateUBOStatus(${i})"></div>
             <div class="fg"><label class="lbl">Surname <span class="req">*</span></label><input data-field="surname" placeholder="As on passport" value="${lastName}" oninput="updateUBOStatus(${i})"></div>
             <div class="fg full"><label class="lbl">Previous or other surname</label><input data-field="prev_surname" placeholder="Maiden name or other legal name"></div>
-            <div class="fg"><label class="lbl">Date of birth <span class="req">*</span></label><input data-field="dob" type="date" value="${prefillDOB}" min="1900-01-01" max="${new Date().toISOString().split('T')[0]}" oninput="updateUBOStatus(${i})"></div>
+            <div class="fg"><label class="lbl">Date of birth <span class="req">*</span></label><input data-field="dob" type="date" value="${prefillDOB}" min="1900-01-01" max="${(d => { d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })(new Date())}" oninput="updateUBOStatus(${i})"></div>
             <div class="fg"><label class="lbl">Place / country of birth</label><input data-field="place_of_birth" placeholder="e.g. Nicosia, Cyprus"></div>
             <div class="fg"><label class="lbl">Nationality <span class="req">*</span></label><div class="sw"><input class="si" placeholder="Type country..." value="${prefillNat||''}" oninput="sc(this)" onfocus="sdd(this)" onblur="hdd(this)"><input type="hidden" data-field="nationality" value="${prefillNat||''}"><div class="dropdown"></div></div></div>
             <div class="fg"><label class="lbl">Dual nationality?</label><select data-field="dual_nationality" onchange="this.closest('.fgrid').querySelector('.sec-nat-wrap').style.display=this.value==='yes'?'':'none'"><option value="no">No</option><option value="yes">Yes</option></select></div>
@@ -4469,6 +4469,10 @@ function _cardIdentityIssues(form){
   if(!surInp?.value?.trim()){ issues.push('surname'); _flagInvalid(surInp); }
   if(!dobInp?.value){ issues.push('date of birth'); _flagInvalid(dobInp); }
   else if(dobInp.value > today2){ issues.push('date of birth cannot be in the future'); _flagInvalid(dobInp); }
+  else {
+    const adultCutoff = (d => { d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })(new Date());
+    if(dobInp.value > adultCutoff){ issues.push('must be at least 18 years old'); _flagInvalid(dobInp); }
+  }
   if(!natHid?.value){ issues.push('nationality'); _flagInvalid(_countryVisibleInput(natHid)); }
   if(!resHid?.value){ issues.push('country of residence'); _flagInvalid(_countryVisibleInput(resHid)); }
   if(!emailInp?.value?.trim()){ issues.push('email'); _flagInvalid(emailInp); }
@@ -4478,11 +4482,15 @@ function _cardIdentityIssues(form){
     issues.push('second nationality'); _flagInvalid(_countryVisibleInput(secNatHid));
   }
   const mobInp = form.querySelector('[data-field="mobile"]');
-  const mobDigits = (mobInp?.value || '').replace(/\D/g, '');
+  let mobDigits = (mobInp?.value || '').replace(/\D/g, '');
   if(mobDigits){
-    const cc = (form.querySelector('[data-field="mobile_country_code"]')?.value || '').replace(/\s/g, '');
-    if(cc === '+357' && mobDigits.length !== 8){ issues.push('mobile number (Cyprus numbers have exactly 8 digits)'); _flagInvalid(mobInp); }
-    else if(cc !== '+357' && (mobDigits.length < 6 || mobDigits.length > 15)){ issues.push('mobile number (6–15 digits)'); _flagInvalid(mobInp); }
+    const ccDigits = (form.querySelector('[data-field="mobile_country_code"]')?.value || '').replace(/\D/g, '');
+    // Tolerate the country code being typed into the number itself
+    if(mobDigits.indexOf('00357') === 0) mobDigits = mobDigits.slice(5);
+    else if(mobDigits.indexOf('357') === 0 && mobDigits.length > 8) mobDigits = mobDigits.slice(3);
+    const isCY = ccDigits === '357' || (!ccDigits && (mobInp.value.trim().indexOf('+357') === 0 || mobInp.value.trim().indexOf('00357') === 0));
+    if(isCY && mobDigits.length !== 8){ issues.push('mobile number (Cyprus numbers have exactly 8 digits)'); _flagInvalid(mobInp); }
+    else if(!isCY && (mobDigits.length < 6 || mobDigits.length > 15)){ issues.push('mobile number (6–15 digits)'); _flagInvalid(mobInp); }
   }
   const natRule = (natHid?.value || '').trim().toLowerCase();
   if(_isCypriotNat(natRule)){
